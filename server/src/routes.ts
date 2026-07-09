@@ -43,7 +43,15 @@ const mapMember = (r: any) => ({ id: r.id, name: r.name })
 const mapPlace = (r: any) => ({
   id: r.id, name: r.name, address: r.address, category: r.category,
   lat: r.lat != null ? Number(r.lat) : null, lng: r.lng != null ? Number(r.lng) : null,
-  memo: r.memo, createdAt: r.created_at,
+  memo: r.memo, mapUrl: r.map_url, rating: r.rating != null ? Number(r.rating) : null,
+  pros: r.pros, cons: r.cons, countryId: r.country_id, cityId: r.city_id,
+  countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
+  createdAt: r.created_at,
+})
+const mapTransit = (r: any) => ({
+  id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
+  mode: r.mode, durationText: r.duration_text, note: r.note, voucherId: r.voucher_id,
+  voucherTitle: r.voucher_title ?? null, createdAt: r.created_at,
 })
 const mapFlightDetail = (r: any) => ({
   departAt: r.depart_at, arriveAt: r.arrive_at,
@@ -224,27 +232,50 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   // ── 장소 족보 ─────────────────────────────────────────
+  const PLACE_SELECT = `
+    SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name
+    FROM places p
+    LEFT JOIN countries co ON co.id = p.country_id
+    LEFT JOIN cities ci ON ci.id = p.city_id
+  `
+
   app.get('/api/places', async (_req, res) => {
-    const r = await pool.query('SELECT * FROM places ORDER BY created_at DESC')
+    const r = await pool.query(`${PLACE_SELECT} ORDER BY p.created_at DESC`)
     res.json(r.rows.map(mapPlace))
   })
 
   app.post('/api/places', async (req, res) => {
-    const { name, address, category, lat, lng, memo } = req.body as {
-      name: string; address: string; category: string; lat?: number | null; lng?: number | null; memo?: string | null
+    const {
+      name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
+    } = req.body as {
+      name: string; address: string; category: string; lat?: number | null; lng?: number | null
+      memo?: string | null; mapUrl?: string | null; rating?: number | null
+      pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
     }
     const placeId = id()
     await pool.query(
-      'INSERT INTO places (id, name, address, category, lat, lng, memo) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null])
-    const r = await pool.query('SELECT * FROM places WHERE id = $1', [placeId])
+      `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
+        mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
+        countryId || null, cityId || null])
+    const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
   })
 
   app.put('/api/places/:id', async (req, res) => {
-    const { name, address, category, memo } = req.body as { name: string; address: string; category: string; memo: string | null }
-    await pool.query('UPDATE places SET name=$1, address=$2, category=$3, memo=$4 WHERE id=$5',
-      [name.trim(), (address ?? '').trim(), category, memo, req.params.id])
+    const {
+      name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
+    } = req.body as {
+      name: string; address: string; category: string; memo: string | null; mapUrl: string | null
+      rating: number | null; pros: string | null; cons: string | null
+      countryId: string | null; cityId: string | null
+    }
+    await pool.query(
+      `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
+         country_id=$9, city_id=$10 WHERE id=$11`,
+      [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
+        pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null, req.params.id])
     res.json({ ok: true })
   })
 
@@ -260,7 +291,7 @@ export function registerRoutes(app: ExpressApp): void {
   // 장소 족보 상세 — 여러 여행에 걸친 방문 기록·리뷰·사진·누적 비용을 한 번에
   app.get('/api/places/:id/detail', async (req, res) => {
     const placeId = req.params.id
-    const placeRow = await pool.query('SELECT * FROM places WHERE id = $1', [placeId])
+    const placeRow = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     if (placeRow.rows.length === 0) { res.status(404).json({ error: '장소를 찾을 수 없어요.' }); return }
 
     const events = await pool.query(
@@ -479,6 +510,58 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.delete('/api/events/:id/flight', async (req, res) => {
     await pool.query('DELETE FROM flight_details WHERE event_id = $1', [req.params.id])
+    res.json({ ok: true })
+  })
+
+  // ── 동선 이동 구간(교통) ───────────────────────────────
+  const TRANSIT_SELECT = `
+    SELECT ts.*, v.title AS voucher_title
+    FROM transit_segments ts
+    LEFT JOIN vouchers v ON v.id = ts.voucher_id
+  `
+
+  app.get('/api/trips/:tripId/transit', async (req, res) => {
+    const day = req.query.day as string | undefined
+    const params: any[] = [req.params.tripId]
+    let sql = `${TRANSIT_SELECT} WHERE ts.trip_id = $1`
+    if (day != null) { params.push(Number(day)); sql += ` AND ts.day_number = $${params.length}` }
+    sql += ' ORDER BY ts.created_at'
+    const r = await pool.query(sql, params)
+    res.json(r.rows.map(mapTransit))
+  })
+
+  app.post('/api/trips/:tripId/transit', async (req, res) => {
+    const { dayNumber, afterEventId, mode, durationText, note } = req.body as {
+      dayNumber: number; afterEventId: string | null; mode: string; durationText: string | null; note?: string | null
+    }
+    const segId = id()
+    await pool.query(
+      'INSERT INTO transit_segments (id, trip_id, day_number, after_event_id, mode, duration_text, note) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [segId, req.params.tripId, dayNumber, afterEventId, mode.trim(), durationText?.trim() || null, note?.trim() || null])
+    const r = await pool.query(`${TRANSIT_SELECT} WHERE ts.id = $1`, [segId])
+    res.json(mapTransit(r.rows[0]))
+  })
+
+  app.put('/api/transit/:id', async (req, res) => {
+    const { mode, durationText, note, voucherId, afterEventId } = req.body as {
+      mode?: string; durationText?: string | null; note?: string | null
+      voucherId?: string | null; afterEventId?: string | null
+    }
+    const sets: string[] = []
+    const params: any[] = []
+    if (mode !== undefined) { params.push(mode.trim()); sets.push(`mode = $${params.length}`) }
+    if (durationText !== undefined) { params.push(durationText?.trim() || null); sets.push(`duration_text = $${params.length}`) }
+    if (note !== undefined) { params.push(note?.trim() || null); sets.push(`note = $${params.length}`) }
+    if (voucherId !== undefined) { params.push(voucherId); sets.push(`voucher_id = $${params.length}`) }
+    if (afterEventId !== undefined) { params.push(afterEventId); sets.push(`after_event_id = $${params.length}`) }
+    if (sets.length === 0) { res.json({ ok: true }); return }
+    params.push(req.params.id)
+    await pool.query(`UPDATE transit_segments SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/transit/:id', async (req, res) => {
+    await pool.query('DELETE FROM transit_segments WHERE id = $1', [req.params.id])
     res.json({ ok: true })
   })
 

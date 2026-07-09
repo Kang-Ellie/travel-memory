@@ -199,6 +199,25 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS purchase_items TEXT;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT true;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_prebooked BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS map_url TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS pros TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS cons TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS country_id TEXT REFERENCES countries(id) ON DELETE SET NULL;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS city_id TEXT REFERENCES cities(id) ON DELETE SET NULL;
+
+    -- ── 동선 이동 구간 (지하철/도보/기차 등, 특정 일정 뒤에 표시) ─
+    CREATE TABLE IF NOT EXISTS transit_segments (
+      id             TEXT PRIMARY KEY,
+      trip_id        TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      day_number     INT NOT NULL,
+      after_event_id TEXT REFERENCES timeline_events(id) ON DELETE CASCADE,
+      mode           TEXT NOT NULL,
+      duration_text  TEXT,
+      voucher_id     TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    ALTER TABLE transit_segments ADD COLUMN IF NOT EXISTS note TEXT;
 
     -- '식당' 분류명을 '맛집'으로 통일
     UPDATE places SET category = '맛집' WHERE category = '식당';

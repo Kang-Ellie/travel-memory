@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Trip, TimelineEvent, Place, Member, Expense, CurrencyRate } from '../../shared/types'
+import type { Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
@@ -11,6 +11,10 @@ import Lightbox from './Lightbox'
 import ChecklistPanel from './ChecklistPanel'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
+const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
+const TRANSIT_ICON: Record<string, string> = {
+  도보: '🚶', 지하철: '🚇', 버스: '🚌', 기차: '🚄', 택시: '🚕', 비행기: '✈️', 배: '⛴',
+}
 
 function dayCount(trip: Trip): number {
   const s = new Date(trip.startDate + 'T00:00:00')
@@ -29,6 +33,85 @@ function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
+}
+
+function TransitChip({
+  segment, vouchers, dayEvents, onChanged,
+}: { segment: TransitSegment; vouchers: Voucher[]; dayEvents: TimelineEvent[]; onChanged: () => void }) {
+  const [linking, setLinking] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [mode, setMode] = useState(segment.mode)
+  const [durationText, setDurationText] = useState(segment.durationText ?? '')
+  const [note, setNote] = useState(segment.note ?? '')
+  const [afterEventId, setAfterEventId] = useState(segment.afterEventId ?? '')
+
+  const save = async () => {
+    await api.transit.update(segment.id, {
+      mode, durationText: durationText.trim() || null, note: note.trim() || null, afterEventId: afterEventId || null,
+    })
+    setEditing(false)
+    onChanged()
+  }
+  const linkVoucher = async (voucherId: string) => {
+    await api.transit.update(segment.id, { voucherId: voucherId || null })
+    setLinking(false)
+    onChanged()
+  }
+  const unlink = async () => {
+    await api.transit.update(segment.id, { voucherId: null })
+    onChanged()
+  }
+  const remove = async () => {
+    if (confirm(`'${segment.mode}' 이동 구간을 삭제할까요?`)) await api.transit.delete(segment.id)
+    onChanged()
+  }
+
+  if (editing) {
+    return (
+      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--yellow-soft)', marginLeft: 22 }}>
+        <div className="field"><label>위치</label>
+          <select value={afterEventId} onChange={(e) => setAfterEventId(e.target.value)}>
+            <option value="">맨 앞 (첫 일정 전)</option>
+            {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
+          </select></div>
+        <div className="field"><label>교통수단</label>
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
+          </select></div>
+        <div className="field"><label>소요시간</label>
+          <input type="text" value={durationText} onChange={(e) => setDurationText(e.target.value)} /></div>
+        <div className="field grow"><label>비고</label>
+          <input type="text" value={note} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setNote(e.target.value)} /></div>
+        <button className="btn small primary" onClick={save}>저장</button>
+        <button className="btn small" onClick={() => setEditing(false)}>취소</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="transit-chip">
+      <span>{TRANSIT_ICON[segment.mode] ?? '➡️'} {segment.mode}{segment.durationText ? ` · ${segment.durationText}` : ''}</span>
+      {segment.note && <span className="muted">· {segment.note}</span>}
+      {segment.voucherId ? (
+        <span className="chip green" title={segment.voucherTitle ?? ''} style={{ cursor: 'pointer' }} onClick={unlink}>
+          🎫 예약완료 ({segment.voucherTitle})
+        </span>
+      ) : linking ? (
+        vouchers.length === 0 ? (
+          <span className="muted">[📎 바우처] 탭에 먼저 파일을 올려두세요.</span>
+        ) : (
+          <select defaultValue="" onChange={(e) => linkVoucher(e.target.value)}>
+            <option value="" disabled>바우처 선택</option>
+            {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+          </select>
+        )
+      ) : (
+        <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
+      )}
+      <button className="btn small ghost" onClick={() => setEditing(true)}>수정</button>
+      <button className="btn small ghost" onClick={remove}>×</button>
+    </div>
+  )
 }
 
 interface QuickExpenseState {
@@ -150,13 +233,23 @@ function EventCard({
           }}>삭제</button>
         </span>
       </div>
-      {ev.place.address && <div className="muted" style={{ marginTop: 4 }}>📍 {ev.place.address}</div>}
+      {(ev.place.address || ev.place.mapUrl) && (
+        <div className="muted" style={{ marginTop: 4 }}>
+          {ev.place.address && <>📍 {ev.place.address} </>}
+          {ev.place.mapUrl && <a href={ev.place.mapUrl} target="_blank" rel="noreferrer">🗺 지도에서 보기</a>}
+        </div>
+      )}
 
       <div className="event-card-body">
         <div className="event-photo-col">
           <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
           {mainPhoto ? (
-            <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
+            <div className="photo-thumb">
+              <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
+              {ev.photos.length > 1 && (
+                <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(mainPhoto.id).then(onChanged)}>×</button>
+              )}
+            </div>
           ) : (
             <div className="main-photo photo-placeholder" onClick={() => photoInput.current?.click()}>📷 사진 추가</div>
           )}
@@ -287,12 +380,19 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [members, setMembers] = useState<Member[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [rates, setRates] = useState<CurrencyRate[]>([])
+  const [transit, setTransit] = useState<TransitSegment[]>([])
+  const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
   const [newCategory, setNewCategory] = useState('맛집')
+  const [newMapUrl, setNewMapUrl] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [transitAfterId, setTransitAfterId] = useState('')
+  const [transitMode, setTransitMode] = useState('지하철')
+  const [transitDuration, setTransitDuration] = useState('')
+  const [transitNote, setTransitNote] = useState('')
   const dragFrom = useRef<number | null>(null)
 
   const refresh = () => {
@@ -301,10 +401,14 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     api.tripMembers.list(trip.id).then(setMembers)
     api.expenses.list(trip.id).then(setExpenses)
     api.rates.list(trip.id).then(setRates)
+    api.transit.list(trip.id).then(setTransit)
+    api.vouchers.list(trip.id).then(setVouchers)
   }
   useEffect(refresh, [trip.id])
 
   const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => a.sequence - b.sequence)
+  const dayTransit = transit.filter((t) => t.dayNumber === day)
+  const transitAfter = (eventId: string | null) => dayTransit.filter((t) => t.afterEventId === eventId)
   const dailySpend = computeDailySpend(trip, expenses, day, rates)
   const expensesByEvent = new Map<string, Expense[]>()
   for (const exp of expenses) {
@@ -318,9 +422,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     let placeId = selPlace
     if (placeId === '__new') {
       if (!newName.trim()) return
-      const p = await api.places.create({ name: newName, address: newAddress, category: newCategory })
+      const p = await api.places.create({
+        name: newName, address: newAddress, category: newCategory, mapUrl: newMapUrl.trim() || null,
+      })
       placeId = p.id
-      setNewName(''); setNewAddress('')
+      setNewName(''); setNewAddress(''); setNewMapUrl('')
     }
     if (!placeId) return
     await api.events.create({ tripId: trip.id, placeId, dayNumber: day })
@@ -344,6 +450,15 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       return [...others, ...reordered]
     })
     await api.events.reorder({ tripId: trip.id, dayNumber: day, orderedIds: ids })
+  }
+
+  const addTransit = async () => {
+    await api.transit.create({
+      tripId: trip.id, dayNumber: day, afterEventId: transitAfterId || null,
+      mode: transitMode, durationText: transitDuration.trim() || null, note: transitNote.trim() || null,
+    })
+    setTransitDuration(''); setTransitNote('')
+    refresh()
   }
 
   const handleZoneDrop = async (e: React.DragEvent) => {
@@ -392,19 +507,49 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               이 날의 동선이 비어 있어요. 아래에서 장소를 추가하거나, 오른쪽 보관함 카드를 이 위로 끌어다 놓아보세요.
             </div>
           )}
+          {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
           {dayEvents.map((ev, idx) => (
-            <EventCard
-              key={ev.id}
-              ev={ev}
-              participants={members}
-              eventExpenses={expensesByEvent.get(ev.id) ?? []}
-              dragIndex={idx}
-              onDragStart={(i) => { dragFrom.current = i }}
-              onDrop={() => reorder(idx)}
-              onChanged={refresh}
-            />
+            <div key={ev.id}>
+              <EventCard
+                ev={ev}
+                participants={members}
+                eventExpenses={expensesByEvent.get(ev.id) ?? []}
+                dragIndex={idx}
+                onDragStart={(i) => { dragFrom.current = i }}
+                onDrop={() => reorder(idx)}
+                onChanged={refresh}
+              />
+              {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+            </div>
           ))}
         </div>
+
+        {dayEvents.length > 0 && (
+          <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
+            <div className="field">
+              <label>🚏 이동 구간 추가 — 위치</label>
+              <select value={transitAfterId} onChange={(e) => setTransitAfterId(e.target.value)}>
+                <option value="">맨 앞 (첫 일정 전)</option>
+                {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>교통수단</label>
+              <select value={transitMode} onChange={(e) => setTransitMode(e.target.value)}>
+                {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label>소요시간</label>
+              <input type="text" value={transitDuration} placeholder="예: 4분" onChange={(e) => setTransitDuration(e.target.value)} />
+            </div>
+            <div className="field grow">
+              <label>비고 (선택)</label>
+              <input type="text" value={transitNote} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setTransitNote(e.target.value)} />
+            </div>
+            <button className="btn small" onClick={addTransit}>＋ 이동 추가</button>
+          </div>
+        )}
 
         <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 14 }}>
           <div className="field grow">
@@ -430,6 +575,10 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                 <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
                   {PLACE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
+              </div>
+              <div className="field grow">
+                <label>구글 지도 링크 (선택)</label>
+                <input type="text" value={newMapUrl} onChange={(e) => setNewMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
               </div>
             </>
           )}

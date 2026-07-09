@@ -54,6 +54,28 @@ export interface Place {
   lat: number | null
   lng: number | null
   memo: string | null
+  mapUrl: string | null
+  rating: number | null
+  pros: string | null
+  cons: string | null
+  countryId: string | null
+  cityId: string | null
+  countryName: string | null
+  countryCode: string | null
+  cityName: string | null
+  createdAt: string
+}
+
+export interface TransitSegment {
+  id: string
+  tripId: string
+  dayNumber: number
+  afterEventId: string | null
+  mode: string
+  durationText: string | null
+  note: string | null
+  voucherId: string | null
+  voucherTitle: string | null
   createdAt: string
 }
 

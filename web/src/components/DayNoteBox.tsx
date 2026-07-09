@@ -87,7 +87,7 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
         <button className="btn small" onClick={() => setEditing(true)}>수정</button>
       </div>
       {note?.diary && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1.5px dashed rgba(45,42,62,0.25)' }}>
+        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
           <div className="muted" style={{ marginBottom: 4 }}>📔 오늘의 일기</div>
           <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{note.diary}</p>
         </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Place, GooglePlaceResult } from '../../shared/types'
+import type { Place, GooglePlaceResult, Country, City } from '../../shared/types'
 import { api } from '../api'
+import { flagEmoji, ratingColor } from '../categories'
 import Window from './Window'
 import PlaceDetailPanel from './PlaceDetailPanel'
 
@@ -8,16 +9,32 @@ const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', 
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 
 function PlaceRow({
-  place, expanded, onToggle, onChanged,
-}: { place: Place; expanded: boolean; onToggle: () => void; onChanged: () => void }) {
+  place, countries, cities, expanded, onToggle, onChanged,
+}: {
+  place: Place; countries: Country[]; cities: City[]; expanded: boolean; onToggle: () => void; onChanged: () => void
+}) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(place.name)
   const [address, setAddress] = useState(place.address)
   const [category, setCategory] = useState(place.category)
   const [memo, setMemo] = useState(place.memo ?? '')
+  const [mapUrl, setMapUrl] = useState(place.mapUrl ?? '')
+  const [rating, setRating] = useState(place.rating != null ? String(place.rating) : '')
+  const [pros, setPros] = useState(place.pros ?? '')
+  const [cons, setCons] = useState(place.cons ?? '')
+  const [countryId, setCountryId] = useState(place.countryId ?? '')
+  const [cityId, setCityId] = useState(place.cityId ?? '')
+
+  const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
 
   const save = async () => {
-    await api.places.update(place.id, { name, address, category, memo: memo.trim() || null })
+    const r = rating.trim() === '' ? null : Number(rating)
+    await api.places.update(place.id, {
+      name, address, category, memo: memo.trim() || null, mapUrl: mapUrl.trim() || null,
+      rating: r != null && !Number.isNaN(r) ? r : null,
+      pros: pros.trim() || null, cons: cons.trim() || null,
+      countryId: countryId || null, cityId: cityId || null,
+    })
     setEditing(false)
     onChanged()
   }
@@ -39,8 +56,28 @@ function PlaceRow({
           <select value={category} onChange={(e) => setCategory(e.target.value)}>
             {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select></div>
+        <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
+          <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
+        <div className="field grow"><label>구글 지도 링크</label>
+          <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." onChange={(e) => setMapUrl(e.target.value)} /></div>
+        <div className="field"><label>국가 (선택)</label>
+          <select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
+            <option value="">— 선택 안함 —</option>
+            {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
+          </select></div>
+        {countryId && (
+          <div className="field"><label>도시 (선택)</label>
+            <select value={cityId} onChange={(e) => setCityId(e.target.value)}>
+              <option value="">— 선택 안함 —</option>
+              {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select></div>
+        )}
         <div className="field grow"><label>메모</label>
           <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
+        <div className="field grow"><label>👍 장점</label>
+          <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
+        <div className="field grow"><label>👎 단점</label>
+          <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
         <button className="btn small primary" onClick={save}>저장</button>
         <button className="btn small" onClick={() => setEditing(false)}>취소</button>
       </div>
@@ -49,16 +86,35 @@ function PlaceRow({
 
   return (
     <div>
-      <div className="row" style={{ cursor: 'pointer' }} onClick={onToggle}>
+      <div className="row" style={{ cursor: 'pointer', flexWrap: 'wrap' }} onClick={onToggle}>
         <span className="chip blue">{place.category}</span>
+        {place.countryName && (
+          <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
+        )}
+        {place.rating != null && (
+          <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
+            ★ {place.rating.toFixed(1)}
+          </span>
+        )}
         <div className="grow">
           <div style={{ fontWeight: 800 }}>
             {place.name}
             {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
           </div>
           <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
+          {(place.pros || place.cons) && (
+            <div className="muted">
+              {place.pros && <>👍 {place.pros} </>}
+              {place.cons && <>👎 {place.cons}</>}
+            </div>
+          )}
         </div>
         <span className="muted">{expanded ? '접기 ▲' : '방문 기록 보기 ▼'}</span>
+        {place.mapUrl && (
+          <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+            🗺 지도
+          </a>
+        )}
         <button className="btn small" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>수정</button>
         <button className="btn small ghost" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
       </div>
@@ -69,6 +125,8 @@ function PlaceRow({
 
 export default function PlacesScreen() {
   const [places, setPlaces] = useState<Place[]>([])
+  const [countries, setCountries] = useState<Country[]>([])
+  const [cities, setCities] = useState<City[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState('전체')
   const [query, setQuery] = useState('')
@@ -80,8 +138,13 @@ export default function PlacesScreen() {
   const [manName, setManName] = useState('')
   const [manAddress, setManAddress] = useState('')
   const [manCategory, setManCategory] = useState('맛집')
+  const [manMapUrl, setManMapUrl] = useState('')
 
-  const refresh = () => { api.places.list().then(setPlaces) }
+  const refresh = () => {
+    api.places.list().then(setPlaces)
+    api.countries.list().then(setCountries)
+    api.cities.list().then(setCities)
+  }
   useEffect(refresh, [])
 
   const search = async () => {
@@ -107,8 +170,8 @@ export default function PlacesScreen() {
 
   const addManual = async () => {
     if (!manName.trim()) return
-    await api.places.create({ name: manName, address: manAddress, category: manCategory })
-    setManName(''); setManAddress('')
+    await api.places.create({ name: manName, address: manAddress, category: manCategory, mapUrl: manMapUrl.trim() || null })
+    setManName(''); setManAddress(''); setManMapUrl('')
     refresh()
   }
 
@@ -151,7 +214,8 @@ export default function PlacesScreen() {
       <Window title="OUR_PLACES.EXE" color="purple">
         <p className="muted" style={{ marginTop: 0 }}>
           한 번 저장해두면 여러 여행에서 재사용할 수 있는 우리만의 장소 DB예요. 이름을 누르면 이 장소를 방문했던
-          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요.
+          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 평점·장단점·국가/도시·구글 지도
+          링크는 등록 후 [수정]에서 채울 수 있어요.
         </p>
         <div className="form-row" style={{ marginBottom: 14 }}>
           <div className="field">
@@ -168,6 +232,10 @@ export default function PlacesScreen() {
               {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <div className="field grow">
+            <label>구글 지도 링크 (선택)</label>
+            <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+          </div>
           <button className="btn" onClick={addManual}>＋ 등록</button>
         </div>
 
@@ -183,6 +251,8 @@ export default function PlacesScreen() {
           <PlaceRow
             key={p.id}
             place={p}
+            countries={countries}
+            cities={cities}
             expanded={expandedId === p.id}
             onToggle={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
             onChanged={refresh}

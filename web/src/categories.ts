@@ -18,3 +18,11 @@ export function flagEmoji(code: string | null | undefined): string {
   const points = [...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
   return String.fromCodePoint(...points)
 }
+
+// 장소 평점(0~5, 0.5 단위) 색상 — 낮을수록 빨강, 높을수록 초록
+export function ratingColor(n: number): string {
+  if (n >= 4.5) return '#0a7d38'
+  if (n >= 3.5) return '#2a78d6'
+  if (n >= 2.5) return '#fab219'
+  return '#d03b3b'
+}

@@ -207,7 +207,7 @@ textarea { resize: vertical; min-height: 70px; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-top: 2px dashed rgba(45, 42, 62, 0.3);
+  border-top: 2px solid rgba(45, 42, 62, 0.15);
   padding: 10px 14px;
   font-weight: 700;
   font-size: 13px;
@@ -300,7 +300,7 @@ textarea { resize: vertical; min-height: 70px; }
 .transfer-line { font-weight: 800; font-size: 15px; padding: 4px 0; }
 
 table.simple { width: 100%; border-collapse: collapse; font-size: 13px; }
-table.simple th, table.simple td { text-align: left; padding: 6px 8px; border-bottom: 1.5px dashed rgba(45,42,62,0.25); }
+table.simple th, table.simple td { text-align: left; padding: 6px 8px; border-bottom: 1.5px solid rgba(45,42,62,0.15); }
 table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }
 
@@ -398,6 +398,19 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 
 .route-summary { background: var(--blue-soft); flex-wrap: wrap; }
 
+.transit-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 4px 22px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(45,42,62,0.8);
+  border-left: 3px solid rgba(45,42,62,0.2);
+}
+.transit-chip select { padding: 2px 6px; font-size: 12px; }
+
 .checklist-row {
   display: flex;
   align-items: center;
@@ -430,7 +443,7 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   flex-wrap: wrap;
   margin-top: 10px;
   padding-top: 10px;
-  border-top: 1.5px dashed rgba(45,42,62,0.25);
+  border-top: 1.5px solid rgba(45,42,62,0.15);
 }
 .quick-expense-row input, .quick-expense-row select { padding: 5px 8px; font-size: 12px; }
 .event-expense-chip {

@@ -1,7 +1,7 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
   ArchiveItem, DayNote, PlaceDetail, Country, City, FlightDetail, CurrencyRate,
-  ChecklistItem, ChecklistScope, BucketItem,
+  ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
 } from '../shared/types'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
@@ -80,10 +80,16 @@ export const api = {
 
   places: {
     list: () => req<Place[]>('GET', '/api/places'),
-    create: (data: { name: string; address: string; category: string; lat?: number | null; lng?: number | null; memo?: string | null }) =>
-      req<Place>('POST', '/api/places', data),
-    update: (id: string, data: { name: string; address: string; category: string; memo: string | null }) =>
-      req<void>('PUT', `/api/places/${id}`, data),
+    create: (data: {
+      name: string; address: string; category: string; lat?: number | null; lng?: number | null
+      memo?: string | null; mapUrl?: string | null; rating?: number | null
+      pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
+    }) => req<Place>('POST', '/api/places', data),
+    update: (id: string, data: {
+      name: string; address: string; category: string; memo: string | null; mapUrl: string | null
+      rating: number | null; pros: string | null; cons: string | null
+      countryId: string | null; cityId: string | null
+    }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),
     googleSearch: (query: string) =>
@@ -103,6 +109,20 @@ export const api = {
     delete: (id: string) => req<void>('DELETE', `/api/events/${id}`),
     setFlight: (id: string, data: FlightDetail) => req<void>('PUT', `/api/events/${id}/flight`, data),
     deleteFlight: (id: string) => req<void>('DELETE', `/api/events/${id}/flight`),
+  },
+
+  transit: {
+    list: (tripId: string, dayNumber?: number) =>
+      req<TransitSegment[]>('GET', `/api/trips/${tripId}/transit${dayNumber != null ? `?day=${dayNumber}` : ''}`),
+    create: (data: {
+      tripId: string; dayNumber: number; afterEventId: string | null; mode: string
+      durationText: string | null; note?: string | null
+    }) => req<TransitSegment>('POST', `/api/trips/${data.tripId}/transit`, data),
+    update: (id: string, data: {
+      mode?: string; durationText?: string | null; note?: string | null
+      voucherId?: string | null; afterEventId?: string | null
+    }) => req<void>('PUT', `/api/transit/${id}`, data),
+    delete: (id: string) => req<void>('DELETE', `/api/transit/${id}`),
   },
 
   expenses: {
