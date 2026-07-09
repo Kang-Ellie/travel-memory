@@ -1,0 +1,30 @@
+{
+  "name": "travel-on-server",
+  "private": true,
+  "version": "0.1.0",
+  "description": "트래블 온 — Express + PostgreSQL(Neon) API 서버 (Railway 배포)",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^2.0.0",
+    "pg": "^8.12.0",
+    "tsx": "^4.16.0"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.11.6",
+    "typescript": "^5.8.0"
+  }
+}
