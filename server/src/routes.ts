@@ -1,11 +1,33 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
-import type { Express as ExpressApp, Request, Response } from 'express'
+import type { Express as ExpressApp, Request, Response, NextFunction } from 'express'
 import { pool } from './db.js'
 import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR } from './upload.js'
 import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSION_COOKIE } from './auth.js'
 
 const id = (): string => crypto.randomUUID()
+
+// async 라우트 핸들러에서 던진(reject된) 에러를 자동으로 next(err)로 넘겨서
+// unhandled rejection으로 인한 프로세스 크래시(Node 22 기본 동작)를 막는다.
+// app.get/post/put/delete를 몽키패치해서 개별 핸들러마다 try/catch를 붙이지 않아도 되게 함.
+function installAsyncErrorHandling(app: ExpressApp): void {
+  for (const method of ['get', 'post', 'put', 'delete'] as const) {
+    const original = (app as any)[method].bind(app)
+    ;(app as any)[method] = (routePath: string, ...handlers: any[]) => {
+      const wrapped = handlers.map((h) => {
+        if (typeof h !== 'function') return h
+        return (req: Request, res: Response, next: NextFunction) => {
+          try {
+            Promise.resolve(h(req, res, next)).catch(next)
+          } catch (err) {
+            next(err)
+          }
+        }
+      })
+      return original(routePath, ...wrapped)
+    }
+  }
+}
 
 const photoUploader = makeUploader('photos')
 const voucherUploader = makeUploader('vouchers')
@@ -83,6 +105,8 @@ async function setTripCities(tripId: string, cityIds: string[]): Promise<void> {
 }
 
 export function registerRoutes(app: ExpressApp): void {
+  installAsyncErrorHandling(app)
+
   // ── 인증 ──────────────────────────────────────────────
   app.post('/api/login', (req: Request, res: Response) => {
     const passcode = (req.body?.passcode ?? '') as string
