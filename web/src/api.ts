@@ -118,8 +118,9 @@ export const api = {
 
   dayNotes: {
     list: (tripId: string) => req<DayNote[]>('GET', `/api/trips/${tripId}/day-notes`),
-    set: (tripId: string, dayNumber: number, data: { note: string | null; weather: string | null }) =>
-      req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
+    set: (tripId: string, dayNumber: number, data: {
+      note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
+    }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
   },
 
   settings: {

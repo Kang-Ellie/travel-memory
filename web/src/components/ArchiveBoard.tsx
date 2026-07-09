@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ArchiveItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
+import Lightbox from './Lightbox'
 
 const ICON: Record<ArchiveItem['kind'], string> = { memo: '📝', link: '🔗', image: '🖼' }
 
 export const ARCHIVE_DRAG_TYPE = 'application/x-travel-on-archive'
 
 function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => void }) {
+  const [lightbox, setLightbox] = useState(false)
   return (
     <div
       className="archive-card"
@@ -23,12 +25,15 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
           if (confirm('보관함에서 삭제할까요?')) api.archive.delete(item.id).then(onChanged)
         }}>×</button>
       </div>
-      {item.kind === 'image' && item.filePath && <img src={fileUrl(item.filePath)} alt="" />}
+      {item.kind === 'image' && item.filePath && (
+        <img src={fileUrl(item.filePath)} alt="" onClick={() => setLightbox(true)} />
+      )}
       {item.kind === 'link' && item.body && (
         <div className="archive-card-body">🔗 {item.body}</div>
       )}
       {item.kind === 'memo' && item.body && <div className="archive-card-body">{item.body}</div>}
       <div className="muted" style={{ marginTop: 6 }}>👉 왼쪽 동선의 날짜 칸으로 끌어다 놓으면 일정으로 편입돼요.</div>
+      {lightbox && item.filePath && <Lightbox src={fileUrl(item.filePath)} onClose={() => setLightbox(false)} />}
     </div>
   )
 }

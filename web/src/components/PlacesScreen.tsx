@@ -4,7 +4,7 @@ import { api } from '../api'
 import Window from './Window'
 import PlaceDetailPanel from './PlaceDetailPanel'
 
-const CATEGORIES = ['전체', '식당', '카페', '명소', '쇼핑', '숙소', '기타']
+const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 
 function PlaceRow({
@@ -79,7 +79,7 @@ export default function PlacesScreen() {
 
   const [manName, setManName] = useState('')
   const [manAddress, setManAddress] = useState('')
-  const [manCategory, setManCategory] = useState('식당')
+  const [manCategory, setManCategory] = useState('맛집')
 
   const refresh = () => { api.places.list().then(setPlaces) }
   useEffect(refresh, [])
@@ -195,8 +195,9 @@ export default function PlacesScreen() {
 
 function mapCategory(googleCategory: string): string {
   const c = googleCategory.toLowerCase()
-  if (/식당|음식|레스토랑|restaurant|food/.test(c)) return '식당'
+  if (/식당|음식|레스토랑|restaurant|food/.test(c)) return '맛집'
   if (/카페|커피|cafe|coffee|베이커리|bakery/.test(c)) return '카페'
+  if (/공항|airport/.test(c)) return '공항'
   if (/호텔|숙소|hotel|료칸|게스트/.test(c)) return '숙소'
   if (/쇼핑|상점|시장|store|mall|market|백화점/.test(c)) return '쇼핑'
   if (/관광|명소|공원|신사|사원|박물관|attraction|park|museum|temple/.test(c)) return '명소'

@@ -115,5 +115,20 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS link_url TEXT;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS event_id TEXT REFERENCES timeline_events(id) ON DELETE SET NULL;
     ALTER TABLE expenses ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS diary TEXT;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_emoji TEXT;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_temp INT;
+
+    -- '식당' 분류명을 '맛집'으로 통일
+    UPDATE places SET category = '맛집' WHERE category = '식당';
+
+    -- 업로드 저장 경로와 DB 기록 경로가 어긋났던 과거 버그로 깨진 file_path 복구
+    -- (실제 파일은 photos/vouchers/archive 하위에 평평하게 저장되어 있었음)
+    UPDATE photos SET file_path = 'photos/' || split_part(file_path, '/', 3)
+      WHERE file_path LIKE 'photos/%/%';
+    UPDATE vouchers SET file_path = 'vouchers/' || split_part(file_path, '/', 3)
+      WHERE file_path LIKE 'vouchers/%/%';
+    UPDATE archive_items SET file_path = 'archive/' || split_part(file_path, '/', 3)
+      WHERE kind = 'image' AND file_path LIKE 'archive/%/%';
   `)
 }

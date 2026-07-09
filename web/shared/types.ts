@@ -87,7 +87,9 @@ export interface DayNote {
   tripId: string
   dayNumber: number
   note: string | null
-  weather: string | null
+  diary: string | null
+  weatherEmoji: string | null
+  weatherTemp: number | null
 }
 
 export interface PlaceVisit extends TimelineEvent {

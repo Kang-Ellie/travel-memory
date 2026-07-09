@@ -7,8 +7,9 @@ import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import DayNoteBox from './DayNoteBox'
+import Lightbox from './Lightbox'
 
-const PLACE_CATEGORIES = ['식당', '카페', '명소', '쇼핑', '숙소', '기타']
+const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 
 function dayCount(trip: Trip): number {
   const s = new Date(trip.startDate + 'T00:00:00')
@@ -48,6 +49,7 @@ function EventCard({
   const [mustTry, setMustTry] = useState(ev.mustTry ?? '')
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+  const [lightbox, setLightbox] = useState<string | null>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '식비',
     paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)),
@@ -129,14 +131,14 @@ function EventCard({
         <div className="event-photo-col">
           <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
           {mainPhoto ? (
-            <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" />
+            <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightbox(fileUrl(mainPhoto.filePath))} />
           ) : (
             <div className="main-photo photo-placeholder" onClick={() => photoInput.current?.click()}>📷 사진 추가</div>
           )}
           <div className="thumb-row">
             {restPhotos.map((p) => (
               <div key={p.id} className="photo-thumb">
-                <img src={fileUrl(p.filePath)} alt="" />
+                <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightbox(fileUrl(p.filePath))} />
                 <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
               </div>
             ))}
@@ -146,6 +148,7 @@ function EventCard({
               ＋ 사진 추가
             </button>
           )}
+          {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
         </div>
 
         <div className="event-content-col">
@@ -236,7 +239,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
-  const [newCategory, setNewCategory] = useState('식당')
+  const [newCategory, setNewCategory] = useState('맛집')
   const [dragOver, setDragOver] = useState(false)
   const dragFrom = useRef<number | null>(null)
 
@@ -313,6 +316,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       {/* 중앙: 타임라인 + 가계부 요약 */}
       <div>
         <BudgetBar trip={trip} expenses={expenses} />
+        <div className="row route-summary">
+          <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>🧭 {day}일차 · {dayLabel(trip, day)}</span>
+          <span className="grow muted">
+            {dayEvents.length === 0 ? '아직 동선이 없어요' : dayEvents.map((e) => e.place.name).join('  →  ')}
+          </span>
+        </div>
         <DayNoteBox tripId={trip.id} dayNumber={day} />
 
         <div

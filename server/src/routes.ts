@@ -350,7 +350,7 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const voucherId = id()
-      const rel = relativeFilePath(path.join('vouchers', req.params.tripId), f.filename)
+      const rel = relativeFilePath('vouchers', f.filename)
       const fileType = path.extname(f.originalname).replace('.', '').toUpperCase() || 'FILE'
       await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path) VALUES ($1,$2,$3,$4,$5)',
         [voucherId, req.params.tripId, f.originalname, fileType, rel])
@@ -372,7 +372,7 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const photoId = id()
-      const rel = relativeFilePath(path.join('photos', req.params.eventId), f.filename)
+      const rel = relativeFilePath('photos', f.filename)
       await pool.query('INSERT INTO photos (id, event_id, file_path) VALUES ($1,$2,$3)', [photoId, req.params.eventId, rel])
       added.push({ id: photoId, eventId: req.params.eventId, filePath: rel })
     }
@@ -415,7 +415,7 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const itemId = id()
-      const rel = relativeFilePath(path.join('archive', req.params.tripId), f.filename)
+      const rel = relativeFilePath('archive', f.filename)
       await pool.query('INSERT INTO archive_items (id, trip_id, kind, title, file_path) VALUES ($1,$2,$3,$4,$5)',
         [itemId, req.params.tripId, 'image', f.originalname, rel])
       added.push({ id: itemId, tripId: req.params.tripId, kind: 'image', title: f.originalname, body: null, filePath: rel })
@@ -460,15 +460,22 @@ export function registerRoutes(app: ExpressApp): void {
   // ── 일차 메모(그날의 기록·날씨) ───────────────────────
   app.get('/api/trips/:tripId/day-notes', async (req, res) => {
     const r = await pool.query('SELECT * FROM day_notes WHERE trip_id = $1', [req.params.tripId])
-    res.json(r.rows.map((row) => ({ tripId: row.trip_id, dayNumber: row.day_number, note: row.note, weather: row.weather })))
+    res.json(r.rows.map((row) => ({
+      tripId: row.trip_id, dayNumber: row.day_number, note: row.note, diary: row.diary,
+      weatherEmoji: row.weather_emoji, weatherTemp: row.weather_temp != null ? Number(row.weather_temp) : null,
+    })))
   })
 
   app.put('/api/trips/:tripId/day-notes/:dayNumber', async (req, res) => {
-    const { note, weather } = req.body as { note: string | null; weather: string | null }
+    const { note, diary, weatherEmoji, weatherTemp } = req.body as {
+      note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
+    }
     await pool.query(
-      `INSERT INTO day_notes (trip_id, day_number, note, weather) VALUES ($1,$2,$3,$4)
-       ON CONFLICT (trip_id, day_number) DO UPDATE SET note = excluded.note, weather = excluded.weather`,
-      [req.params.tripId, Number(req.params.dayNumber), note, weather])
+      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp) VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (trip_id, day_number) DO UPDATE SET
+         note = excluded.note, diary = excluded.diary,
+         weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp`,
+      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp])
     res.json({ ok: true })
   })
 
