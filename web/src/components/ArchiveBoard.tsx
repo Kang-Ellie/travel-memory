@@ -33,7 +33,9 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
       )}
       {item.kind === 'memo' && item.body && <div className="archive-card-body">{item.body}</div>}
       <div className="muted" style={{ marginTop: 6 }}>👉 왼쪽 동선의 날짜 칸으로 끌어다 놓으면 일정으로 편입돼요.</div>
-      {lightbox && item.filePath && <Lightbox src={fileUrl(item.filePath)} onClose={() => setLightbox(false)} />}
+      {lightbox && item.filePath && (
+        <Lightbox images={[fileUrl(item.filePath)]} index={0} onClose={() => setLightbox(false)} />
+      )}
     </div>
   )
 }

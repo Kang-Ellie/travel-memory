@@ -522,4 +522,40 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   cursor: pointer;
   line-height: 1;
 }
+.lightbox-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px; height: 48px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.35);
+  color: #fff;
+  font-size: 28px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lightbox-prev { left: 18px; }
+.lightbox-next { right: 18px; }
+.lightbox-counter {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  background: rgba(0,0,0,0.35);
+  padding: 4px 14px;
+  border-radius: 999px;
+}
+@media (max-width: 640px) {
+  .lightbox-nav { width: 40px; height: 40px; font-size: 22px; }
+  .lightbox-prev { left: 6px; }
+  .lightbox-next { right: 6px; }
+}
 .event-photo-col .main-photo, .photo-thumb img, .archive-card img { cursor: zoom-in; }

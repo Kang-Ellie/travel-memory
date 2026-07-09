@@ -56,7 +56,7 @@ function EventCard({
   const [mustTry, setMustTry] = useState(ev.mustTry ?? '')
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
-  const [lightbox, setLightbox] = useState<string | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const isAirport = ev.place.category === '공항'
   const [departAt, setDepartAt] = useState(ev.flight?.departAt ?? '')
   const [arriveAt, setArriveAt] = useState(ev.flight?.arriveAt ?? '')
@@ -122,6 +122,7 @@ function EventCard({
 
   const mainPhoto = ev.photos[0]
   const restPhotos = ev.photos.slice(1)
+  const photoUrls = ev.photos.map((p) => fileUrl(p.filePath))
 
   return (
     <div
@@ -155,14 +156,14 @@ function EventCard({
         <div className="event-photo-col">
           <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
           {mainPhoto ? (
-            <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightbox(fileUrl(mainPhoto.filePath))} />
+            <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
           ) : (
             <div className="main-photo photo-placeholder" onClick={() => photoInput.current?.click()}>📷 사진 추가</div>
           )}
           <div className="thumb-row">
-            {restPhotos.map((p) => (
+            {restPhotos.map((p, i) => (
               <div key={p.id} className="photo-thumb">
-                <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightbox(fileUrl(p.filePath))} />
+                <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightboxIndex(i + 1)} />
                 <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
               </div>
             ))}
@@ -172,7 +173,9 @@ function EventCard({
               ＋ 사진 추가
             </button>
           )}
-          {lightbox && <Lightbox src={lightbox} onClose={() => setLightbox(null)} />}
+          {lightboxIndex != null && (
+            <Lightbox images={photoUrls} index={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+          )}
         </div>
 
         <div className="event-content-col">
