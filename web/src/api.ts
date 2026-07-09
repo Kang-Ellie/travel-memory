@@ -1,6 +1,7 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
-  ArchiveItem, DayNote, PlaceDetail,
+  ArchiveItem, DayNote, PlaceDetail, Country, City, FlightDetail, CurrencyRate,
+  ChecklistItem, ChecklistScope, BucketItem,
 } from '../shared/types'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
@@ -41,11 +42,29 @@ export const auth = {
 export const api = {
   trips: {
     list: () => req<Trip[]>('GET', '/api/trips'),
-    create: (data: { title: string; startDate: string; endDate: string; budget: number; memberIds: string[] }) =>
-      req<Trip>('POST', '/api/trips', data),
-    update: (id: string, data: { title: string; startDate: string; endDate: string; budget: number }) =>
-      req<void>('PUT', `/api/trips/${id}`, data),
+    create: (data: {
+      title: string; startDate: string; endDate: string; budget: number; memberIds: string[]; cityIds: string[]
+    }) => req<Trip>('POST', '/api/trips', data),
+    update: (id: string, data: {
+      title: string; startDate: string; endDate: string; budget: number; cityIds: string[]
+    }) => req<void>('PUT', `/api/trips/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/trips/${id}`),
+  },
+
+  countries: {
+    list: () => req<Country[]>('GET', '/api/countries'),
+    create: (data: Omit<Country, 'id' | 'createdAt'>) => req<Country>('POST', '/api/countries', data),
+    update: (id: string, data: Omit<Country, 'id' | 'createdAt'>) => req<void>('PUT', `/api/countries/${id}`, data),
+    delete: (id: string) => req<{ error?: string }>('DELETE', `/api/countries/${id}`),
+  },
+
+  cities: {
+    list: () => req<City[]>('GET', '/api/cities'),
+    create: (data: { countryId: string; name: string; flightDuration: string | null; timeDiff: string | null }) =>
+      req<City>('POST', '/api/cities', data),
+    update: (id: string, data: { name: string; flightDuration: string | null; timeDiff: string | null }) =>
+      req<void>('PUT', `/api/cities/${id}`, data),
+    delete: (id: string) => req<{ error?: string }>('DELETE', `/api/cities/${id}`),
   },
 
   members: {
@@ -82,6 +101,8 @@ export const api = {
     reorder: (data: { tripId: string; dayNumber: number; orderedIds: string[] }) =>
       req<void>('POST', `/api/trips/${data.tripId}/events/reorder`, data),
     delete: (id: string) => req<void>('DELETE', `/api/events/${id}`),
+    setFlight: (id: string, data: FlightDetail) => req<void>('PUT', `/api/events/${id}/flight`, data),
+    deleteFlight: (id: string) => req<void>('DELETE', `/api/events/${id}/flight`),
   },
 
   expenses: {
@@ -89,8 +110,35 @@ export const api = {
     create: (data: {
       tripId: string; eventId: string | null; amount: number; currency: string; category: string
       description: string; paidBy: string; splitWith: string[]; spentAt: string
+      paymentMethod: string | null; memo: string | null; purchaseItems: string | null
+      isShared: boolean; isPrebooked: boolean
     }) => req<void>('POST', `/api/trips/${data.tripId}/expenses`, data),
     delete: (id: string) => req<void>('DELETE', `/api/expenses/${id}`),
+  },
+
+  rates: {
+    list: (tripId: string) => req<CurrencyRate[]>('GET', `/api/trips/${tripId}/rates`),
+    set: (tripId: string, currency: string, krwPerUnit: number) =>
+      req<void>('PUT', `/api/trips/${tripId}/rates/${currency}`, { krwPerUnit }),
+  },
+
+  checklist: {
+    list: (tripId: string, scope: ChecklistScope, dayNumber?: number) =>
+      req<ChecklistItem[]>('GET', `/api/trips/${tripId}/checklist?scope=${scope}${dayNumber != null ? `&day=${dayNumber}` : ''}`),
+    create: (data: { tripId: string; scope: ChecklistScope; dayNumber: number | null; text: string }) =>
+      req<ChecklistItem>('POST', `/api/trips/${data.tripId}/checklist`, data),
+    update: (id: string, data: { text?: string; done?: boolean }) =>
+      req<void>('PUT', `/api/checklist/${id}`, data),
+    delete: (id: string) => req<void>('DELETE', `/api/checklist/${id}`),
+  },
+
+  bucket: {
+    list: () => req<BucketItem[]>('GET', '/api/bucket'),
+    create: (data: { title: string; memo: string | null; countryId: string | null; cityId: string | null; category: string | null }) =>
+      req<BucketItem>('POST', '/api/bucket', data),
+    update: (id: string, data: { done?: boolean; linkedTripId?: string | null }) =>
+      req<void>('PUT', `/api/bucket/${id}`, data),
+    delete: (id: string) => req<void>('DELETE', `/api/bucket/${id}`),
   },
 
   vouchers: {

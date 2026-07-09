@@ -11,3 +11,10 @@ export const CATEGORY_COLOR: Record<ExpenseCategory, string> = {
 }
 
 export { EXPENSE_CATEGORIES }
+
+export function flagEmoji(code: string | null | undefined): string {
+  if (!code || code.trim().length !== 2) return '🌐'
+  const upper = code.trim().toUpperCase()
+  const points = [...upper].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65)
+  return String.fromCodePoint(...points)
+}

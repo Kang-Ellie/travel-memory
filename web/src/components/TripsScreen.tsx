@@ -1,8 +1,21 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Member } from '../../shared/types'
+import type { Trip, Member, Country, City } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
+import { flagEmoji } from '../categories'
 import Window from './Window'
+
+function tripCitiesLabel(trip: Trip): string {
+  if (trip.cities.length === 0) return ''
+  const byCountry = new Map<string, string[]>()
+  for (const c of trip.cities) {
+    const key = `${flagEmoji(c.countryCode)} ${c.countryName}`
+    const list = byCountry.get(key) ?? []
+    list.push(c.name)
+    byCountry.set(key, list)
+  }
+  return [...byCountry.entries()].map(([country, names]) => `${country} · ${names.join(', ')}`).join('  /  ')
+}
 
 function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
@@ -25,6 +38,8 @@ function dday(t: Trip): string {
 export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
   const [trips, setTrips] = useState<Trip[]>([])
   const [members, setMembers] = useState<Member[]>([])
+  const [countries, setCountries] = useState<Country[]>([])
+  const [cities, setCities] = useState<City[]>([])
   const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [startDate, setStartDate] = useState('')
@@ -32,12 +47,18 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
   const [budget, setBudget] = useState('')
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
+  const [selCountryId, setSelCountryId] = useState('')
+  const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set())
 
   const refresh = () => {
     api.trips.list().then(setTrips)
     api.members.list().then(setMembers)
+    api.countries.list().then(setCountries)
+    api.cities.list().then(setCities)
   }
   useEffect(refresh, [])
+
+  const citiesOfSelCountry = cities.filter((c) => c.countryId === selCountryId)
 
   const create = async () => {
     if (!title.trim() || !startDate || !endDate) return
@@ -47,9 +68,10 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
     }
     await api.trips.create({
       title: title.trim(), startDate, endDate,
-      budget: parseFloat(budget) || 0, memberIds: [...selMembers],
+      budget: parseFloat(budget) || 0, memberIds: [...selMembers], cityIds: [...selCityIds],
     })
-    setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setSelMembers(new Set()); setCreating(false)
+    setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setSelMembers(new Set())
+    setSelCountryId(''); setSelCityIds(new Set()); setCreating(false)
     refresh()
   }
 
@@ -100,6 +122,36 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
               <input type="number" value={budget} min={0} placeholder="예: 1500000"
                 onChange={(e) => setBudget(e.target.value)} />
             </div>
+          </div>
+          <div className="field" style={{ marginTop: 12 }}>
+            <label>어디로? (국가 · 도시, 선택)</label>
+            {countries.length === 0 ? (
+              <span className="muted">🌍 국가·도시 화면에서 나라를 먼저 등록하면 여기서 골라 연결할 수 있어요.</span>
+            ) : (
+              <>
+                <select value={selCountryId} onChange={(e) => setSelCountryId(e.target.value)}>
+                  <option value="">— 국가 선택 —</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
+                </select>
+                {selCountryId && (
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
+                    {citiesOfSelCountry.length === 0 ? (
+                      <span className="muted">이 나라엔 등록된 도시가 없어요.</span>
+                    ) : citiesOfSelCountry.map((c) => (
+                      <label key={c.id} style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center' }}>
+                        <input type="checkbox" checked={selCityIds.has(c.id)}
+                          onChange={(e) => {
+                            const next = new Set(selCityIds)
+                            e.target.checked ? next.add(c.id) : next.delete(c.id)
+                            setSelCityIds(next)
+                          }} />
+                        {c.name}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
           <div className="field" style={{ marginTop: 12 }}>
             <label>함께 가는 사람</label>
@@ -154,6 +206,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
           >
             <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
             <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
+            {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
             {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
           </Window>
         ))}

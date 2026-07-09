@@ -1,3 +1,10 @@
+export interface TripCity {
+  id: string
+  name: string
+  countryName: string
+  countryCode: string | null
+}
+
 export interface Trip {
   id: string
   title: string
@@ -5,6 +12,33 @@ export interface Trip {
   endDate: string
   budget: number
   createdAt: string
+  cities: TripCity[]
+}
+
+export interface Country {
+  id: string
+  name: string
+  code: string | null
+  capital: string | null
+  phoneCode: string | null
+  currency: string | null
+  voltage: string | null
+  language: string | null
+  visa: string | null
+  prepDocs: string | null
+  emergencyPolice: string | null
+  emergencyMedical: string | null
+  createdAt: string
+}
+
+export interface City {
+  id: string
+  countryId: string
+  name: string
+  flightDuration: string | null
+  timeDiff: string | null
+  createdAt: string
+  visited: boolean
 }
 
 export interface Member {
@@ -29,6 +63,14 @@ export interface Photo {
   filePath: string
 }
 
+export interface FlightDetail {
+  departAt: string | null
+  arriveAt: string | null
+  durationMinutes: number | null
+  bookingRef: string | null
+  bookedVia: string | null
+}
+
 export interface TimelineEvent {
   id: string
   tripId: string
@@ -43,6 +85,7 @@ export interface TimelineEvent {
   createdAt: string
   place: Place
   photos: Photo[]
+  flight: FlightDetail | null
 }
 
 export const EXPENSE_CATEGORIES = ['식비', '숙소', '교통', '쇼핑', '기타'] as const
@@ -60,6 +103,16 @@ export interface Expense {
   payerName: string
   splitWith: string[]
   spentAt: string
+  paymentMethod: string | null
+  memo: string | null
+  purchaseItems: string | null
+  isShared: boolean
+  isPrebooked: boolean
+}
+
+export interface CurrencyRate {
+  currency: string
+  krwPerUnit: number
 }
 
 export interface Voucher {
@@ -109,4 +162,32 @@ export interface GooglePlaceResult {
   lng: number
   category: string
   googleRating: number | null
+}
+
+export type ChecklistScope = 'day' | 'packing' | 'shopping' | 'food'
+
+export interface ChecklistItem {
+  id: string
+  tripId: string
+  scope: ChecklistScope
+  dayNumber: number | null
+  text: string
+  done: boolean
+  sequence: number
+  createdAt: string
+}
+
+export interface BucketItem {
+  id: string
+  title: string
+  memo: string | null
+  countryId: string | null
+  cityId: string | null
+  countryName: string | null
+  cityName: string | null
+  category: string | null
+  done: boolean
+  linkedTripId: string | null
+  linkedTripTitle: string | null
+  createdAt: string
 }

@@ -1,5 +1,18 @@
-import type { Expense, Member, Trip } from '../shared/types'
+import type { Expense, Member, Trip, CurrencyRate } from '../shared/types'
 import { EXPENSE_CATEGORIES } from './categories'
+
+// 통화별 환율(1단위 = ?원) 맵으로 지출을 원화로 환산. 환율 미설정 통화는 null(집계 제외).
+export function krwEquivalent(expense: Expense, rates: CurrencyRate[]): number | null {
+  if (expense.currency === 'KRW') return expense.amount
+  const rate = rates.find((r) => r.currency === expense.currency)
+  return rate ? expense.amount * rate.krwPerUnit : null
+}
+
+function expenseDayNumber(trip: Trip, e: Expense): number {
+  const s = new Date(trip.startDate + 'T00:00:00')
+  const d = new Date(e.spentAt.slice(0, 10) + 'T00:00:00')
+  return Math.round((d.getTime() - s.getTime()) / 86_400_000) + 1
+}
 
 export interface MemberBalance {
   memberId: string
@@ -82,12 +95,14 @@ export interface CategoryTotal {
   amount: number
 }
 
-// 예산은 원화(KRW) 기준 — 여러 통화가 섞인 여행이면 KRW 지출만 집계 대상.
-export function computeCategoryTotals(expenses: Expense[]): CategoryTotal[] {
+// 예산은 원화(KRW) 기준. 환율이 등록된 통화는 원화로 환산해서 합산하고,
+// 환율이 없는 외화 지출은 (기존 동작과 동일하게) 집계에서 제외된다.
+export function computeCategoryTotals(expenses: Expense[], rates: CurrencyRate[] = []): CategoryTotal[] {
   const sums = new Map<string, number>()
   for (const e of expenses) {
-    if (e.currency !== 'KRW') continue
-    sums.set(e.category, (sums.get(e.category) ?? 0) + e.amount)
+    const krw = krwEquivalent(e, rates)
+    if (krw == null) continue
+    sums.set(e.category, (sums.get(e.category) ?? 0) + krw)
   }
   return EXPENSE_CATEGORIES
     .map((c) => ({ category: c, amount: sums.get(c) ?? 0 }))
@@ -99,13 +114,37 @@ export interface BudgetSummary {
   spent: number
   remaining: number
   percent: number // 0~100+ (초과 시 100 초과)
+  unconvertedCount: number // 환율이 없어서 집계에서 빠진 외화 지출 건수
 }
 
-export function computeBudgetSummary(trip: Trip, expenses: Expense[]): BudgetSummary {
-  const spent = expenses.filter((e) => e.currency === 'KRW').reduce((s, e) => s + e.amount, 0)
+export function computeBudgetSummary(trip: Trip, expenses: Expense[], rates: CurrencyRate[] = []): BudgetSummary {
+  let spent = 0
+  let unconvertedCount = 0
+  for (const e of expenses) {
+    const krw = krwEquivalent(e, rates)
+    if (krw == null) { unconvertedCount++; continue }
+    spent += krw
+  }
   const budget = trip.budget
   const percent = budget > 0 ? (spent / budget) * 100 : 0
-  return { budget, spent, remaining: budget - spent, percent }
+  return { budget, spent, remaining: budget - spent, percent, unconvertedCount }
+}
+
+export interface DailySpend {
+  total: number
+  unconvertedCount: number
+}
+
+export function computeDailySpend(trip: Trip, expenses: Expense[], dayNumber: number, rates: CurrencyRate[] = []): DailySpend {
+  let total = 0
+  let unconvertedCount = 0
+  for (const e of expenses) {
+    if (expenseDayNumber(trip, e) !== dayNumber) continue
+    const krw = krwEquivalent(e, rates)
+    if (krw == null) { unconvertedCount++; continue }
+    total += krw
+  }
+  return { total, unconvertedCount }
 }
 
 export function fmtMoney(amount: number, currency: string): string {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Member, Expense } from '../../shared/types'
+import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api } from '../api'
 import { computeSettlement, fmtMoney } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
@@ -10,6 +10,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [participants, setParticipants] = useState<Member[]>([])
   const [allMembers, setAllMembers] = useState<Member[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [rates, setRates] = useState<CurrencyRate[]>([])
   const [editingMembers, setEditingMembers] = useState(false)
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
 
@@ -21,6 +22,12 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [splitWith, setSplitWith] = useState<Set<string>>(new Set())
   const [spentAt, setSpentAt] = useState(trip.startDate)
   const [newMemberName, setNewMemberName] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('')
+  const [memo, setMemo] = useState('')
+  const [purchaseItems, setPurchaseItems] = useState('')
+  const [isShared, setIsShared] = useState(true)
+  const [isPrebooked, setIsPrebooked] = useState(false)
+  const [showMoreFields, setShowMoreFields] = useState(false)
 
   const refresh = () => {
     api.tripMembers.list(trip.id).then((ms) => {
@@ -33,8 +40,18 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     })
     api.members.list().then(setAllMembers)
     api.expenses.list(trip.id).then(setExpenses)
+    api.rates.list(trip.id).then(setRates)
   }
   useEffect(refresh, [trip.id])
+
+  const foreignCurrenciesUsed = [...new Set(expenses.map((e) => e.currency))].filter((c) => c !== 'KRW')
+  const rateOf = (c: string) => rates.find((r) => r.currency === c)?.krwPerUnit
+  const setRate = async (c: string, value: string) => {
+    const n = parseFloat(value)
+    if (!n || n <= 0) return
+    await api.rates.set(trip.id, c, n)
+    api.rates.list(trip.id).then(setRates)
+  }
 
   const saveParticipants = async () => {
     await api.tripMembers.set(trip.id, [...selMembers])
@@ -54,12 +71,16 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
 
   const addExpense = async () => {
     const amt = parseFloat(amount)
-    if (!description.trim() || !amt || amt <= 0 || !paidBy || splitWith.size === 0) return
+    if (!description.trim() || !amt || amt <= 0 || !paidBy) return
+    if (isShared && splitWith.size === 0) return
     await api.expenses.create({
       tripId: trip.id, eventId: null, amount: amt, currency, category, description,
-      paidBy, splitWith: [...splitWith], spentAt,
+      paidBy, splitWith: isShared ? [...splitWith] : [paidBy], spentAt,
+      paymentMethod: paymentMethod.trim() || null, memo: memo.trim() || null,
+      purchaseItems: purchaseItems.trim() || null, isShared, isPrebooked,
     })
-    setDescription(''); setAmount('')
+    setDescription(''); setAmount(''); setPaymentMethod(''); setMemo(''); setPurchaseItems('')
+    setIsShared(true); setIsPrebooked(false)
     refresh()
   }
 
@@ -99,6 +120,22 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         </div>
       )}
 
+      {/* 환율 설정 */}
+      {foreignCurrenciesUsed.length > 0 && (
+        <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
+          <strong>환율:</strong>
+          {foreignCurrenciesUsed.map((c) => (
+            <span key={c} style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+              1 {c} =
+              <input type="number" defaultValue={rateOf(c) ?? ''} placeholder="예: 9.5" style={{ width: 80 }}
+                onBlur={(e) => setRate(c, e.target.value)} />
+              원
+            </span>
+          ))}
+          <span className="muted">여기서 설정한 환율로 예산·일별 지출이 원화로 환산돼요.</span>
+        </div>
+      )}
+
       {/* 지출 추가 */}
       {participants.length > 0 && (
         <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -134,21 +171,50 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
             <input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
           </div>
           <div className="field">
-            <label>정산 대상</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
-              {participants.map((m) => (
-                <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                  <input type="checkbox" checked={splitWith.has(m.id)}
-                    onChange={(e) => {
-                      const next = new Set(splitWith)
-                      e.target.checked ? next.add(m.id) : next.delete(m.id)
-                      setSplitWith(next)
-                    }} />
-                  {m.name}
-                </label>
-              ))}
+            <label>구분</label>
+            <div style={{ display: 'flex', gap: 10, padding: '8px 0' }}>
+              <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} /> 공동지출
+              </label>
+              <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                <input type="checkbox" checked={isPrebooked} onChange={(e) => setIsPrebooked(e.target.checked)} /> 사전예약
+              </label>
             </div>
           </div>
+          {isShared && (
+            <div className="field">
+              <label>정산 대상</label>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
+                {participants.map((m) => (
+                  <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                    <input type="checkbox" checked={splitWith.has(m.id)}
+                      onChange={(e) => {
+                        const next = new Set(splitWith)
+                        e.target.checked ? next.add(m.id) : next.delete(m.id)
+                        setSplitWith(next)
+                      }} />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+          <button className="btn small" type="button" onClick={() => setShowMoreFields((v) => !v)}>
+            {showMoreFields ? '상세 닫기' : '＋ 결제수단·메모·구매목록'}
+          </button>
+          {showMoreFields && (
+            <>
+              <div className="field"><label>결제수단</label>
+                <input type="text" value={paymentMethod} placeholder="예: 카드"
+                  onChange={(e) => setPaymentMethod(e.target.value)} /></div>
+              <div className="field grow"><label>메모</label>
+                <input type="text" value={memo} placeholder="자유 메모"
+                  onChange={(e) => setMemo(e.target.value)} /></div>
+              <div className="field grow"><label>구매목록</label>
+                <input type="text" value={purchaseItems} placeholder="예: 멘타이쥬 2인분, 음료 1개"
+                  onChange={(e) => setPurchaseItems(e.target.value)} /></div>
+            </>
+          )}
           <button className="btn primary" onClick={addExpense}>기록 ✏️</button>
         </div>
       )}
@@ -166,7 +232,16 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
               {expenses.map((e) => (
                 <tr key={e.id}>
                   <td className="muted">{e.spentAt.slice(0, 10)}</td>
-                  <td style={{ fontWeight: 700 }}>{e.description}</td>
+                  <td>
+                    <div style={{ fontWeight: 700 }}>{e.description}</div>
+                    <div className="muted" style={{ fontSize: 11 }}>
+                      {!e.isShared && '🙋 개인지출 '}
+                      {e.isPrebooked && '📌 사전예약 '}
+                      {e.paymentMethod && `💳 ${e.paymentMethod} `}
+                      {e.memo && `📝 ${e.memo} `}
+                      {e.purchaseItems && `🧾 ${e.purchaseItems}`}
+                    </div>
+                  </td>
                   <td>
                     <span className="legend-item">
                       <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />

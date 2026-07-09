@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Trip, TimelineEvent, Place, Member, Expense } from '../../shared/types'
+import type { Trip, TimelineEvent, Place, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api, fileUrl } from '../api'
-import { fmtMoney } from '../settlement'
+import { fmtMoney, computeDailySpend } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
 import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import DayNoteBox from './DayNoteBox'
 import Lightbox from './Lightbox'
+import ChecklistPanel from './ChecklistPanel'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 
@@ -22,6 +23,12 @@ function dayLabel(trip: Trip, day: number): string {
   d.setDate(d.getDate() + day - 1)
   const week = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
   return `${d.getMonth() + 1}/${d.getDate()} (${week})`
+}
+
+function formatDuration(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
 interface QuickExpenseState {
@@ -50,6 +57,12 @@ function EventCard({
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [lightbox, setLightbox] = useState<string | null>(null)
+  const isAirport = ev.place.category === '공항'
+  const [departAt, setDepartAt] = useState(ev.flight?.departAt ?? '')
+  const [arriveAt, setArriveAt] = useState(ev.flight?.arriveAt ?? '')
+  const [durationMinutes, setDurationMinutes] = useState(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
+  const [bookingRef, setBookingRef] = useState(ev.flight?.bookingRef ?? '')
+  const [bookedVia, setBookedVia] = useState(ev.flight?.bookedVia ?? '')
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '식비',
     paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)),
@@ -59,6 +72,9 @@ function EventCard({
   const startEdit = () => {
     setReview(ev.review ?? ''); setLinkUrl(ev.linkUrl ?? '')
     setMustTry(ev.mustTry ?? ''); setPlannedTime(ev.plannedTime ?? '')
+    setDepartAt(ev.flight?.departAt ?? ''); setArriveAt(ev.flight?.arriveAt ?? '')
+    setDurationMinutes(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
+    setBookingRef(ev.flight?.bookingRef ?? ''); setBookedVia(ev.flight?.bookedVia ?? '')
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -73,6 +89,13 @@ function EventCard({
       rating: ev.rating, review: review.trim() || null, linkUrl: linkUrl.trim() || null,
       mustTry: mustTry.trim() || null, plannedTime: plannedTime.trim() || null,
     })
+    if (isAirport) {
+      await api.events.setFlight(ev.id, {
+        departAt: departAt.trim() || null, arriveAt: arriveAt.trim() || null,
+        durationMinutes: durationMinutes.trim() ? Number(durationMinutes) : null,
+        bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
+      })
+    }
     setEditing(false)
     onChanged()
   }
@@ -90,6 +113,7 @@ function EventCard({
     await api.expenses.create({
       tripId: ev.tripId, eventId: ev.id, amount: amt, currency: qe.currency, category: qe.category,
       description: ev.place.name, paidBy: qe.paidBy, splitWith: [...qe.splitWith], spentAt: new Date().toISOString().slice(0, 10),
+      paymentMethod: null, memo: null, purchaseItems: null, isShared: true, isPrebooked: false,
     })
     setQe((s) => ({ ...s, amount: '' }))
     setShowExpenseForm(false)
@@ -154,6 +178,20 @@ function EventCard({
         <div className="event-content-col">
           {editing ? (
             <>
+              {isAirport && (
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)', marginBottom: 8 }}>
+                  <div className="field"><label>✈️ 출발시간</label>
+                    <input type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
+                  <div className="field"><label>🛬 도착시간</label>
+                    <input type="datetime-local" value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 100 }}><label>소요(분)</label>
+                    <input type="number" value={durationMinutes} placeholder="75" onChange={(e) => setDurationMinutes(e.target.value)} /></div>
+                  <div className="field"><label>예약번호</label>
+                    <input type="text" value={bookingRef} placeholder="ABC123" onChange={(e) => setBookingRef(e.target.value)} /></div>
+                  <div className="field grow"><label>예약처</label>
+                    <input type="text" value={bookedVia} placeholder="예: 진에어 앱" onChange={(e) => setBookedVia(e.target.value)} /></div>
+                </div>
+              )}
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>방문 시간 (선택)</label>
                 <input type="time" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
@@ -178,6 +216,16 @@ function EventCard({
             </>
           ) : (
             <>
+              {isAirport && ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) && (
+                <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>
+                  🛫 {ev.flight.departAt ? new Date(ev.flight.departAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
+                  {' → 🛬 '}
+                  {ev.flight.arriveAt ? new Date(ev.flight.arriveAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
+                  {ev.flight.durationMinutes != null && ` · ${formatDuration(ev.flight.durationMinutes)}`}
+                  {ev.flight.bookingRef && ` · 예약번호 ${ev.flight.bookingRef}`}
+                  {ev.flight.bookedVia && ` · ${ev.flight.bookedVia}`}
+                </div>
+              )}
               {ev.mustTry && <div className="chip pink" style={{ marginBottom: 8 }}>🌟 꼭 해봐야 하는 것: {ev.mustTry}</div>}
               {ev.review ? (
                 <p style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{ev.review}</p>
@@ -235,6 +283,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [places, setPlaces] = useState<Place[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [rates, setRates] = useState<CurrencyRate[]>([])
   const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -248,10 +297,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     api.places.list().then(setPlaces)
     api.tripMembers.list(trip.id).then(setMembers)
     api.expenses.list(trip.id).then(setExpenses)
+    api.rates.list(trip.id).then(setRates)
   }
   useEffect(refresh, [trip.id])
 
   const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => a.sequence - b.sequence)
+  const dailySpend = computeDailySpend(trip, expenses, day, rates)
   const expensesByEvent = new Map<string, Expense[]>()
   for (const exp of expenses) {
     if (!exp.eventId) continue
@@ -315,13 +366,15 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: 타임라인 + 가계부 요약 */}
       <div>
-        <BudgetBar trip={trip} expenses={expenses} />
+        <BudgetBar trip={trip} expenses={expenses} rates={rates} />
         <div className="row route-summary">
           <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>🧭 {day}일차 · {dayLabel(trip, day)}</span>
           <span className="grow muted">
             {dayEvents.length === 0 ? '아직 동선이 없어요' : dayEvents.map((e) => e.place.name).join('  →  ')}
           </span>
+          <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>💸 {fmtMoney(dailySpend.total, 'KRW')}</span>
         </div>
+        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
         <DayNoteBox tripId={trip.id} dayNumber={day} />
 
         <div

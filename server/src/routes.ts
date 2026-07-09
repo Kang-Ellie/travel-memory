@@ -15,12 +15,18 @@ const archiveUploader = makeUploader('archive')
 const mapTrip = (r: any) => ({
   id: r.id, title: r.title, startDate: r.start_date, endDate: r.end_date,
   budget: Number(r.budget), createdAt: r.created_at,
+  cities: (r.cities ?? []) as Array<{ id: string; name: string; countryName: string; countryCode: string | null }>,
 })
 const mapMember = (r: any) => ({ id: r.id, name: r.name })
 const mapPlace = (r: any) => ({
   id: r.id, name: r.name, address: r.address, category: r.category,
   lat: r.lat != null ? Number(r.lat) : null, lng: r.lng != null ? Number(r.lng) : null,
   memo: r.memo, createdAt: r.created_at,
+})
+const mapFlightDetail = (r: any) => ({
+  departAt: r.depart_at, arriveAt: r.arrive_at,
+  durationMinutes: r.duration_minutes != null ? Number(r.duration_minutes) : null,
+  bookingRef: r.booking_ref, bookedVia: r.booked_via,
 })
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
@@ -30,7 +36,8 @@ const mapEvent = (r: any) => ({
 const mapExpense = (r: any) => ({
   id: r.id, tripId: r.trip_id, eventId: r.event_id, amount: Number(r.amount), currency: r.currency,
   category: r.category, description: r.description, paidBy: r.paid_by, payerName: r.payer_name,
-  spentAt: r.spent_at,
+  spentAt: r.spent_at, paymentMethod: r.payment_method, memo: r.memo, purchaseItems: r.purchase_items,
+  isShared: r.is_shared, isPrebooked: r.is_prebooked,
 })
 const mapVoucher = (r: any) => ({
   id: r.id, tripId: r.trip_id, title: r.title, fileType: r.file_type, filePath: r.file_path, createdAt: r.created_at,
@@ -39,6 +46,41 @@ const mapPhoto = (r: any) => ({ id: r.id, eventId: r.event_id, filePath: r.file_
 const mapArchive = (r: any) => ({
   id: r.id, tripId: r.trip_id, kind: r.kind, title: r.title, body: r.body, filePath: r.file_path, createdAt: r.created_at,
 })
+const mapCountry = (r: any) => ({
+  id: r.id, name: r.name, code: r.code, capital: r.capital, phoneCode: r.phone_code,
+  currency: r.currency, voltage: r.voltage, language: r.language, visa: r.visa,
+  prepDocs: r.prep_docs, emergencyPolice: r.emergency_police, emergencyMedical: r.emergency_medical,
+  createdAt: r.created_at,
+})
+const mapCity = (r: any) => ({
+  id: r.id, countryId: r.country_id, name: r.name, flightDuration: r.flight_duration,
+  timeDiff: r.time_diff, createdAt: r.created_at, visited: !!r.visited,
+})
+const mapChecklist = (r: any) => ({
+  id: r.id, tripId: r.trip_id, scope: r.scope, dayNumber: r.day_number, text: r.text,
+  done: r.done, sequence: r.sequence, createdAt: r.created_at,
+})
+const mapBucket = (r: any) => ({
+  id: r.id, title: r.title, memo: r.memo, countryId: r.country_id, cityId: r.city_id,
+  countryName: r.country_name ?? null, cityName: r.city_name ?? null,
+  category: r.category, done: r.done, linkedTripId: r.linked_trip_id,
+  linkedTripTitle: r.linked_trip_title ?? null, createdAt: r.created_at,
+})
+
+const TRIP_CITIES_SUBQUERY = `
+  COALESCE((
+    SELECT json_agg(json_build_object('id', c.id, 'name', c.name, 'countryName', co.name, 'countryCode', co.code) ORDER BY tc.sequence)
+    FROM trip_cities tc JOIN cities c ON c.id = tc.city_id JOIN countries co ON co.id = c.country_id
+    WHERE tc.trip_id = t.id
+  ), '[]'::json) AS cities
+`
+
+async function setTripCities(tripId: string, cityIds: string[]): Promise<void> {
+  await pool.query('DELETE FROM trip_cities WHERE trip_id = $1', [tripId])
+  for (let i = 0; i < (cityIds ?? []).length; i++) {
+    await pool.query('INSERT INTO trip_cities (trip_id, city_id, sequence) VALUES ($1,$2,$3)', [tripId, cityIds[i], i])
+  }
+}
 
 export function registerRoutes(app: ExpressApp): void {
   // ── 인증 ──────────────────────────────────────────────
@@ -81,13 +123,13 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 여행 ──────────────────────────────────────────────
   app.get('/api/trips', async (_req, res) => {
-    const r = await pool.query('SELECT * FROM trips ORDER BY start_date DESC')
+    const r = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t ORDER BY t.start_date DESC`)
     res.json(r.rows.map(mapTrip))
   })
 
   app.post('/api/trips', async (req, res) => {
-    const { title, startDate, endDate, budget, memberIds } = req.body as {
-      title: string; startDate: string; endDate: string; budget: number; memberIds: string[]
+    const { title, startDate, endDate, budget, memberIds, cityIds } = req.body as {
+      title: string; startDate: string; endDate: string; budget: number; memberIds: string[]; cityIds: string[]
     }
     const tripId = id()
     await pool.query('INSERT INTO trips (id, title, start_date, end_date, budget) VALUES ($1,$2,$3,$4,$5)',
@@ -95,14 +137,18 @@ export function registerRoutes(app: ExpressApp): void {
     for (const m of memberIds ?? []) {
       await pool.query('INSERT INTO trip_members (trip_id, member_id) VALUES ($1,$2)', [tripId, m])
     }
-    const r = await pool.query('SELECT * FROM trips WHERE id = $1', [tripId])
+    await setTripCities(tripId, cityIds)
+    const r = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t WHERE t.id = $1`, [tripId])
     res.json(mapTrip(r.rows[0]))
   })
 
   app.put('/api/trips/:id', async (req, res) => {
-    const { title, startDate, endDate, budget } = req.body as { title: string; startDate: string; endDate: string; budget: number }
+    const { title, startDate, endDate, budget, cityIds } = req.body as {
+      title: string; startDate: string; endDate: string; budget: number; cityIds: string[]
+    }
     await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4 WHERE id=$5',
       [title, startDate, endDate, budget ?? 0, req.params.id])
+    await setTripCities(req.params.id, cityIds)
     res.json({ ok: true })
   })
 
@@ -201,7 +247,11 @@ export function registerRoutes(app: ExpressApp): void {
     const visits = []
     for (const ev of events.rows) {
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      visits.push({ ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto) })
+      const flight = await pool.query('SELECT * FROM flight_details WHERE event_id = $1', [ev.id])
+      visits.push({
+        ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto),
+        flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
+      })
     }
 
     const totals = await pool.query(
@@ -251,6 +301,85 @@ export function registerRoutes(app: ExpressApp): void {
     }
   })
 
+  // ── 국가·도시 족보 ────────────────────────────────────
+  app.get('/api/countries', async (_req, res) => {
+    const r = await pool.query('SELECT * FROM countries ORDER BY name')
+    res.json(r.rows.map(mapCountry))
+  })
+
+  app.post('/api/countries', async (req, res) => {
+    const {
+      name, code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical,
+    } = req.body as {
+      name: string; code: string | null; capital: string | null; phoneCode: string | null; currency: string | null
+      voltage: string | null; language: string | null; visa: string | null; prepDocs: string | null
+      emergencyPolice: string | null; emergencyMedical: string | null
+    }
+    const countryId = id()
+    await pool.query(
+      `INSERT INTO countries (id, name, code, capital, phone_code, currency, voltage, language, visa, prep_docs, emergency_police, emergency_medical)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+      [countryId, name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical])
+    const r = await pool.query('SELECT * FROM countries WHERE id = $1', [countryId])
+    res.json(mapCountry(r.rows[0]))
+  })
+
+  app.put('/api/countries/:id', async (req, res) => {
+    const {
+      name, code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical,
+    } = req.body as {
+      name: string; code: string | null; capital: string | null; phoneCode: string | null; currency: string | null
+      voltage: string | null; language: string | null; visa: string | null; prepDocs: string | null
+      emergencyPolice: string | null; emergencyMedical: string | null
+    }
+    await pool.query(
+      `UPDATE countries SET name=$1, code=$2, capital=$3, phone_code=$4, currency=$5, voltage=$6, language=$7,
+         visa=$8, prep_docs=$9, emergency_police=$10, emergency_medical=$11 WHERE id=$12`,
+      [name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical, req.params.id])
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/countries/:id', async (req, res) => {
+    await pool.query('DELETE FROM countries WHERE id = $1', [req.params.id])
+    res.json({})
+  })
+
+  const CITY_SELECT = `
+    SELECT c.*, EXISTS(
+      SELECT 1 FROM trip_cities tc JOIN trips t ON t.id = tc.trip_id
+      WHERE tc.city_id = c.id AND t.end_date < to_char(CURRENT_DATE, 'YYYY-MM-DD')
+    ) AS visited
+    FROM cities c
+  `
+
+  app.get('/api/cities', async (_req, res) => {
+    const r = await pool.query(`${CITY_SELECT} ORDER BY c.name`)
+    res.json(r.rows.map(mapCity))
+  })
+
+  app.post('/api/cities', async (req, res) => {
+    const { countryId, name, flightDuration, timeDiff } = req.body as {
+      countryId: string; name: string; flightDuration: string | null; timeDiff: string | null
+    }
+    const cityId = id()
+    await pool.query('INSERT INTO cities (id, country_id, name, flight_duration, time_diff) VALUES ($1,$2,$3,$4,$5)',
+      [cityId, countryId, name.trim(), flightDuration, timeDiff])
+    const r = await pool.query(`${CITY_SELECT} WHERE c.id = $1`, [cityId])
+    res.json(mapCity(r.rows[0]))
+  })
+
+  app.put('/api/cities/:id', async (req, res) => {
+    const { name, flightDuration, timeDiff } = req.body as { name: string; flightDuration: string | null; timeDiff: string | null }
+    await pool.query('UPDATE cities SET name=$1, flight_duration=$2, time_diff=$3 WHERE id=$4',
+      [name.trim(), flightDuration, timeDiff, req.params.id])
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/cities/:id', async (req, res) => {
+    await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id])
+    res.json({})
+  })
+
   // ── 동선(타임라인) ────────────────────────────────────
   async function loadEvents(tripId: string) {
     const events = await pool.query('SELECT * FROM timeline_events WHERE trip_id = $1 ORDER BY day_number, sequence', [tripId])
@@ -258,7 +387,11 @@ export function registerRoutes(app: ExpressApp): void {
     for (const ev of events.rows) {
       const place = await pool.query('SELECT * FROM places WHERE id = $1', [ev.place_id])
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      out.push({ ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto) })
+      const flight = await pool.query('SELECT * FROM flight_details WHERE event_id = $1', [ev.id])
+      out.push({
+        ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto),
+        flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
+      })
     }
     return out
   }
@@ -304,6 +437,27 @@ export function registerRoutes(app: ExpressApp): void {
     res.json({ ok: true })
   })
 
+  // ── 항공 상세 (공항 이벤트 1:1) ────────────────────────
+  app.put('/api/events/:id/flight', async (req, res) => {
+    const { departAt, arriveAt, durationMinutes, bookingRef, bookedVia } = req.body as {
+      departAt: string | null; arriveAt: string | null; durationMinutes: number | null
+      bookingRef: string | null; bookedVia: string | null
+    }
+    await pool.query(
+      `INSERT INTO flight_details (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via)
+       VALUES ($1,$2,$3,$4,$5,$6)
+       ON CONFLICT (event_id) DO UPDATE SET
+         depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
+         booking_ref = excluded.booking_ref, booked_via = excluded.booked_via`,
+      [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia])
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/events/:id/flight', async (req, res) => {
+    await pool.query('DELETE FROM flight_details WHERE event_id = $1', [req.params.id])
+    res.json({ ok: true })
+  })
+
   // ── 가계부 ────────────────────────────────────────────
   app.get('/api/trips/:tripId/expenses', async (req, res) => {
     const r = await pool.query(
@@ -319,15 +473,23 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/trips/:tripId/expenses', async (req, res) => {
-    const { eventId, amount, currency, category, description, paidBy, splitWith, spentAt } = req.body as {
+    const {
+      eventId, amount, currency, category, description, paidBy, splitWith, spentAt,
+      paymentMethod, memo, purchaseItems, isShared, isPrebooked,
+    } = req.body as {
       eventId: string | null; amount: number; currency: string; category: string
       description: string; paidBy: string; splitWith: string[]; spentAt: string
+      paymentMethod: string | null; memo: string | null; purchaseItems: string | null
+      isShared: boolean; isPrebooked: boolean
     }
     const expenseId = id()
     await pool.query(
-      `INSERT INTO expenses (id, trip_id, event_id, amount, currency, category, description, paid_by, spent_at)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-      [expenseId, req.params.tripId, eventId, amount, currency, category, description.trim(), paidBy, spentAt])
+      `INSERT INTO expenses (
+         id, trip_id, event_id, amount, currency, category, description, paid_by, spent_at,
+         payment_method, memo, purchase_items, is_shared, is_prebooked
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+      [expenseId, req.params.tripId, eventId, amount, currency, category, description.trim(), paidBy, spentAt,
+        paymentMethod ?? null, memo ?? null, purchaseItems ?? null, isShared ?? true, isPrebooked ?? false])
     for (const m of splitWith ?? []) {
       await pool.query('INSERT INTO expense_splits (expense_id, member_id) VALUES ($1,$2)', [expenseId, m])
     }
@@ -336,6 +498,21 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.delete('/api/expenses/:id', async (req, res) => {
     await pool.query('DELETE FROM expenses WHERE id = $1', [req.params.id])
+    res.json({ ok: true })
+  })
+
+  // ── 여행별 고정 환율 ──────────────────────────────────
+  app.get('/api/trips/:tripId/rates', async (req, res) => {
+    const r = await pool.query('SELECT currency, krw_per_unit FROM trip_currency_rates WHERE trip_id = $1', [req.params.tripId])
+    res.json(r.rows.map((row) => ({ currency: row.currency, krwPerUnit: Number(row.krw_per_unit) })))
+  })
+
+  app.put('/api/trips/:tripId/rates/:currency', async (req, res) => {
+    const { krwPerUnit } = req.body as { krwPerUnit: number }
+    await pool.query(
+      `INSERT INTO trip_currency_rates (trip_id, currency, krw_per_unit) VALUES ($1,$2,$3)
+       ON CONFLICT (trip_id, currency) DO UPDATE SET krw_per_unit = excluded.krw_per_unit`,
+      [req.params.tripId, req.params.currency, krwPerUnit])
     res.json({ ok: true })
   })
 
@@ -476,6 +653,91 @@ export function registerRoutes(app: ExpressApp): void {
          note = excluded.note, diary = excluded.diary,
          weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp`,
       [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp])
+    res.json({ ok: true })
+  })
+
+  // ── 체크리스트 (일차별 할일 / 준비물 / 쇼핑 / 음식) ──────
+  app.get('/api/trips/:tripId/checklist', async (req, res) => {
+    const scope = req.query.scope as string
+    const day = req.query.day as string | undefined
+    const params: any[] = [req.params.tripId, scope]
+    let sql = 'SELECT * FROM checklist_items WHERE trip_id = $1 AND scope = $2'
+    if (day != null) { params.push(Number(day)); sql += ` AND day_number = $${params.length}` }
+    sql += ' ORDER BY sequence, created_at'
+    const r = await pool.query(sql, params)
+    res.json(r.rows.map(mapChecklist))
+  })
+
+  app.post('/api/trips/:tripId/checklist', async (req, res) => {
+    const { scope, dayNumber, text } = req.body as { scope: string; dayNumber: number | null; text: string }
+    const max = await pool.query(
+      'SELECT COALESCE(MAX(sequence), 0) AS m FROM checklist_items WHERE trip_id = $1 AND scope = $2 AND day_number IS NOT DISTINCT FROM $3',
+      [req.params.tripId, scope, dayNumber])
+    const itemId = id()
+    await pool.query(
+      'INSERT INTO checklist_items (id, trip_id, scope, day_number, text, sequence) VALUES ($1,$2,$3,$4,$5,$6)',
+      [itemId, req.params.tripId, scope, dayNumber, text.trim(), Number(max.rows[0].m) + 1])
+    const r = await pool.query('SELECT * FROM checklist_items WHERE id = $1', [itemId])
+    res.json(mapChecklist(r.rows[0]))
+  })
+
+  app.put('/api/checklist/:id', async (req, res) => {
+    const { text, done } = req.body as { text?: string; done?: boolean }
+    const sets: string[] = []
+    const params: any[] = []
+    if (text !== undefined) { params.push(text.trim()); sets.push(`text = $${params.length}`) }
+    if (done !== undefined) { params.push(done); sets.push(`done = $${params.length}`) }
+    if (sets.length === 0) { res.json({ ok: true }); return }
+    params.push(req.params.id)
+    await pool.query(`UPDATE checklist_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/checklist/:id', async (req, res) => {
+    await pool.query('DELETE FROM checklist_items WHERE id = $1', [req.params.id])
+    res.json({ ok: true })
+  })
+
+  // ── 버킷리스트 ────────────────────────────────────────
+  const BUCKET_SELECT = `
+    SELECT b.*, co.name AS country_name, ci.name AS city_name, t.title AS linked_trip_title
+    FROM bucket_items b
+    LEFT JOIN countries co ON co.id = b.country_id
+    LEFT JOIN cities ci ON ci.id = b.city_id
+    LEFT JOIN trips t ON t.id = b.linked_trip_id
+  `
+
+  app.get('/api/bucket', async (_req, res) => {
+    const r = await pool.query(`${BUCKET_SELECT} ORDER BY b.done, b.created_at DESC`)
+    res.json(r.rows.map(mapBucket))
+  })
+
+  app.post('/api/bucket', async (req, res) => {
+    const { title, memo, countryId, cityId, category } = req.body as {
+      title: string; memo: string | null; countryId: string | null; cityId: string | null; category: string | null
+    }
+    const itemId = id()
+    await pool.query(
+      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category) VALUES ($1,$2,$3,$4,$5,$6)',
+      [itemId, title.trim(), memo, countryId, cityId, category])
+    const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
+    res.json(mapBucket(r.rows[0]))
+  })
+
+  app.put('/api/bucket/:id', async (req, res) => {
+    const { done, linkedTripId } = req.body as { done?: boolean; linkedTripId?: string | null }
+    const sets: string[] = []
+    const params: any[] = []
+    if (done !== undefined) { params.push(done); sets.push(`done = $${params.length}`) }
+    if (linkedTripId !== undefined) { params.push(linkedTripId); sets.push(`linked_trip_id = $${params.length}`) }
+    if (sets.length === 0) { res.json({ ok: true }); return }
+    params.push(req.params.id)
+    await pool.query(`UPDATE bucket_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/bucket/:id', async (req, res) => {
+    await pool.query('DELETE FROM bucket_items WHERE id = $1', [req.params.id])
     res.json({ ok: true })
   })
 

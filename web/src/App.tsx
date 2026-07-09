@@ -5,14 +5,18 @@ import Login from './Login'
 import TripsScreen from './components/TripsScreen'
 import TripWindow from './components/TripWindow'
 import PlacesScreen from './components/PlacesScreen'
+import CountriesScreen from './components/CountriesScreen'
+import BucketListScreen from './components/BucketListScreen'
 import MembersScreen from './components/MembersScreen'
 import SettingsScreen from './components/SettingsScreen'
 
-type Screen = 'trips' | 'places' | 'members' | 'settings'
+type Screen = 'trips' | 'places' | 'countries' | 'bucket' | 'members' | 'settings'
 
 const NAV: Array<{ key: Screen; label: string }> = [
   { key: 'trips', label: '🏝 여행' },
   { key: 'places', label: '📍 장소 족보' },
+  { key: 'countries', label: '🌍 국가·도시' },
+  { key: 'bucket', label: '✨ 버킷리스트' },
   { key: 'members', label: '👥 동행인' },
   { key: 'settings', label: '⚙️ 설정' },
 ]
@@ -76,6 +80,8 @@ export default function App() {
           <>
             {screen === 'trips' && <TripsScreen onOpenTrip={setOpenTrip} />}
             {screen === 'places' && <PlacesScreen />}
+            {screen === 'countries' && <CountriesScreen />}
+            {screen === 'bucket' && <BucketListScreen />}
             {screen === 'members' && <MembersScreen />}
             {screen === 'settings' && <SettingsScreen />}
           </>

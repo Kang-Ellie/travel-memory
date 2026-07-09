@@ -109,6 +109,82 @@ export async function initSchema(): Promise<void> {
       value TEXT NOT NULL
     );
 
+    -- ── 국가·도시 족보 ──────────────────────────────────
+    CREATE TABLE IF NOT EXISTS countries (
+      id                TEXT PRIMARY KEY,
+      name              TEXT NOT NULL,
+      code              TEXT,
+      capital           TEXT,
+      phone_code        TEXT,
+      currency          TEXT,
+      voltage           TEXT,
+      language          TEXT,
+      visa              TEXT,
+      prep_docs         TEXT,
+      emergency_police  TEXT,
+      emergency_medical TEXT,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS cities (
+      id              TEXT PRIMARY KEY,
+      country_id      TEXT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+      name            TEXT NOT NULL,
+      flight_duration TEXT,
+      time_diff       TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS trip_cities (
+      trip_id  TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      city_id  TEXT NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+      sequence INT NOT NULL DEFAULT 0,
+      PRIMARY KEY (trip_id, city_id)
+    );
+
+    -- ── 항공 상세 (공항 이벤트 1:1) ───────────────────────
+    CREATE TABLE IF NOT EXISTS flight_details (
+      event_id        TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      depart_at       TEXT,
+      arrive_at       TEXT,
+      duration_minutes INT,
+      booking_ref     TEXT,
+      booked_via      TEXT
+    );
+
+    -- ── 여행별 고정 환율 ──────────────────────────────────
+    CREATE TABLE IF NOT EXISTS trip_currency_rates (
+      trip_id      TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      currency     TEXT NOT NULL,
+      krw_per_unit DOUBLE PRECISION NOT NULL,
+      PRIMARY KEY (trip_id, currency)
+    );
+
+    -- ── 체크리스트 (일차별 할일 / 준비물 / 쇼핑 / 음식 공용) ─
+    CREATE TABLE IF NOT EXISTS checklist_items (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      scope      TEXT NOT NULL CHECK (scope IN ('day', 'packing', 'shopping', 'food')),
+      day_number INT,
+      text       TEXT NOT NULL,
+      done       BOOLEAN NOT NULL DEFAULT false,
+      sequence   INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- ── 버킷리스트 ────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS bucket_items (
+      id             TEXT PRIMARY KEY,
+      title          TEXT NOT NULL,
+      memo           TEXT,
+      country_id     TEXT REFERENCES countries(id) ON DELETE SET NULL,
+      city_id        TEXT REFERENCES cities(id) ON DELETE SET NULL,
+      category       TEXT,
+      done           BOOLEAN NOT NULL DEFAULT false,
+      linked_trip_id TEXT REFERENCES trips(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget DOUBLE PRECISION NOT NULL DEFAULT 0;
     ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS must_try TEXT;
     ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS planned_time TEXT;
@@ -118,6 +194,11 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS diary TEXT;
     ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_emoji TEXT;
     ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_temp INT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_method TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS memo TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS purchase_items TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_prebooked BOOLEAN NOT NULL DEFAULT false;
 
     -- '식당' 분류명을 '맛집'으로 통일
     UPDATE places SET category = '맛집' WHERE category = '식당';
