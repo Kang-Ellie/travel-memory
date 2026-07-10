@@ -11,9 +11,11 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
   const [diary, setDiary] = useState('')
   const [weatherEmoji, setWeatherEmoji] = useState('')
   const [weatherTemp, setWeatherTemp] = useState('')
+  const [diaryHidden, setDiaryHidden] = useState(true)
 
   useEffect(() => {
     setEditing(false)
+    setDiaryHidden(true)
     api.dayNotes.list(tripId).then((notes) => {
       const n = notes.find((x) => x.dayNumber === dayNumber) ?? null
       setNote(n)
@@ -88,8 +90,13 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
       </div>
       {note?.diary && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
-          <div className="muted" style={{ marginBottom: 4 }}>📔 오늘의 일기</div>
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{note.diary}</p>
+          <div className="muted" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span className="grow">📔 오늘의 일기</span>
+            <button className="btn small ghost" onClick={() => setDiaryHidden((v) => !v)}>
+              {diaryHidden ? '보기' : '숨기기'}
+            </button>
+          </div>
+          {!diaryHidden && <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{note.diary}</p>}
         </div>
       )}
     </div>

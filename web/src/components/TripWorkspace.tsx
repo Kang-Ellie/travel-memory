@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import type { Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher } from '../../shared/types'
+import type {
+  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem,
+} from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
@@ -9,6 +11,8 @@ import MapTab from './MapTab'
 import DayNoteBox from './DayNoteBox'
 import Lightbox from './Lightbox'
 import ChecklistPanel from './ChecklistPanel'
+import Modal from './Modal'
+import Window from './Window'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -374,7 +378,7 @@ function EventCard({
 
 export default function TripWorkspace({ trip }: { trip: Trip }) {
   const days = dayCount(trip)
-  const [day, setDay] = useState(1)
+  const [day, setDay] = useState<number | 'prep'>(1)
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -382,6 +386,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [rates, setRates] = useState<CurrencyRate[]>([])
   const [transit, setTransit] = useState<TransitSegment[]>([])
   const [vouchers, setVouchers] = useState<Voucher[]>([])
+  const [bucket, setBucket] = useState<BucketItem[]>([])
   const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -393,6 +398,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [transitMode, setTransitMode] = useState('지하철')
   const [transitDuration, setTransitDuration] = useState('')
   const [transitNote, setTransitNote] = useState('')
+  const [showAddPlace, setShowAddPlace] = useState(false)
+  const [showAddTransit, setShowAddTransit] = useState(false)
   const dragFrom = useRef<number | null>(null)
 
   const refresh = () => {
@@ -403,13 +410,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     api.rates.list(trip.id).then(setRates)
     api.transit.list(trip.id).then(setTransit)
     api.vouchers.list(trip.id).then(setVouchers)
+    api.bucket.list().then(setBucket)
   }
   useEffect(refresh, [trip.id])
 
-  const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => a.sequence - b.sequence)
-  const dayTransit = transit.filter((t) => t.dayNumber === day)
+  const activeDay = typeof day === 'number' ? day : null
+  const dayEvents = activeDay != null
+    ? events.filter((e) => e.dayNumber === activeDay).sort((a, b) => a.sequence - b.sequence)
+    : []
+  const dayTransit = activeDay != null ? transit.filter((t) => t.dayNumber === activeDay) : []
   const transitAfter = (eventId: string | null) => dayTransit.filter((t) => t.afterEventId === eventId)
-  const dailySpend = computeDailySpend(trip, expenses, day, rates)
   const expensesByEvent = new Map<string, Expense[]>()
   for (const exp of expenses) {
     if (!exp.eventId) continue
@@ -417,8 +427,19 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     list.push(exp)
     expensesByEvent.set(exp.eventId, list)
   }
+  const linkedBucket = bucket.filter((b) => b.linkedTripId === trip.id)
+
+  const dayCityLabel = (d: number): string | null => {
+    const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => a.sequence - b.sequence)
+    const cities = evs.map((e) => e.place.cityName).filter((c): c is string => !!c)
+    if (cities.length === 0) return null
+    const first = cities[0]
+    const last = cities[cities.length - 1]
+    return first === last ? first : `${first} - ${last}`
+  }
 
   const addEvent = async () => {
+    if (activeDay == null) return
     let placeId = selPlace
     if (placeId === '__new') {
       if (!newName.trim()) return
@@ -429,12 +450,14 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       setNewName(''); setNewAddress(''); setNewMapUrl('')
     }
     if (!placeId) return
-    await api.events.create({ tripId: trip.id, placeId, dayNumber: day })
+    await api.events.create({ tripId: trip.id, placeId, dayNumber: activeDay })
     setSelPlace('')
     refresh()
+    setShowAddPlace(false)
   }
 
   const reorder = async (targetIdx: number) => {
+    if (activeDay == null) return
     const from = dragFrom.current
     dragFrom.current = null
     if (from == null || from === targetIdx) return
@@ -442,149 +465,210 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     const [moved] = ids.splice(from, 1)
     ids.splice(targetIdx, 0, moved)
     setEvents((prev) => {
-      const others = prev.filter((e) => e.dayNumber !== day)
+      const others = prev.filter((e) => e.dayNumber !== activeDay)
       const reordered = ids.map((eid, i) => {
         const found = prev.find((e) => e.id === eid)!
         return { ...found, sequence: i + 1 }
       })
       return [...others, ...reordered]
     })
-    await api.events.reorder({ tripId: trip.id, dayNumber: day, orderedIds: ids })
+    await api.events.reorder({ tripId: trip.id, dayNumber: activeDay, orderedIds: ids })
   }
 
   const addTransit = async () => {
+    if (activeDay == null) return
     await api.transit.create({
-      tripId: trip.id, dayNumber: day, afterEventId: transitAfterId || null,
+      tripId: trip.id, dayNumber: activeDay, afterEventId: transitAfterId || null,
       mode: transitMode, durationText: transitDuration.trim() || null, note: transitNote.trim() || null,
     })
     setTransitDuration(''); setTransitNote('')
     refresh()
+    setShowAddTransit(false)
   }
 
   const handleZoneDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
+    if (activeDay == null) return
     const archiveId = e.dataTransfer.getData(ARCHIVE_DRAG_TYPE)
     if (archiveId) {
-      await api.archive.convertToEvent({ archiveId, tripId: trip.id, dayNumber: day })
+      await api.archive.convertToEvent({ archiveId, tripId: trip.id, dayNumber: activeDay })
       refresh()
     }
   }
+
+  const addPlaceForm = (
+    <>
+      <div className="field grow">
+        <label>장소 선택</label>
+        <select value={selPlace} onChange={(e) => setSelPlace(e.target.value)}>
+          <option value="">— 장소 선택 —</option>
+          <option value="__new">✚ 새 장소 바로 등록</option>
+          {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
+        </select>
+      </div>
+      {selPlace === '__new' && (
+        <>
+          <div className="field">
+            <label>이름</label>
+            <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="장소명" />
+          </div>
+          <div className="field grow">
+            <label>주소 (선택)</label>
+            <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="주소" />
+          </div>
+          <div className="field">
+            <label>분류</label>
+            <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
+              {PLACE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="field grow">
+            <label>구글 지도 링크 (선택)</label>
+            <input type="text" value={newMapUrl} onChange={(e) => setNewMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+          </div>
+        </>
+      )}
+      <div style={{ marginTop: 12 }}>
+        <button className="btn primary" onClick={addEvent}>{activeDay}일차에 추가</button>
+      </div>
+    </>
+  )
+
+  const addTransitForm = (
+    <>
+      <div className="field">
+        <label>위치</label>
+        <select value={transitAfterId} onChange={(e) => setTransitAfterId(e.target.value)}>
+          <option value="">맨 앞 (첫 일정 전)</option>
+          {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
+        </select>
+      </div>
+      <div className="field">
+        <label>교통수단</label>
+        <select value={transitMode} onChange={(e) => setTransitMode(e.target.value)}>
+          {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
+        </select>
+      </div>
+      <div className="field">
+        <label>소요시간</label>
+        <input type="text" value={transitDuration} placeholder="예: 4분" onChange={(e) => setTransitDuration(e.target.value)} />
+      </div>
+      <div className="field grow">
+        <label>비고 (선택)</label>
+        <input type="text" value={transitNote} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setTransitNote(e.target.value)} />
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <button className="btn primary" onClick={addTransit}>＋ 이동 추가</button>
+      </div>
+    </>
+  )
 
   return (
     <div className="workspace">
       {/* 좌측: 일차 내비게이션 */}
       <div className="day-nav-col">
-        {Array.from({ length: days }, (_, i) => i + 1).map((d) => (
-          <button key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`} onClick={() => setDay(d)}>
-            {d}일차<br /><span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span>
-          </button>
-        ))}
+        <button className={`day-nav-btn ${day === 'prep' ? 'active' : ''}`} onClick={() => setDay('prep')}>
+          🧳 여행 준비
+        </button>
+        {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
+          const cityLabel = dayCityLabel(d)
+          const spend = computeDailySpend(trip, expenses, d, rates).total
+          return (
+            <button key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`} onClick={() => setDay(d)}>
+              <div>{d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span></div>
+              {cityLabel && <div style={{ fontWeight: 400, fontSize: 11 }}>🌆 {cityLabel}</div>}
+              <div style={{ fontWeight: 400, fontSize: 11 }}>💸 {fmtMoney(spend, 'KRW')}</div>
+            </button>
+          )
+        })}
       </div>
 
-      {/* 중앙: 타임라인 + 가계부 요약 */}
-      <div>
-        <BudgetBar trip={trip} expenses={expenses} rates={rates} />
-        <div className="row route-summary">
-          <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>🧭 {day}일차 · {dayLabel(trip, day)}</span>
-          <span className="grow muted">
-            {dayEvents.length === 0 ? '아직 동선이 없어요' : dayEvents.map((e) => e.place.name).join('  →  ')}
-          </span>
-          <span style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>💸 {fmtMoney(dailySpend.total, 'KRW')}</span>
-        </div>
-        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
-        <DayNoteBox tripId={trip.id} dayNumber={day} />
-
-        <div
-          className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
-          style={{ marginTop: 12 }}
-          onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(ARCHIVE_DRAG_TYPE)) setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleZoneDrop}
-        >
-          {dayEvents.length === 0 && (
-            <div className="empty">
-              이 날의 동선이 비어 있어요. 아래에서 장소를 추가하거나, 오른쪽 보관함 카드를 이 위로 끌어다 놓아보세요.
-            </div>
+      {/* 중앙: 타임라인 + 가계부 요약, 또는 여행 준비 */}
+      {day === 'prep' ? (
+        <div>
+          {linkedBucket.length > 0 && (
+            <Window title="BUCKET_LINKED.EXE" color="pink">
+              {linkedBucket.map((b) => (
+                <div key={b.id} className="row">
+                  <input type="checkbox" checked={b.done}
+                    onChange={() => api.bucket.update(b.id, { done: !b.done }).then(refresh)} />
+                  <div className="grow">
+                    <div style={{ fontWeight: 800, textDecoration: b.done ? 'line-through' : undefined }}>{b.title}</div>
+                    {(b.countryName || b.memo) && (
+                      <div className="muted">{b.countryName && `🌍 ${b.countryName}${b.cityName ? ` · ${b.cityName}` : ''} `}{b.memo}</div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </Window>
           )}
-          {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-          {dayEvents.map((ev, idx) => (
-            <div key={ev.id}>
-              <EventCard
-                ev={ev}
-                participants={members}
-                eventExpenses={expensesByEvent.get(ev.id) ?? []}
-                dragIndex={idx}
-                onDragStart={(i) => { dragFrom.current = i }}
-                onDrop={() => reorder(idx)}
-                onChanged={refresh}
-              />
-              {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-            </div>
-          ))}
+          <Window title="PACKING.EXE" color="yellow">
+            <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
+          </Window>
+          <Window title="SHOPPING.EXE" color="purple">
+            <ChecklistPanel tripId={trip.id} scope="shopping" title="🛍 사야할 것" addPlaceholder="예: 면세점 화장품" />
+          </Window>
+          <Window title="FOOD.EXE" color="green">
+            <ChecklistPanel tripId={trip.id} scope="food" title="🍽 먹어야할 것" addPlaceholder="예: 멘타이쥬" />
+          </Window>
         </div>
+      ) : (
+        <div>
+          <BudgetBar trip={trip} expenses={expenses} rates={rates} />
+          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={activeDay ?? undefined} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+          <DayNoteBox tripId={trip.id} dayNumber={activeDay ?? 1} />
 
-        {dayEvents.length > 0 && (
-          <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            <div className="field">
-              <label>🚏 이동 구간 추가 — 위치</label>
-              <select value={transitAfterId} onChange={(e) => setTransitAfterId(e.target.value)}>
-                <option value="">맨 앞 (첫 일정 전)</option>
-                {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>교통수단</label>
-              <select value={transitMode} onChange={(e) => setTransitMode(e.target.value)}>
-                {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>소요시간</label>
-              <input type="text" value={transitDuration} placeholder="예: 4분" onChange={(e) => setTransitDuration(e.target.value)} />
-            </div>
-            <div className="field grow">
-              <label>비고 (선택)</label>
-              <input type="text" value={transitNote} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setTransitNote(e.target.value)} />
-            </div>
-            <button className="btn small" onClick={addTransit}>＋ 이동 추가</button>
+          <div
+            className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+            style={{ marginTop: 12 }}
+            onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(ARCHIVE_DRAG_TYPE)) setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleZoneDrop}
+          >
+            {dayEvents.length === 0 && (
+              <div className="empty">
+                이 날의 동선이 비어 있어요. 아래에서 장소를 추가하거나, 오른쪽 보관함 카드를 이 위로 끌어다 놓아보세요.
+              </div>
+            )}
+            {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+            {dayEvents.map((ev, idx) => (
+              <div key={ev.id}>
+                <EventCard
+                  ev={ev}
+                  participants={members}
+                  eventExpenses={expensesByEvent.get(ev.id) ?? []}
+                  dragIndex={idx}
+                  onDragStart={(i) => { dragFrom.current = i }}
+                  onDrop={() => reorder(idx)}
+                  onChanged={refresh}
+                />
+                {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+              </div>
+            ))}
           </div>
-        )}
 
-        <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', marginTop: 14 }}>
-          <div className="field grow">
-            <label>장소 추가</label>
-            <select value={selPlace} onChange={(e) => setSelPlace(e.target.value)}>
-              <option value="">— 장소 선택 —</option>
-              <option value="__new">✚ 새 장소 바로 등록</option>
-              {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
-            </select>
+          <div className="row" style={{ flexWrap: 'wrap', marginTop: 14 }}>
+            <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 장소 추가</button>
+            <button className="btn small" onClick={() => setShowAddTransit(true)}>🚏 이동 구간 추가</button>
           </div>
-          {selPlace === '__new' && (
-            <>
-              <div className="field">
-                <label>이름</label>
-                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="장소명" />
+
+          {showAddPlace && (
+            <Modal title="장소 추가" onClose={() => setShowAddPlace(false)}>
+              <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+                {addPlaceForm}
               </div>
-              <div className="field grow">
-                <label>주소 (선택)</label>
-                <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="주소" />
-              </div>
-              <div className="field">
-                <label>분류</label>
-                <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
-                  {PLACE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="field grow">
-                <label>구글 지도 링크 (선택)</label>
-                <input type="text" value={newMapUrl} onChange={(e) => setNewMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
-              </div>
-            </>
+            </Modal>
           )}
-          <button className="btn primary" onClick={addEvent}>{day}일차에 추가</button>
+          {showAddTransit && (
+            <Modal title="이동 구간 추가" onClose={() => setShowAddTransit(false)}>
+              <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+                {addTransitForm}
+              </div>
+            </Modal>
+          )}
         </div>
-      </div>
+      )}
 
       {/* 우측: 지도 / 보관함 전환 */}
       <div>

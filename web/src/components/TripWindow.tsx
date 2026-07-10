@@ -4,15 +4,13 @@ import Window from './Window'
 import TripWorkspace from './TripWorkspace'
 import ExpensesTab from './ExpensesTab'
 import VouchersTab from './VouchersTab'
-import PackingTab from './PackingTab'
 
-type Tab = 'workspace' | 'settlement' | 'vouchers' | 'packing'
+type Tab = 'workspace' | 'settlement' | 'vouchers'
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'workspace', label: '📅 동선 & 가계부' },
   { key: 'settlement', label: '🧮 정산' },
   { key: 'vouchers', label: '📎 바우처' },
-  { key: 'packing', label: '🎒 준비물' },
 ]
 
 interface Props {
@@ -37,7 +35,6 @@ export default function TripWindow({ trip, onClose }: Props) {
       {tab === 'workspace' && <TripWorkspace trip={trip} />}
       {tab === 'settlement' && <ExpensesTab trip={trip} />}
       {tab === 'vouchers' && <VouchersTab trip={trip} />}
-      {tab === 'packing' && <PackingTab trip={trip} />}
     </Window>
   )
 }
