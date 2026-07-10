@@ -8,6 +8,25 @@ const ICONS: Record<string, string> = {
   PDF: '📄', PNG: '🖼', JPG: '🖼', JPEG: '🖼', HEIC: '🖼', WEBP: '🖼',
 }
 
+function VoucherGroup({ cat, items, onRemove }: { cat: string; items: Voucher[]; onRemove: (v: Voucher) => void }) {
+  return (
+    <div>
+      <strong>{cat}</strong>
+      {items.map((v) => (
+        <div key={v.id} className="row" style={{ marginTop: 8 }}>
+          <span style={{ fontSize: 22 }}>{ICONS[v.fileType] ?? '📎'}</span>
+          <div className="grow">
+            <div style={{ fontWeight: 800 }}>{v.title}</div>
+            <div className="muted">{v.fileType} · {v.createdAt.slice(0, 10)} 저장됨</div>
+          </div>
+          <a className="btn small" href={fileUrl(v.filePath)} target="_blank" rel="noreferrer">열기</a>
+          <button className="btn small ghost" onClick={() => onRemove(v)}>×</button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function VouchersTab({ trip }: { trip: Trip }) {
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [uploadCategory, setUploadCategory] = useState<string>(VOUCHER_CATEGORIES[0])
@@ -45,26 +64,22 @@ export default function VouchersTab({ trip }: { trip: Trip }) {
 
       {vouchers.length === 0 ? (
         <div className="empty">저장된 바우처가 없어요. 항공권 PDF나 예약 확인증을 넣어두면 여행 중에도 바로 열 수 있어요. 🎫</div>
-      ) : VOUCHER_CATEGORIES.map((cat) => {
-        const items = vouchers.filter((v) => v.category === cat)
-        if (items.length === 0) return null
-        return (
-          <div key={cat} className="section-gap">
-            <strong>{cat}</strong>
-            {items.map((v) => (
-              <div key={v.id} className="row" style={{ marginTop: 8 }}>
-                <span style={{ fontSize: 22 }}>{ICONS[v.fileType] ?? '📎'}</span>
-                <div className="grow">
-                  <div style={{ fontWeight: 800 }}>{v.title}</div>
-                  <div className="muted">{v.fileType} · {v.createdAt.slice(0, 10)} 저장됨</div>
-                </div>
-                <a className="btn small" href={fileUrl(v.filePath)} target="_blank" rel="noreferrer">열기</a>
-                <button className="btn small ghost" onClick={() => remove(v)}>×</button>
-              </div>
-            ))}
+      ) : (
+        <>
+          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+            {(['항공권', '숙소'] as const).map((cat) => {
+              const items = vouchers.filter((v) => v.category === cat)
+              if (items.length === 0) return null
+              return <VoucherGroup key={cat} cat={cat} items={items} onRemove={remove} />
+            })}
           </div>
-        )
-      })}
+          {(['티켓', '기타'] as const).map((cat) => {
+            const items = vouchers.filter((v) => v.category === cat)
+            if (items.length === 0) return null
+            return <div key={cat} className="section-gap"><VoucherGroup cat={cat} items={items} onRemove={remove} /></div>
+          })}
+        </>
+      )}
     </div>
   )
 }

@@ -87,18 +87,18 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   }
 
   return (
-    <div className="row">
-      <span className={`chip ${city.visited ? 'green' : 'yellow'}`}>{city.visited ? '가본곳' : '가볼곳'}</span>
-      <div className="grow">
-        <div style={{ fontWeight: 800 }}>{city.name}</div>
-        <div className="muted">
-          {city.flightDuration && <>✈️ {city.flightDuration} </>}
-          {city.timeDiff && <>· 🕒 시차 {city.timeDiff}</>}
-          {!city.flightDuration && !city.timeDiff && '항공 소요시간·시차 미입력'}
-        </div>
+    <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className={`chip ${city.visited ? 'green' : 'yellow'}`}>{city.visited ? '✅ 방문완료' : '⏳ 미방문'}</span>
+        <div className="grow" style={{ fontWeight: 800 }}>{city.name}</div>
+        <button className="btn small" onClick={() => setEditing(true)}>수정</button>
+        <button className="btn small ghost" onClick={remove}>×</button>
       </div>
-      <button className="btn small" onClick={() => setEditing(true)}>수정</button>
-      <button className="btn small ghost" onClick={remove}>×</button>
+      <div className="muted" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {city.flightDuration && <span>✈️ {city.flightDuration}</span>}
+        {city.timeDiff && <span>🕒 시차 {city.timeDiff}</span>}
+        {!city.flightDuration && !city.timeDiff && <span>항공 소요시간·시차 미입력</span>}
+      </div>
     </div>
   )
 }
@@ -174,7 +174,11 @@ function CountryRow({
             <strong>도시</strong>
             {cities.length === 0 ? (
               <div className="muted" style={{ marginTop: 6 }}>아직 등록된 도시가 없어요.</div>
-            ) : cities.map((c) => <CityRow key={c.id} city={c} onChanged={onChanged} />)}
+            ) : (
+              <div className="city-grid" style={{ marginTop: 8 }}>
+                {cities.map((c) => <CityRow key={c.id} city={c} onChanged={onChanged} />)}
+              </div>
+            )}
             <button className="btn small" style={{ marginTop: 8 }} onClick={() => setShowAddCity(true)}>＋ 도시 추가</button>
           </div>
 

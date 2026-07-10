@@ -131,7 +131,7 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   line-height: 1;
 }
 
-.window-body { padding: 18px; }
+.window-body { padding: 22px; }
 
 /* ── 칩 / 버튼 ─────────────────────────── */
 .chip {
@@ -181,8 +181,9 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 .emoji-pick.active { background: var(--pink); box-shadow: 1px 1px 0 var(--shadow); transform: translate(1px, 1px); }
 
 /* ── 폼 ────────────────────────────────── */
-.field { display: flex; flex-direction: column; gap: 6px; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 150px; }
 .field label { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; }
+.field.grow, .row .field.grow, .form-row .field.grow { flex: 1 1 220px; min-width: 220px; }
 
 input[type='text'], input[type='date'], input[type='number'], input[type='password'], textarea, select {
   border: 2px solid var(--ink);
@@ -196,7 +197,7 @@ input[type='text'], input[type='date'], input[type='number'], input[type='passwo
 input:focus, textarea:focus, select:focus { outline: 3px solid var(--pink-soft); }
 textarea { resize: vertical; min-height: 70px; }
 
-.form-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 20px; }
+.form-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 22px; }
 
 /* ── 커스텀 드롭다운(Select) ────────────── */
 .cselect { position: relative; display: inline-block; min-width: 120px; }
@@ -306,7 +307,15 @@ textarea { resize: vertical; min-height: 70px; }
 .form-row .grow { flex: 1; }
 
 /* ── 카드 그리드 ───────────────────────── */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px; }
+.city-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+
+/* ── BASE 국가/도시 2단 분할 ───────────────── */
+.base-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+@media (max-width: 640px) {
+  .base-split { grid-template-columns: 1fr; }
+  .base-split > * + * { padding-top: 14px; margin-top: 14px; border-top: 2px dashed rgba(45,42,62,0.35); }
+}
 
 .card-footer {
   display: flex;
@@ -323,12 +332,12 @@ textarea { resize: vertical; min-height: 70px; }
 .row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   border: 2px solid var(--ink);
   border-radius: 12px;
   background: #fff;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 .row .grow { flex: 1; min-width: 0; }
 .muted { color: rgba(45, 42, 62, 0.55); font-size: 12px; }

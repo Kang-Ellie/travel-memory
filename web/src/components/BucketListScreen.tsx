@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
-import type { BucketItem, Country, City, Trip, Place } from '../../shared/types'
+import type { BucketItem, Country, City, Trip, Place, BucketKind } from '../../shared/types'
+import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 
-const CATEGORY_PRESETS = ['쇼핑', '음식', '액티비티', '장소', '기타']
+const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
+const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
 
 function BucketRow({
   item, trips, places, onChanged,
@@ -46,13 +48,17 @@ function BucketRow({
     onChanged()
   }
 
+  const kind = bucketKindOf(item.category)
+  const subCategory = kind === 'bucket' ? item.category : null
+
   return (
     <div className="row" style={{ flexWrap: 'wrap' }}>
       <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" />
       <div className="grow">
         <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>
           {item.title}
-          {item.category && <span className="chip purple" style={{ marginLeft: 8 }}>{item.category}</span>}
+          <span className="chip purple" style={{ marginLeft: 8 }}>{BUCKET_KIND_LABEL[kind]}</span>
+          {subCategory && <span className="chip blue" style={{ marginLeft: 6 }}>{subCategory}</span>}
         </div>
         <div className="muted">
           {item.countryName && <>🌍 {item.countryName}{item.cityName && ` · ${item.cityName}`}</>}
@@ -108,11 +114,13 @@ export default function BucketListScreen() {
   const [trips, setTrips] = useState<Trip[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [filter, setFilter] = useState<'all' | 'todo' | 'done'>('todo')
+  const [kindFilter, setKindFilter] = useState<'all' | BucketKind>('all')
   const [categoryFilter, setCategoryFilter] = useState('전체')
 
   const [title, setTitle] = useState('')
   const [memo, setMemo] = useState('')
-  const [category, setCategory] = useState('')
+  const [kind, setKind] = useState<BucketKind>('bucket')
+  const [subCategory, setSubCategory] = useState('')
   const [countryId, setCountryId] = useState('')
   const [cityId, setCityId] = useState('')
   const [linkPlaceId, setLinkPlaceId] = useState('')
@@ -131,20 +139,24 @@ export default function BucketListScreen() {
 
   const add = async () => {
     if (!title.trim()) return
+    const category = kind === 'bucket' ? (subCategory.trim() || null) : BUCKET_KIND_CATEGORY[kind]
     await api.bucket.create({
       title: title.trim(), memo: memo.trim() || null,
-      countryId: countryId || null, cityId: cityId || null, category: category.trim() || null,
+      countryId: countryId || null, cityId: cityId || null, category,
       linkedPlaceId: linkPlaceId || null,
     })
-    setTitle(''); setMemo(''); setCategory(''); setCountryId(''); setCityId(''); setLinkPlaceId('')
+    setTitle(''); setMemo(''); setKind('bucket'); setSubCategory(''); setCountryId(''); setCityId(''); setLinkPlaceId('')
     setShowAdd(false)
     refresh()
   }
 
-  const categories = ['전체', ...new Set(items.map((i) => i.category).filter((c): c is string => !!c))]
+  const subCategories = ['전체', ...new Set(
+    items.filter((i) => bucketKindOf(i.category) === 'bucket').map((i) => i.category).filter((c): c is string => !!c),
+  )]
   const filtered = items
     .filter((i) => filter === 'all' || (filter === 'done' ? i.done : !i.done))
-    .filter((i) => categoryFilter === '전체' || i.category === categoryFilter)
+    .filter((i) => kindFilter === 'all' || bucketKindOf(i.category) === kindFilter)
+    .filter((i) => kindFilter !== 'bucket' || categoryFilter === '전체' || i.category === categoryFilter)
 
   return (
     <div>
@@ -158,17 +170,29 @@ export default function BucketListScreen() {
 
       {showAdd && (
         <Modal title="버킷리스트 추가" onClose={() => setShowAdd(false)}>
+          <div className="field" style={{ marginBottom: 18 }}>
+            <label>어떤 리스트인가요?</label>
+            <div className="day-tabs" style={{ marginBottom: 0 }}>
+              {KINDS.map((k) => (
+                <button key={k} type="button" className={`pill ${kind === k ? 'active' : ''}`} onClick={() => setKind(k)}>
+                  {BUCKET_KIND_LABEL[k]}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="form-row">
             <div className="field grow"><label>하고 싶은 것</label>
               <input type="text" value={title} placeholder="예: 삿포로 눈축제 가보기, 멘타이코 사기"
                 onChange={(e) => setTitle(e.target.value)} /></div>
-            <div className="field"><label>카테고리 (선택)</label>
-              <input type="text" value={category} list="bucket-category-presets" placeholder="예: 쇼핑, 음식"
-                onChange={(e) => setCategory(e.target.value)} />
-              <datalist id="bucket-category-presets">
-                {CATEGORY_PRESETS.map((c) => <option key={c} value={c} />)}
-              </datalist>
-            </div>
+            {kind === 'bucket' && (
+              <div className="field"><label>세부 카테고리 (선택)</label>
+                <input type="text" value={subCategory} list="bucket-subcategory-presets" placeholder="예: 액티비티"
+                  onChange={(e) => setSubCategory(e.target.value)} />
+                <datalist id="bucket-subcategory-presets">
+                  {BUCKET_SUBCATEGORY_PRESETS.map((c) => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+            )}
           </div>
           <div className="form-row">
             <div className="field"><label>국가 (선택)</label>
@@ -202,15 +226,22 @@ export default function BucketListScreen() {
 
       <Window title="BUCKET_LIST.EXE" color="purple">
         <div className="day-tabs">
+          {(['all', ...KINDS] as const).map((k) => (
+            <button key={k} className={`pill ${kindFilter === k ? 'active' : ''}`} onClick={() => { setKindFilter(k); setCategoryFilter('전체') }}>
+              {k === 'all' ? '전체' : BUCKET_KIND_LABEL[k]}
+            </button>
+          ))}
+        </div>
+        <div className="day-tabs">
           {(['todo', 'done', 'all'] as const).map((f) => (
             <button key={f} className={`pill ${filter === f ? 'active' : ''}`} onClick={() => setFilter(f)}>
               {f === 'todo' ? '할 것' : f === 'done' ? '완료' : '전체'}
             </button>
           ))}
         </div>
-        {categories.length > 1 && (
+        {kindFilter === 'bucket' && subCategories.length > 1 && (
           <div className="day-tabs">
-            {categories.map((c) => (
+            {subCategories.map((c) => (
               <button key={c} className={`pill ${categoryFilter === c ? 'active' : ''}`} onClick={() => setCategoryFilter(c)}>{c}</button>
             ))}
           </div>

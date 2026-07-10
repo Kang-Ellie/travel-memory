@@ -234,6 +234,21 @@ export const PACKING_PRESETS: Record<string, string[]> = {
   당일준비물: ['보조배터리', '선크림', '충전기'],
 }
 
+export type BucketKind = 'bucket' | 'food' | 'wish'
+
+export const BUCKET_KIND_LABEL: Record<BucketKind, string> = {
+  bucket: '🪣 버킷리스트', food: '🍽 먹킷리스트', wish: '🛍 위시리스트',
+}
+export const BUCKET_KIND_CATEGORY: Record<BucketKind, string | null> = {
+  bucket: null, food: '음식', wish: '쇼핑',
+}
+
+export function bucketKindOf(category: string | null): BucketKind {
+  if (category === '음식') return 'food'
+  if (category === '쇼핑') return 'wish'
+  return 'bucket'
+}
+
 export interface BucketItem {
   id: string
   title: string

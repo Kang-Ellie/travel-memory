@@ -1,26 +1,18 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Country, City, BucketItem, Place } from '../../shared/types'
+import type { Trip, Country, City, BucketItem, Place, BucketKind } from '../../shared/types'
+import { BUCKET_KIND_LABEL, bucketKindOf } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Select from './Select'
 
-type Kind = 'bucket' | 'food' | 'wish'
-
-const KIND_LABEL: Record<Kind, string> = { bucket: '🪣 버킷리스트', food: '🍽 먹킷리스트', wish: '🛍 위시리스트' }
-const KIND_PLACEHOLDER: Record<Kind, string> = {
+const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
-}
-
-function kindOf(b: BucketItem): Kind {
-  if (b.category === '음식') return 'food'
-  if (b.category === '쇼핑') return 'wish'
-  return 'bucket'
 }
 
 function BaseListRow({
   item, kind, places, tripId, onChanged,
-}: { item: BucketItem; kind: Kind; places: Place[]; tripId: string; onChanged: () => void }) {
+}: { item: BucketItem; kind: BucketKind; places: Place[]; tripId: string; onChanged: () => void }) {
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
@@ -118,7 +110,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   const countryIds = new Set(tripCityRecords.map((c) => c.countryId))
   const tripCountries = countries.filter((c) => countryIds.has(c.id))
   const itemsForCountry = bucket.filter((b) => b.countryId && countryIds.has(b.countryId))
-  const byKind = (kind: Kind) => itemsForCountry.filter((b) => kindOf(b) === kind)
+  const byKind = (kind: BucketKind) => itemsForCountry.filter((b) => bucketKindOf(b.category) === kind)
 
   return (
     <Window title="BASE.EXE" color="blue">
@@ -132,34 +124,42 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
             const citiesOfCountry = tripCityRecords.filter((c) => c.countryId === co.id)
             return (
               <div key={co.id} className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                <div style={{ fontWeight: 800, marginBottom: 4 }}>{flagEmoji(co.code)} {co.name}</div>
-                <div style={{
-                  color: 'var(--ink)', fontSize: 13,
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '4px 12px',
-                }}>
-                  {co.capital && <span>🏛 수도 {co.capital}</span>}
-                  {co.currency && <span>💱 통화 {co.currency}</span>}
-                  {co.voltage && <span>🔌 전압 {co.voltage}</span>}
-                  {co.language && <span>🗣 언어 {co.language}</span>}
-                  {co.visa && <span>🛂 비자 {co.visa}</span>}
-                  {co.emergencyPolice && <span>🚓 경찰 {co.emergencyPolice}</span>}
-                  {co.emergencyMedical && <span>🚑 응급 {co.emergencyMedical}</span>}
-                </div>
-                {co.prepDocs && <div style={{ color: 'var(--ink)', fontSize: 13, marginTop: 4, whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</div>}
-                {citiesOfCountry.map((c) => (c.flightDuration || c.timeDiff) && (
-                  <div key={c.id} style={{ color: 'var(--ink)', fontSize: 13, marginTop: 4 }}>
-                    🏙 {c.name}{c.flightDuration && ` · ✈️ ${c.flightDuration}`}{c.timeDiff && ` · 🕐 시차 ${c.timeDiff}`}
+                <div style={{ fontWeight: 800, marginBottom: 10 }}>{flagEmoji(co.code)} {co.name}</div>
+                <div className="base-split">
+                  <div style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🌍 국가 정보</div>
+                    {co.capital && <span>🏛 수도 {co.capital}</span>}
+                    {co.currency && <span>💱 통화 {co.currency}</span>}
+                    {co.voltage && <span>🔌 전압 {co.voltage}</span>}
+                    {co.language && <span>🗣 언어 {co.language}</span>}
+                    {co.visa && <span>🛂 비자 {co.visa}</span>}
+                    {co.emergencyPolice && <span>🚓 경찰 {co.emergencyPolice}</span>}
+                    {co.emergencyMedical && <span>🚑 응급 {co.emergencyMedical}</span>}
+                    {co.prepDocs && <span style={{ whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</span>}
                   </div>
-                ))}
+                  <div style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🏙 도시 정보</div>
+                    {citiesOfCountry.length === 0 ? (
+                      <span style={{ opacity: 0.6 }}>등록된 도시 정보가 없어요.</span>
+                    ) : citiesOfCountry.map((c) => (
+                      <div key={c.id}>
+                        <div style={{ fontWeight: 700 }}>{c.name}</div>
+                        {c.flightDuration && <div>✈️ {c.flightDuration}</div>}
+                        {c.timeDiff && <div>🕐 시차 {c.timeDiff}</div>}
+                        {!c.flightDuration && !c.timeDiff && <div style={{ opacity: 0.6 }}>항공 소요시간·시차 미입력</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             )
           })}
 
-          {(['bucket', 'food', 'wish'] as Kind[]).map((kind) => {
+          {(['bucket', 'food', 'wish'] as BucketKind[]).map((kind) => {
             const items = byKind(kind)
             return (
               <div key={kind} style={{ marginTop: 14, paddingTop: 14, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>{KIND_LABEL[kind]}</div>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>{BUCKET_KIND_LABEL[kind]}</div>
                 {items.length === 0 ? (
                   <div className="empty">{KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요. 버킷리스트 탭에서 추가해보세요.</div>
                 ) : items.map((b) => (

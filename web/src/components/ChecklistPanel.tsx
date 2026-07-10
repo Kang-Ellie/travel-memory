@@ -7,6 +7,9 @@ import Select from './Select'
 
 const PACKING_CATEGORIES = Object.keys(PACKING_PRESETS)
 const SEEDABLE_SCOPES = new Set<ChecklistScope>(['predeparture', 'packing'])
+const CATEGORY_COLOR: Record<string, string> = {
+  필수: 'var(--blue-soft)', 선택: 'var(--purple-soft)', 당일준비물: 'var(--yellow-soft)',
+}
 
 export default function ChecklistPanel({
   tripId, scope, dayNumber, title, addPlaceholder,
@@ -83,8 +86,12 @@ export default function ChecklistPanel({
               const inCat = items.filter((i) => i.category === cat)
               if (inCat.length === 0) return null
               return (
-                <div key={cat} style={{ marginBottom: 10 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 2 }}>{cat}</div>
+                <div key={cat} style={{
+                  marginBottom: 10, padding: '10px 12px', borderRadius: 10,
+                  background: CATEGORY_COLOR[cat] ?? 'rgba(45,42,62,0.06)',
+                  border: '1.5px solid rgba(45,42,62,0.15)',
+                }}>
+                  <div style={{ fontWeight: 800, marginBottom: 6 }}>{cat}</div>
                   {inCat.map(renderRow)}
                 </div>
               )
