@@ -75,14 +75,16 @@ export default function ChecklistPanel({
       {items.length === 0 ? (
         <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
       ) : usesCategory ? (
-        <div style={{ margin: '6px 0' }}>
+        <div style={{
+          margin: '6px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0 16px',
+        }}>
           {[...PACKING_CATEGORIES, ...[...new Set(items.map((i) => i.category))].filter((c): c is string => !!c && !PACKING_CATEGORIES.includes(c))]
             .map((cat) => {
               const inCat = items.filter((i) => i.category === cat)
               if (inCat.length === 0) return null
               return (
                 <div key={cat} style={{ marginBottom: 10 }}>
-                  <div className="muted" style={{ fontWeight: 700, marginBottom: 2 }}>{cat}</div>
+                  <div style={{ fontWeight: 700, marginBottom: 2 }}>{cat}</div>
                   {inCat.map(renderRow)}
                 </div>
               )

@@ -8,7 +8,6 @@ import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
 import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
-import TripBaseSection from './TripBaseSection'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
 import Select from './Select'
@@ -657,7 +656,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: 타임라인 + 가계부 요약 */}
       <div>
-        <TripBaseSection trip={trip} />
         <BudgetBar trip={trip} expenses={expenses} rates={rates} />
 
           <div

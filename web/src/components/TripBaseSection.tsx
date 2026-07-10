@@ -1,40 +1,129 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Country, City, BucketItem } from '../../shared/types'
+import type { Trip, Country, City, BucketItem, Place } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
+import Select from './Select'
+
+type Kind = 'bucket' | 'food' | 'wish'
+
+const KIND_LABEL: Record<Kind, string> = { bucket: '🪣 버킷리스트', food: '🍽 먹킷리스트', wish: '🛍 위시리스트' }
+const KIND_PLACEHOLDER: Record<Kind, string> = {
+  bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
+}
+
+function kindOf(b: BucketItem): Kind {
+  if (b.category === '음식') return 'food'
+  if (b.category === '쇼핑') return 'wish'
+  return 'bucket'
+}
+
+function BaseListRow({
+  item, kind, places, tripId, onChanged,
+}: { item: BucketItem; kind: Kind; places: Place[]; tripId: string; onChanged: () => void }) {
+  const [linkingPlace, setLinkingPlace] = useState(false)
+  const [placeId, setPlaceId] = useState('')
+  const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
+  const inTrip = item.linkedTripId === tripId
+
+  const toggleDone = async () => {
+    await api.bucket.update(item.id, { done: !item.done })
+    onChanged()
+  }
+  const addToTrip = async () => {
+    await api.bucket.update(item.id, { linkedTripId: tripId })
+    onChanged()
+  }
+  const linkPlace = async () => {
+    if (!placeId) return
+    await api.bucket.update(item.id, { linkedPlaceId: placeId })
+    setLinkingPlace(false)
+    onChanged()
+  }
+  const unlinkPlace = async () => {
+    await api.bucket.update(item.id, { linkedPlaceId: null })
+    onChanged()
+  }
+
+  const placeLine = () => {
+    if (!linkedPlace) return null
+    if (kind === 'food') {
+      return (
+        <>📍 {linkedPlace.name}{linkedPlace.recommendedMenu ? ` · 여기서 ${linkedPlace.recommendedMenu} 잘해요` : ''}</>
+      )
+    }
+    if (kind === 'wish') return <>🛍 여기서 살 수 있어요: {linkedPlace.name}</>
+    return <>📍 {linkedPlace.name}</>
+  }
+
+  return (
+    <div className="row" style={{ flexWrap: 'wrap' }}>
+      <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" />
+      <div className="grow">
+        <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>{item.title}</div>
+        {item.memo && <div style={{ color: 'var(--ink)', opacity: 0.75, fontSize: 13, whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
+        {linkedPlace ? (
+          <div style={{ color: 'var(--ink)', opacity: 0.8, fontSize: 13, marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            {placeLine()}
+            <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+          </div>
+        ) : linkingPlace ? (
+          <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
+            <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+              <option value="">— 장소 선택 —</option>
+              {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
+            </Select>
+            <button className="btn small primary" onClick={linkPlace}>연결</button>
+            <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+          </div>
+        ) : (
+          <button className="btn small ghost" style={{ marginTop: 2 }} onClick={() => setLinkingPlace(true)}>
+            📍 장소 족보와 연결
+          </button>
+        )}
+      </div>
+      {!inTrip && <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>}
+    </div>
+  )
+}
 
 export default function TripBaseSection({ trip }: { trip: Trip }) {
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [bucket, setBucket] = useState<BucketItem[]>([])
+  const [places, setPlaces] = useState<Place[]>([])
   const [collapsed, setCollapsed] = useState(false)
 
   const refresh = () => {
     api.countries.list().then(setCountries)
     api.cities.list().then(setCities)
     api.bucket.list().then(setBucket)
+    api.places.list().then(setPlaces)
   }
   useEffect(refresh, [trip.id])
 
-  if (trip.cities.length === 0) return null
+  if (trip.cities.length === 0) {
+    return (
+      <Window title="BASE.EXE" color="blue">
+        <span style={{ color: 'var(--ink)', opacity: 0.7 }}>
+          🌍 국가·도시가 아직 연결 안 됐어요 — 상단 "✏️ 여행 정보 수정"에서 어디로 가는지 먼저 등록해주세요.
+        </span>
+      </Window>
+    )
+  }
 
   const tripCityRecords = trip.cities
     .map((tc) => cities.find((c) => c.id === tc.id))
     .filter((c): c is City => !!c)
   const countryIds = new Set(tripCityRecords.map((c) => c.countryId))
   const tripCountries = countries.filter((c) => countryIds.has(c.id))
-  const suggestions = bucket.filter((b) => b.countryId && countryIds.has(b.countryId) && b.linkedTripId !== trip.id)
-
-  const linkToTrip = async (itemId: string) => {
-    await api.bucket.update(itemId, { linkedTripId: trip.id, done: true })
-    refresh()
-  }
+  const itemsForCountry = bucket.filter((b) => b.countryId && countryIds.has(b.countryId))
+  const byKind = (kind: Kind) => itemsForCountry.filter((b) => kindOf(b) === kind)
 
   return (
     <Window title="BASE.EXE" color="blue">
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 10 }}>
-        <strong className="grow">🌍 이번 여행 나라 정보</strong>
+        <strong className="grow">🧭 이번엔 어디?</strong>
         <button className="btn small ghost" onClick={() => setCollapsed((v) => !v)}>{collapsed ? '펼치기' : '접기'}</button>
       </div>
       {!collapsed && (
@@ -44,7 +133,10 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
             return (
               <div key={co.id} className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ fontWeight: 800, marginBottom: 4 }}>{flagEmoji(co.code)} {co.name}</div>
-                <div className="muted" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '2px 12px' }}>
+                <div style={{
+                  color: 'var(--ink)', fontSize: 13,
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '4px 12px',
+                }}>
                   {co.capital && <span>🏛 수도 {co.capital}</span>}
                   {co.currency && <span>💱 통화 {co.currency}</span>}
                   {co.voltage && <span>🔌 전압 {co.voltage}</span>}
@@ -53,29 +145,29 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   {co.emergencyPolice && <span>🚓 경찰 {co.emergencyPolice}</span>}
                   {co.emergencyMedical && <span>🚑 응급 {co.emergencyMedical}</span>}
                 </div>
-                {co.prepDocs && <div className="muted" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</div>}
+                {co.prepDocs && <div style={{ color: 'var(--ink)', fontSize: 13, marginTop: 4, whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</div>}
                 {citiesOfCountry.map((c) => (c.flightDuration || c.timeDiff) && (
-                  <div key={c.id} className="muted" style={{ marginTop: 4 }}>
+                  <div key={c.id} style={{ color: 'var(--ink)', fontSize: 13, marginTop: 4 }}>
                     🏙 {c.name}{c.flightDuration && ` · ✈️ ${c.flightDuration}`}{c.timeDiff && ` · 🕐 시차 ${c.timeDiff}`}
                   </div>
                 ))}
               </div>
             )
           })}
-          {suggestions.length > 0 && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
-              <div className="muted" style={{ fontWeight: 700, marginBottom: 6 }}>✨ 이 나라 버킷리스트에서 골라보세요</div>
-              {suggestions.map((b) => (
-                <div key={b.id} className="row">
-                  <div className="grow">
-                    <div style={{ fontWeight: 700 }}>{b.title}</div>
-                    {b.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{b.memo}</div>}
-                  </div>
-                  <button className="btn small" onClick={() => linkToTrip(b.id)}>여행에 연결</button>
-                </div>
-              ))}
-            </div>
-          )}
+
+          {(['bucket', 'food', 'wish'] as Kind[]).map((kind) => {
+            const items = byKind(kind)
+            return (
+              <div key={kind} style={{ marginTop: 14, paddingTop: 14, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
+                <div style={{ fontWeight: 700, marginBottom: 6 }}>{KIND_LABEL[kind]}</div>
+                {items.length === 0 ? (
+                  <div className="empty">{KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요. 버킷리스트 탭에서 추가해보세요.</div>
+                ) : items.map((b) => (
+                  <BaseListRow key={b.id} item={b} kind={kind} places={places} tripId={trip.id} onChanged={refresh} />
+                ))}
+              </div>
+            )
+          })}
         </>
       )}
     </Window>

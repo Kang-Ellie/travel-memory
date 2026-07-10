@@ -7,14 +7,16 @@ import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 import TripWorkspace from './TripWorkspace'
+import TripBaseSection from './TripBaseSection'
 import DayLogTab from './DayLogTab'
 import ExpensesTab from './ExpensesTab'
 import VouchersTab from './VouchersTab'
 import TripPrepTab from './TripPrepTab'
 
-type Tab = 'workspace' | 'daylog' | 'settlement' | 'vouchers' | 'prep'
+type Tab = 'base' | 'workspace' | 'daylog' | 'settlement' | 'vouchers' | 'prep'
 
 const TABS: Array<{ key: Tab; label: string }> = [
+  { key: 'base', label: '🧭 BASE' },
   { key: 'workspace', label: '📅 일정 & 지출' },
   { key: 'daylog', label: '📔 할일 & 일기' },
   { key: 'settlement', label: '🧮 정산' },
@@ -29,7 +31,7 @@ interface Props {
 }
 
 export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
-  const [tab, setTab] = useState<Tab>('workspace')
+  const [tab, setTab] = useState<Tab>('base')
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [editing, setEditing] = useState(false)
@@ -130,6 +132,7 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
         ))}
       </div>
 
+      {tab === 'base' && <TripBaseSection trip={trip} />}
       {tab === 'workspace' && <TripWorkspace trip={trip} />}
       {tab === 'daylog' && <DayLogTab trip={trip} />}
       {tab === 'settlement' && <ExpensesTab trip={trip} />}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Trip, TimelineEvent, Expense, BucketItem } from '../../shared/types'
+import type { Trip, TimelineEvent, Expense } from '../../shared/types'
 import { api } from '../api'
 import Window from './Window'
 import ChecklistPanel from './ChecklistPanel'
@@ -18,12 +18,10 @@ function fmtDateTime(v: string | null): string {
 export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
-  const [bucket, setBucket] = useState<BucketItem[]>([])
 
   const refresh = () => {
     api.events.list(trip.id).then(setEvents)
     api.expenses.list(trip.id).then(setExpenses)
-    api.bucket.list().then(setBucket)
   }
   useEffect(refresh, [trip.id])
 
@@ -31,7 +29,6 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const flights = events.filter((e) => e.place.category === '공항').sort(byDay)
   const stays = events.filter((e) => e.place.category === '숙소').sort(byDay)
   const prebookedForEvent = (eventId: string) => expenses.some((e) => e.eventId === eventId && e.isPrebooked)
-  const linkedBucket = bucket.filter((b) => b.linkedTripId === trip.id)
 
   return (
     <div>
@@ -87,30 +84,15 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
         )}
       </Window>
 
-      {linkedBucket.length > 0 && (
-        <Window title="BUCKET_LINKED.EXE" color="pink">
-          {linkedBucket.map((b) => (
-            <div key={b.id} className="row">
-              <input type="checkbox" checked={b.done}
-                onChange={() => api.bucket.update(b.id, { done: !b.done }).then(refresh)} />
-              <div className="grow">
-                <div style={{ fontWeight: 800, textDecoration: b.done ? 'line-through' : undefined }}>{b.title}</div>
-                {(b.countryName || b.memo) && (
-                  <div className="muted">{b.countryName && `🌍 ${b.countryName}${b.cityName ? ` · ${b.cityName}` : ''} `}{b.memo}</div>
-                )}
-              </div>
-            </div>
-          ))}
+      <div className="grid">
+        <Window title="PREDEPARTURE.EXE" color="green">
+          <ChecklistPanel tripId={trip.id} scope="predeparture" title="🛫 여행 전 Todo" addPlaceholder="예: 여행자보험 가입" />
         </Window>
-      )}
 
-      <Window title="PREDEPARTURE.EXE" color="green">
-        <ChecklistPanel tripId={trip.id} scope="predeparture" title="🛫 여행 전 Todo" addPlaceholder="예: 여행자보험 가입" />
-      </Window>
-
-      <Window title="PACKING.EXE" color="yellow">
-        <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
-      </Window>
+        <Window title="PACKING.EXE" color="yellow">
+          <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
+        </Window>
+      </div>
     </div>
   )
 }
