@@ -184,6 +184,10 @@ export const api = {
     delete: (id: string) => req<void>('DELETE', `/api/archive/${id}`),
     convertToEvent: (data: { archiveId: string; tripId: string; dayNumber: number }) =>
       req<void>('POST', `/api/archive/${data.archiveId}/convert`, data),
+    // SNS 아카이브 — 여행에 속하지 않는 전역 링크 보관함
+    listGlobal: () => req<ArchiveItem[]>('GET', '/api/archive'),
+    addLinkGlobal: (data: { title: string; url: string }) => req<ArchiveItem>('POST', '/api/archive/link', data),
+    linkPlace: (id: string, placeId: string | null) => req<void>('PUT', `/api/archive/${id}`, { linkedPlaceId: placeId }),
   },
 
   dayNotes: {

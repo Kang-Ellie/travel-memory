@@ -152,11 +152,13 @@ export type ArchiveKind = 'memo' | 'link' | 'image'
 
 export interface ArchiveItem {
   id: string
-  tripId: string
+  tripId: string | null
   kind: ArchiveKind
   title: string
   body: string | null
   filePath: string | null
+  linkedPlaceId: string | null
+  linkedPlaceName: string | null
   createdAt: string
 }
 

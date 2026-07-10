@@ -7,16 +7,18 @@ import TripWindow from './components/TripWindow'
 import PlacesScreen from './components/PlacesScreen'
 import CountriesScreen from './components/CountriesScreen'
 import BucketListScreen from './components/BucketListScreen'
+import SnsArchiveScreen from './components/SnsArchiveScreen'
 import MembersScreen from './components/MembersScreen'
 import SettingsScreen from './components/SettingsScreen'
 
-type Screen = 'trips' | 'places' | 'countries' | 'bucket' | 'members' | 'settings'
+type Screen = 'trips' | 'places' | 'countries' | 'bucket' | 'sns' | 'members' | 'settings'
 
 const NAV: Array<{ key: Screen; label: string }> = [
   { key: 'trips', label: '🏝 여행' },
   { key: 'places', label: '📍 장소 족보' },
   { key: 'countries', label: '🌍 국가·도시' },
   { key: 'bucket', label: '✨ 버킷리스트' },
+  { key: 'sns', label: '🔗 SNS 아카이브' },
   { key: 'members', label: '👥 동행인' },
   { key: 'settings', label: '⚙️ 설정' },
 ]
@@ -30,14 +32,38 @@ function useClock(): string {
   return now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
 }
 
+export interface SharePrefill { title: string; url: string }
+
+// 안드로이드 PWA 공유 대상(share_target)으로 들어온 요청에서 링크·제목을 뽑아낸다.
+// 인스타 등은 링크를 url이 아니라 text에 실어 보내는 경우가 많아 text에서도 URL을 찾는다.
+function extractSharePrefill(): SharePrefill | null {
+  if (window.location.pathname !== '/share-target') return null
+  const params = new URLSearchParams(window.location.search)
+  const rawTitle = (params.get('title') ?? '').trim()
+  const rawText = (params.get('text') ?? '').trim()
+  const rawUrl = (params.get('url') ?? '').trim()
+  const urlMatch = `${rawUrl} ${rawText} ${rawTitle}`.match(/https?:\/\/\S+/)
+  const url = /^https?:\/\//.test(rawUrl) ? rawUrl : (urlMatch ? urlMatch[0] : '')
+  if (!url) return null
+  const title = rawTitle || rawText.replace(url, '').trim()
+  return { title, url }
+}
+
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
   const [screen, setScreen] = useState<Screen>('trips')
   const [openTrip, setOpenTrip] = useState<Trip | null>(null)
+  const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null)
   const clock = useClock()
 
   useEffect(() => {
     auth.session().then((r) => setAuthed(r.authed)).catch(() => setAuthed(false))
+    const prefill = extractSharePrefill()
+    if (prefill) {
+      setSharePrefill(prefill)
+      setScreen('sns')
+      window.history.replaceState(null, '', '/')
+    }
   }, [])
 
   if (authed === null) return null
@@ -82,6 +108,9 @@ export default function App() {
             {screen === 'places' && <PlacesScreen />}
             {screen === 'countries' && <CountriesScreen />}
             {screen === 'bucket' && <BucketListScreen />}
+            {screen === 'sns' && (
+              <SnsArchiveScreen prefill={sharePrefill} onConsumedPrefill={() => setSharePrefill(null)} />
+            )}
             {screen === 'members' && <MembersScreen />}
             {screen === 'settings' && <SettingsScreen />}
           </>

@@ -75,7 +75,8 @@ const mapVoucher = (r: any) => ({
 })
 const mapPhoto = (r: any) => ({ id: r.id, eventId: r.event_id, filePath: r.file_path })
 const mapArchive = (r: any) => ({
-  id: r.id, tripId: r.trip_id, kind: r.kind, title: r.title, body: r.body, filePath: r.file_path, createdAt: r.created_at,
+  id: r.id, tripId: r.trip_id, kind: r.kind, title: r.title, body: r.body, filePath: r.file_path,
+  linkedPlaceId: r.linked_place_id, linkedPlaceName: r.linked_place_name ?? null, createdAt: r.created_at,
 })
 const mapCountry = (r: any) => ({
   id: r.id, name: r.name, code: r.code, capital: r.capital, phoneCode: r.phone_code,
@@ -688,9 +689,36 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   // ── 보관함 ────────────────────────────────────────────
+  const ARCHIVE_SELECT = `
+    SELECT a.*, p.name AS linked_place_name
+    FROM archive_items a
+    LEFT JOIN places p ON p.id = a.linked_place_id
+  `
+
   app.get('/api/trips/:tripId/archive', async (req, res) => {
-    const r = await pool.query('SELECT * FROM archive_items WHERE trip_id = $1 ORDER BY created_at DESC', [req.params.tripId])
+    const r = await pool.query(`${ARCHIVE_SELECT} WHERE a.trip_id = $1 ORDER BY a.created_at DESC`, [req.params.tripId])
     res.json(r.rows.map(mapArchive))
+  })
+
+  // SNS 아카이브 — 어느 여행에도 속하지 않은 링크 보관함(나중에 실제 장소로 등록해서 족보에 편입)
+  app.get('/api/archive', async (_req, res) => {
+    const r = await pool.query(`${ARCHIVE_SELECT} WHERE a.trip_id IS NULL ORDER BY a.created_at DESC`)
+    res.json(r.rows.map(mapArchive))
+  })
+
+  app.post('/api/archive/link', async (req, res) => {
+    const { title, url } = req.body as { title: string; url: string }
+    const itemId = id()
+    await pool.query('INSERT INTO archive_items (id, trip_id, kind, title, body) VALUES ($1,$2,$3,$4,$5)',
+      [itemId, null, 'link', title.trim() || url.trim(), url.trim()])
+    const r = await pool.query(`${ARCHIVE_SELECT} WHERE a.id = $1`, [itemId])
+    res.json(mapArchive(r.rows[0]))
+  })
+
+  app.put('/api/archive/:id', async (req, res) => {
+    const { linkedPlaceId } = req.body as { linkedPlaceId: string | null }
+    await pool.query('UPDATE archive_items SET linked_place_id = $1 WHERE id = $2', [linkedPlaceId, req.params.id])
+    res.json({ ok: true })
   })
 
   app.post('/api/trips/:tripId/archive/memo', async (req, res) => {
