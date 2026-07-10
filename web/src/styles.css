@@ -196,7 +196,7 @@ input[type='text'], input[type='date'], input[type='number'], input[type='passwo
 input:focus, textarea:focus, select:focus { outline: 3px solid var(--pink-soft); }
 textarea { resize: vertical; min-height: 70px; }
 
-.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
 .form-row .field { min-width: 130px; }
 .form-row .grow { flex: 1; }
 
