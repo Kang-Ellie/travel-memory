@@ -2,23 +2,11 @@ import { useEffect, useState } from 'react'
 import type { Trip, Member, Country, City } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { flagEmoji } from '../categories'
+import { flagEmoji, tripCitiesLabel } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import DatePicker from './DatePicker'
-
-function tripCitiesLabel(trip: Trip): string {
-  if (trip.cities.length === 0) return ''
-  const byCountry = new Map<string, string[]>()
-  for (const c of trip.cities) {
-    const key = `${flagEmoji(c.countryCode)} ${c.countryName}`
-    const list = byCountry.get(key) ?? []
-    list.push(c.name)
-    byCountry.set(key, list)
-  }
-  return [...byCountry.entries()].map(([country, names]) => `${country} · ${names.join(', ')}`).join('  /  ')
-}
 
 function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')

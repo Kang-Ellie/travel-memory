@@ -1,4 +1,4 @@
-import { EXPENSE_CATEGORIES, type ExpenseCategory } from '../shared/types'
+import { EXPENSE_CATEGORIES, type ExpenseCategory, type Trip } from '../shared/types'
 
 // dataviz 스킬 검증 통과 팔레트 (light, surface #ffffff) — 고정 순서, 순환 금지.
 // 항상 카테고리명을 함께 라벨로 표기해 색만으로 구분하지 않도록 함(대비 WARN 완화 조건).
@@ -25,4 +25,17 @@ export function ratingColor(n: number): string {
   if (n >= 3.5) return '#2a78d6'
   if (n >= 2.5) return '#fab219'
   return '#d03b3b'
+}
+
+// 여행에 연결된 국가·도시를 "🇯🇵 일본 · 후쿠오카, 벳푸  /  🇰🇷 한국 · 서울" 형태로 요약
+export function tripCitiesLabel(trip: Trip): string {
+  if (trip.cities.length === 0) return ''
+  const byCountry = new Map<string, string[]>()
+  for (const c of trip.cities) {
+    const key = `${flagEmoji(c.countryCode)} ${c.countryName}`
+    const list = byCountry.get(key) ?? []
+    list.push(c.name)
+    byCountry.set(key, list)
+  }
+  return [...byCountry.entries()].map(([country, names]) => `${country} · ${names.join(', ')}`).join('  /  ')
 }
