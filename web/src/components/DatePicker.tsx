@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
@@ -10,30 +11,50 @@ function parseISO(v: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d
 }
 
+interface PanelPos { top: number; left: number }
+
 export default function DatePicker({
   value, onChange, style,
 }: { value: string; onChange: (e: { target: { value: string } }) => void; style?: React.CSSProperties }) {
   const [open, setOpen] = useState(false)
+  const [pos, setPos] = useState<PanelPos | null>(null)
   const [viewYear, setViewYear] = useState(() => (parseISO(value) ?? new Date()).getFullYear())
   const [viewMonth, setViewMonth] = useState(() => (parseISO(value) ?? new Date()).getMonth())
-  const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
-  useEffect(() => {
-    if (!open) return
+  const openPanel = () => {
     const d = parseISO(value) ?? new Date()
     setViewYear(d.getFullYear())
     setViewMonth(d.getMonth())
+    const r = triggerRef.current?.getBoundingClientRect()
+    if (r) {
+      const panelWidth = 240
+      const left = Math.min(r.left, window.innerWidth - panelWidth - 8)
+      setPos({ top: r.bottom + 4, left: Math.max(8, left) })
+    }
+    setOpen(true)
+  }
+
+  useEffect(() => {
+    if (!open) return
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || panelRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const close = () => setOpen(false)
     window.addEventListener('mousedown', onDocClick)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
     return () => {
       window.removeEventListener('mousedown', onDocClick)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const shiftMonth = (delta: number) => {
@@ -57,13 +78,13 @@ export default function DatePicker({
   }
 
   return (
-    <div className="cdate" ref={ref} style={style}>
-      <button type="button" className="cdate-trigger" onClick={() => setOpen((v) => !v)}>
+    <div className="cdate" style={style}>
+      <button ref={triggerRef} type="button" className="cdate-trigger" onClick={() => (open ? setOpen(false) : openPanel())}>
         <span>{value || '날짜 선택'}</span>
         <span>📅</span>
       </button>
-      {open && (
-        <div className="cdate-panel">
+      {open && pos && createPortal(
+        <div ref={panelRef} className="cdate-panel" style={{ position: 'fixed', top: pos.top, left: pos.left }}>
           <div className="cdate-head">
             <button type="button" className="cdate-nav" onClick={() => shiftMonth(-1)}>‹</button>
             <span>{viewYear}.{pad(viewMonth + 1)}</span>
@@ -83,7 +104,8 @@ export default function DatePicker({
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

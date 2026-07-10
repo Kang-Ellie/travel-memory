@@ -92,8 +92,8 @@ function PlaceRow({
   }
 
   return (
-    <div>
-      <div className="row" style={{ cursor: 'pointer', flexWrap: 'wrap' }} onClick={onToggle}>
+    <div className="row place-row" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'pointer' }} onClick={onToggle}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         <span className="chip blue">{place.category}</span>
         {place.countryName && (
           <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
@@ -103,33 +103,30 @@ function PlaceRow({
             ★ {place.rating.toFixed(1)}
           </span>
         )}
-        <div className="grow">
-          <div style={{ fontWeight: 800 }}>
-            {place.name}
-            {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
-          </div>
-          <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
-          {(place.pros || place.cons) && (
-            <div className="muted">
-              {place.pros && <>👍 {place.pros} </>}
-              {place.cons && <>👎 {place.cons}</>}
-            </div>
-          )}
-        </div>
-        <span className="muted">{expanded ? '접기 ▲' : '방문 기록 보기 ▼'}</span>
-        {place.mapUrl && (
-          <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
-            🗺 지도
-          </a>
-        )}
-        <button className="btn small" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>수정</button>
-        <button className="btn small ghost" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
       </div>
-      {linkedBucketItems.length > 0 && (
-        <div className="muted" style={{ padding: '0 12px 8px' }}>
-          ✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}
+      <div style={{ fontWeight: 800, marginTop: 8 }}>
+        {place.name}
+        {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
+      </div>
+      <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
+      {(place.pros || place.cons) && (
+        <div className="muted">
+          {place.pros && <>👍 {place.pros} </>}
+          {place.cons && <>👎 {place.cons}</>}
         </div>
       )}
+      {linkedBucketItems.length > 0 && (
+        <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
+      )}
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+        <span className="muted" style={{ cursor: 'pointer' }} onClick={onToggle}>{expanded ? '접기 ▲' : '방문 기록 보기 ▼'}</span>
+        <span className="grow" />
+        {place.mapUrl && (
+          <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer">🗺 지도</a>
+        )}
+        <button className="btn small" onClick={() => setEditing(true)}>수정</button>
+        <button className="btn small ghost" onClick={remove}>×</button>
+      </div>
       {expanded && <PlaceDetailPanel placeId={place.id} />}
     </div>
   )
@@ -152,7 +149,11 @@ export default function PlacesScreen() {
   const [manAddress, setManAddress] = useState('')
   const [manCategory, setManCategory] = useState('맛집')
   const [manMapUrl, setManMapUrl] = useState('')
+  const [manCountryId, setManCountryId] = useState('')
+  const [manCityId, setManCityId] = useState('')
   const [showAddPlace, setShowAddPlace] = useState(false)
+
+  const manCitiesOfCountry = cities.filter((c) => c.countryId === manCountryId)
 
   const refresh = () => {
     api.places.list().then(setPlaces)
@@ -185,8 +186,11 @@ export default function PlacesScreen() {
 
   const addManual = async () => {
     if (!manName.trim()) return
-    await api.places.create({ name: manName, address: manAddress, category: manCategory, mapUrl: manMapUrl.trim() || null })
-    setManName(''); setManAddress(''); setManMapUrl('')
+    await api.places.create({
+      name: manName, address: manAddress, category: manCategory, mapUrl: manMapUrl.trim() || null,
+      countryId: manCountryId || null, cityId: manCityId || null,
+    })
+    setManName(''); setManAddress(''); setManMapUrl(''); setManCountryId(''); setManCityId('')
     setShowAddPlace(false)
     refresh()
   }
@@ -258,6 +262,24 @@ export default function PlacesScreen() {
                 <label>구글 지도 링크 (선택)</label>
                 <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
               </div>
+            </div>
+            <div className="form-row">
+              <div className="field">
+                <label>국가 (선택)</label>
+                <Select value={manCountryId} onChange={(e) => { setManCountryId(e.target.value); setManCityId('') }}>
+                  <option value="">— 선택 안함 —</option>
+                  {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
+                </Select>
+              </div>
+              {manCountryId && (
+                <div className="field">
+                  <label>도시 (선택)</label>
+                  <Select value={manCityId} onChange={(e) => setManCityId(e.target.value)}>
+                    <option value="">— 선택 안함 —</option>
+                    {manCitiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </Select>
+                </div>
+              )}
             </div>
             <button className="btn primary" onClick={addManual}>＋ 등록</button>
           </Modal>

@@ -239,39 +239,41 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         {expenses.length === 0 ? (
           <div className="empty">아직 지출 기록이 없어요.</div>
         ) : (
-          <table className="simple">
-            <thead>
-              <tr><th>날짜</th><th>내용</th><th>분류</th><th>낸 사람</th><th className="num">금액</th><th /></tr>
-            </thead>
-            <tbody>
-              {expenses.map((e) => (
-                <tr key={e.id}>
-                  <td className="muted">{e.spentAt.slice(0, 10)}</td>
-                  <td>
-                    <div style={{ fontWeight: 700 }}>{e.description}</div>
-                    <div className="muted" style={{ fontSize: 11 }}>
-                      {!e.isShared && '🙋 개인지출 '}
-                      {e.isPrebooked && '📌 사전예약 '}
-                      {e.paymentMethod && `💳 ${e.paymentMethod} `}
-                      {e.memo && `📝 ${e.memo} `}
-                      {e.purchaseItems && `🧾 ${e.purchaseItems}`}
-                    </div>
-                  </td>
-                  <td>
-                    <span className="legend-item">
-                      <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
-                      {e.category}
-                    </span>
-                  </td>
-                  <td>{e.payerName}</td>
-                  <td className="num" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</td>
-                  <td className="num">
-                    <button className="btn small ghost" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="simple">
+              <thead>
+                <tr><th>날짜</th><th>내용</th><th>분류</th><th>낸 사람</th><th className="num">금액</th><th /></tr>
+              </thead>
+              <tbody>
+                {expenses.map((e) => (
+                  <tr key={e.id}>
+                    <td className="muted">{e.spentAt.slice(0, 10)}</td>
+                    <td>
+                      <div style={{ fontWeight: 700 }}>{e.description}</div>
+                      <div className="muted" style={{ fontSize: 11 }}>
+                        {!e.isShared && '🙋 개인지출 '}
+                        {e.isPrebooked && '📌 사전예약 '}
+                        {e.paymentMethod && `💳 ${e.paymentMethod} `}
+                        {e.memo && `📝 ${e.memo} `}
+                        {e.purchaseItems && `🧾 ${e.purchaseItems}`}
+                      </div>
+                    </td>
+                    <td>
+                      <span className="legend-item">
+                        <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
+                        {e.category}
+                      </span>
+                    </td>
+                    <td>{e.payerName}</td>
+                    <td className="num" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</td>
+                    <td className="num">
+                      <button className="btn small ghost" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
@@ -281,23 +283,25 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
           <div style={{ fontWeight: 800, marginBottom: 8 }}>
             🧮 정산 결과 — {s.currency} (총 {fmtMoney(s.total, s.currency)})
           </div>
-          <table className="simple" style={{ marginBottom: 10 }}>
-            <thead>
-              <tr><th>이름</th><th className="num">낸 돈</th><th className="num">부담액</th><th className="num">차액</th></tr>
-            </thead>
-            <tbody>
-              {s.balances.map((b) => (
-                <tr key={b.memberId}>
-                  <td style={{ fontWeight: 700 }}>{b.name}</td>
-                  <td className="num">{fmtMoney(b.paid, s.currency)}</td>
-                  <td className="num">{fmtMoney(b.share, s.currency)}</td>
-                  <td className="num" style={{ fontWeight: 800, color: b.net >= 0 ? '#0a7d38' : '#d63031' }}>
-                    {b.net >= 0 ? '+' : ''}{fmtMoney(b.net, s.currency)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="table-scroll" style={{ marginBottom: 10 }}>
+            <table className="simple">
+              <thead>
+                <tr><th>이름</th><th className="num">낸 돈</th><th className="num">부담액</th><th className="num">차액</th></tr>
+              </thead>
+              <tbody>
+                {s.balances.map((b) => (
+                  <tr key={b.memberId}>
+                    <td style={{ fontWeight: 700 }}>{b.name}</td>
+                    <td className="num">{fmtMoney(b.paid, s.currency)}</td>
+                    <td className="num">{fmtMoney(b.share, s.currency)}</td>
+                    <td className="num" style={{ fontWeight: 800, color: b.net >= 0 ? '#0a7d38' : '#d63031' }}>
+                      {b.net >= 0 ? '+' : ''}{fmtMoney(b.net, s.currency)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {s.transfers.length === 0 ? (
             <div style={{ fontWeight: 700 }}>✅ 서로 주고받을 돈이 없어요!</div>
           ) : s.transfers.map((t, i) => (

@@ -1,4 +1,5 @@
 import { Children, isValidElement, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 
 interface Option {
   value: string
@@ -6,8 +7,15 @@ interface Option {
   disabled?: boolean
 }
 
+interface MenuPos {
+  top: number
+  left: number
+  width: number
+}
+
 // 네이티브 <select>와 동일한 value/onChange/<option> children API를 흉내내서,
 // 기존 코드는 태그명만 <select>→<Select>로 바꾸면 그대로 동작하도록 만든 커스텀 드롭다운.
+// 메뉴는 포털로 body에 fixed 배치해서 모달처럼 스크롤되는 조상 안에서도 잘리지 않게 한다.
 export default function Select({
   value, onChange, children, placeholder, style, disabled,
 }: {
@@ -19,7 +27,9 @@ export default function Select({
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<MenuPos | null>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const options: Option[] = []
   Children.forEach(children, (child) => {
@@ -29,35 +39,56 @@ export default function Select({
     }
   })
 
+  const openMenu = () => {
+    const r = triggerRef.current?.getBoundingClientRect()
+    if (!r) return
+    const width = Math.max(r.width, 160)
+    const left = Math.min(r.left, window.innerWidth - width - 8)
+    setPos({ top: r.bottom + 4, left: Math.max(8, left), width })
+    setOpen(true)
+  }
+
   useEffect(() => {
     if (!open) return
     const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (triggerRef.current?.contains(t) || menuRef.current?.contains(t)) return
+      setOpen(false)
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
+    const close = () => setOpen(false)
     window.addEventListener('mousedown', onDocClick)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
     return () => {
       window.removeEventListener('mousedown', onDocClick)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
     }
   }, [open])
 
   const selected = options.find((o) => o.value === value)
 
   return (
-    <div className="cselect" ref={ref} style={style}>
+    <div className="cselect" style={style}>
       <button
+        ref={triggerRef}
         type="button"
         className={`cselect-trigger ${disabled ? 'disabled' : ''}`}
         disabled={disabled}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? setOpen(false) : openMenu())}
       >
-        <span className="cselect-value">{selected ? selected.label : (placeholder ?? ' ')}</span>
+        <span className="cselect-value">{selected ? selected.label : (placeholder ?? ' ')}</span>
         <span className="cselect-arrow">▾</span>
       </button>
-      {open && (
-        <div className="cselect-menu">
+      {open && pos && createPortal(
+        <div
+          ref={menuRef}
+          className="cselect-menu"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width, minWidth: pos.width }}
+        >
           {options.map((o, i) => (
             <div
               key={`${o.value}-${i}`}
@@ -71,7 +102,8 @@ export default function Select({
               {o.label}
             </div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )
