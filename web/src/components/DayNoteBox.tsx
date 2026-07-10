@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { DayNote } from '../../shared/types'
 import { api } from '../api'
+import Modal from './Modal'
 
 const WEATHER_EMOJIS = ['☀️', '🌤', '⛅', '☁️', '🌧', '⛈', '❄️', '🌫', '💨']
 
@@ -41,30 +42,34 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
 
   if (editing) {
     return (
-      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start', background: 'var(--yellow-soft)' }}>
-        <div className="field" style={{ width: '100%' }}>
-          <label>오늘의 날씨</label>
-          <div className="emoji-pick-row">
-            {WEATHER_EMOJIS.map((e) => (
-              <button key={e} type="button" className={`emoji-pick ${weatherEmoji === e ? 'active' : ''}`}
-                onClick={() => setWeatherEmoji(weatherEmoji === e ? '' : e)}>{e}</button>
-            ))}
-            <input type="number" value={weatherTemp} placeholder="온도(°C)" style={{ width: 90 }}
-              onChange={(e) => setWeatherTemp(e.target.value)} />
+      <Modal title="오늘의 기록" onClose={() => setEditing(false)}>
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start', border: 'none', padding: 0, margin: 0 }}>
+          <div className="field" style={{ width: '100%' }}>
+            <label>오늘의 날씨</label>
+            <div className="emoji-pick-row">
+              {WEATHER_EMOJIS.map((e) => (
+                <button key={e} type="button" className={`emoji-pick ${weatherEmoji === e ? 'active' : ''}`}
+                  onClick={() => setWeatherEmoji(weatherEmoji === e ? '' : e)}>{e}</button>
+              ))}
+              <input type="number" value={weatherTemp} placeholder="온도(°C)" style={{ width: 90 }}
+                onChange={(e) => setWeatherTemp(e.target.value)} />
+            </div>
+          </div>
+          <div className="field grow" style={{ minWidth: 220 }}>
+            <label>오늘은 어떤 날?</label>
+            <input type="text" value={text} placeholder="예: 느긋하게 시작하는 첫날" onChange={(e) => setText(e.target.value)} />
+          </div>
+          <div className="field" style={{ width: '100%' }}>
+            <label>오늘의 일기</label>
+            <textarea value={diary} placeholder="오늘 하루를 조금 더 길게 남겨보세요."
+              onChange={(e) => setDiary(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn small primary" onClick={save}>저장</button>
+            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
           </div>
         </div>
-        <div className="field grow" style={{ minWidth: 220 }}>
-          <label>오늘은 어떤 날?</label>
-          <input type="text" value={text} placeholder="예: 느긋하게 시작하는 첫날" onChange={(e) => setText(e.target.value)} />
-        </div>
-        <div className="field" style={{ width: '100%' }}>
-          <label>오늘의 일기</label>
-          <textarea value={diary} placeholder="오늘 하루를 조금 더 길게 남겨보세요."
-            onChange={(e) => setDiary(e.target.value)} style={{ width: '100%' }} />
-        </div>
-        <button className="btn small primary" onClick={save}>저장</button>
-        <button className="btn small" onClick={() => setEditing(false)}>취소</button>
-      </div>
+      </Modal>
     )
   }
 

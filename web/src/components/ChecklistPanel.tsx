@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ChecklistScope, ChecklistItem } from '../../shared/types'
 import { api } from '../api'
+import Modal from './Modal'
 
 export default function ChecklistPanel({
   tripId, scope, dayNumber, title, addPlaceholder,
@@ -22,7 +23,6 @@ export default function ChecklistPanel({
     if (!text.trim()) return
     await api.checklist.create({ tripId, scope, dayNumber: dayNumber ?? null, text: text.trim() })
     setText('')
-    setShowAdd(false)
     refresh()
   }
   const toggle = async (item: ChecklistItem) => {
@@ -38,7 +38,7 @@ export default function ChecklistPanel({
     <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <strong className="grow">{title}</strong>
-        <button className="btn small ghost" onClick={() => setShowAdd((v) => !v)}>{showAdd ? '닫기' : '＋'}</button>
+        <button className="btn small ghost" onClick={() => setShowAdd(true)}>＋</button>
       </div>
       {items.length === 0 ? (
         <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
@@ -54,12 +54,14 @@ export default function ChecklistPanel({
         </div>
       )}
       {showAdd && (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input type="text" value={text} placeholder={addPlaceholder} autoFocus
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && add()} />
-          <button className="btn small primary" onClick={add}>추가</button>
-        </div>
+        <Modal title={`${title} — 항목 추가`} onClose={() => setShowAdd(false)}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <input type="text" value={text} placeholder={addPlaceholder} autoFocus
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && add()} />
+            <button className="btn small primary" onClick={add}>추가</button>
+          </div>
+        </Modal>
       )}
     </div>
   )

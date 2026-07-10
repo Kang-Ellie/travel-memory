@@ -3,6 +3,7 @@ import type { Country, City } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
+import Modal from './Modal'
 
 type CountryForm = Omit<Country, 'id' | 'createdAt'>
 
@@ -68,16 +69,20 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
 
   if (editing) {
     return (
-      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--yellow-soft)' }}>
-        <div className="field"><label>도시명</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div className="field"><label>항공 소요시간</label>
-          <input type="text" value={flightDuration} placeholder="1시간 15분" onChange={(e) => setFlightDuration(e.target.value)} /></div>
-        <div className="field"><label>시차</label>
-          <input type="text" value={timeDiff} placeholder="차이없음" onChange={(e) => setTimeDiff(e.target.value)} /></div>
-        <button className="btn small primary" onClick={save}>저장</button>
-        <button className="btn small" onClick={() => setEditing(false)}>취소</button>
-      </div>
+      <Modal title={`${city.name} 수정`} onClose={() => setEditing(false)}>
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+          <div className="field"><label>도시명</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field"><label>항공 소요시간</label>
+            <input type="text" value={flightDuration} placeholder="1시간 15분" onChange={(e) => setFlightDuration(e.target.value)} /></div>
+          <div className="field"><label>시차</label>
+            <input type="text" value={timeDiff} placeholder="차이없음" onChange={(e) => setTimeDiff(e.target.value)} /></div>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn small primary" onClick={save}>저장</button>
+            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
+          </div>
+        </div>
+      </Modal>
     )
   }
 
@@ -103,6 +108,7 @@ function CountryRow({
 }: { country: Country; cities: City[]; expanded: boolean; onToggle: () => void; onChanged: () => void }) {
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<CountryForm>(country)
+  const [showAddCity, setShowAddCity] = useState(false)
   const [cityName, setCityName] = useState('')
   const [cityFlight, setCityFlight] = useState('')
   const [cityDiff, setCityDiff] = useState('')
@@ -124,32 +130,34 @@ function CountryRow({
       flightDuration: cityFlight.trim() || null, timeDiff: cityDiff.trim() || null,
     })
     setCityName(''); setCityFlight(''); setCityDiff('')
+    setShowAddCity(false)
     onChanged()
   }
 
   return (
     <div>
-      <div className="row" style={{ cursor: 'pointer' }} onClick={() => { if (!editing) onToggle() }}>
+      <div className="row" style={{ cursor: 'pointer' }} onClick={onToggle}>
         <span style={{ fontSize: 22 }}>{flagEmoji(country.code)}</span>
         <div className="grow">
           <div style={{ fontWeight: 800 }}>{country.name}</div>
           <div className="muted">{cities.length}개 도시 등록됨</div>
         </div>
         <span className="muted">{expanded ? '접기 ▲' : '상세 보기 ▼'}</span>
-        <button className="btn small" onClick={(e) => { e.stopPropagation(); setForm(country); setEditing((v) => !v); if (!expanded) onToggle() }}>
-          {editing ? '닫기' : '수정'}
-        </button>
+        <button className="btn small" onClick={(e) => { e.stopPropagation(); setForm(country); setEditing(true) }}>수정</button>
         <button className="btn small ghost" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
       </div>
 
-      {expanded && editing && (
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--yellow-soft)' }}>
+      {editing && (
+        <Modal title={`${country.name} 수정`} onClose={() => setEditing(false)}>
           <CountryFields form={form} onChange={setForm} />
-          <div><button className="btn small primary" onClick={save}>저장</button></div>
-        </div>
+          <div>
+            <button className="btn small primary" onClick={save}>저장</button>
+            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
+          </div>
+        </Modal>
       )}
 
-      {expanded && !editing && (
+      {expanded && (
         <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
           <div className="form-row" style={{ fontSize: 13 }}>
             <div><strong>수도</strong> {country.capital || '—'}</div>
@@ -167,16 +175,24 @@ function CountryRow({
             {cities.length === 0 ? (
               <div className="muted" style={{ marginTop: 6 }}>아직 등록된 도시가 없어요.</div>
             ) : cities.map((c) => <CityRow key={c.id} city={c} onChanged={onChanged} />)}
-            <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div className="field"><label>새 도시</label>
-                <input type="text" value={cityName} placeholder="예: 후쿠오카" onChange={(e) => setCityName(e.target.value)} /></div>
-              <div className="field"><label>항공 소요시간</label>
-                <input type="text" value={cityFlight} placeholder="1시간 15분" onChange={(e) => setCityFlight(e.target.value)} /></div>
-              <div className="field"><label>시차</label>
-                <input type="text" value={cityDiff} placeholder="차이없음" onChange={(e) => setCityDiff(e.target.value)} /></div>
-              <button className="btn small" onClick={addCity}>＋ 도시 추가</button>
-            </div>
+            <button className="btn small" style={{ marginTop: 8 }} onClick={() => setShowAddCity(true)}>＋ 도시 추가</button>
           </div>
+
+          {showAddCity && (
+            <Modal title={`${country.name} — 도시 추가`} onClose={() => setShowAddCity(false)}>
+              <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+                <div className="field"><label>도시명</label>
+                  <input type="text" value={cityName} placeholder="예: 후쿠오카" onChange={(e) => setCityName(e.target.value)} /></div>
+                <div className="field"><label>항공 소요시간</label>
+                  <input type="text" value={cityFlight} placeholder="1시간 15분" onChange={(e) => setCityFlight(e.target.value)} /></div>
+                <div className="field"><label>시차</label>
+                  <input type="text" value={cityDiff} placeholder="차이없음" onChange={(e) => setCityDiff(e.target.value)} /></div>
+                <div style={{ marginTop: 12 }}>
+                  <button className="btn small primary" onClick={addCity}>＋ 도시 추가</button>
+                </div>
+              </div>
+            </Modal>
+          )}
         </div>
       )}
     </div>
@@ -217,18 +233,18 @@ export default function CountriesScreen() {
         <p className="muted" style={{ marginTop: 0 }}>
           국가별 기본 정보를 한 번 등록해두면 여행을 만들 때 나라·도시를 골라서 자동으로 연결할 수 있어요.
         </p>
-        {!creating ? (
-          <button className="btn primary" onClick={() => setCreating(true)}>＋ 새 국가 등록</button>
-        ) : (
-          <>
-            <CountryFields form={form} onChange={setForm} />
-            <div style={{ marginTop: 8 }}>
-              <button className="btn primary" onClick={create}>등록</button>
-              <button className="btn" style={{ marginLeft: 6 }} onClick={() => { setCreating(false); setForm(EMPTY_FORM) }}>취소</button>
-            </div>
-          </>
-        )}
+        <button className="btn primary" onClick={() => setCreating(true)}>＋ 새 국가 등록</button>
       </Window>
+
+      {creating && (
+        <Modal title="새 국가 등록" onClose={() => { setCreating(false); setForm(EMPTY_FORM) }}>
+          <CountryFields form={form} onChange={setForm} />
+          <div style={{ marginTop: 8 }}>
+            <button className="btn primary" onClick={create}>등록</button>
+            <button className="btn" style={{ marginLeft: 6 }} onClick={() => { setCreating(false); setForm(EMPTY_FORM) }}>취소</button>
+          </div>
+        </Modal>
+      )}
 
       <Window title="COUNTRIES.EXE" color="green">
         {countries.length === 0 ? (

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ArchiveItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import Lightbox from './Lightbox'
+import Modal from './Modal'
 
 const ICON: Record<ArchiveItem['kind'], string> = { memo: '📝', link: '🔗', image: '🖼' }
 
@@ -45,6 +46,7 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
   const [mode, setMode] = useState<'memo' | 'link'>('memo')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const refresh = () => { api.archive.list(tripId).then(setItems) }
@@ -54,12 +56,14 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
     if (!body.trim()) return
     await api.archive.addMemo({ tripId, title: title.trim() || '메모', body })
     setTitle(''); setBody('')
+    setShowAdd(false)
     refresh()
   }
   const addLink = async () => {
     if (!body.trim()) return
     await api.archive.addLink({ tripId, title: title.trim(), url: body.trim() })
     setTitle(''); setBody('')
+    setShowAdd(false)
     refresh()
   }
   const onImagesPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -74,22 +78,31 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
     <div className="archive-board">
       <input ref={fileInput} type="file" multiple accept="image/*" hidden onChange={onImagesPicked} />
       <div className="archive-add-tabs">
-        <button className={`pill ${mode === 'memo' ? 'active' : ''}`} onClick={() => setMode('memo')}>📝 메모</button>
-        <button className={`pill ${mode === 'link' ? 'active' : ''}`} onClick={() => setMode('link')}>🔗 링크</button>
+        <button className="pill" onClick={() => { setMode('memo'); setShowAdd(true) }}>📝 메모 추가</button>
+        <button className="pill" onClick={() => { setMode('link'); setShowAdd(true) }}>🔗 링크 추가</button>
         <button className="pill" onClick={() => fileInput.current?.click()}>🖼 이미지 추가</button>
       </div>
-      <div className="field" style={{ marginBottom: 6 }}>
-        <input type="text" value={title} placeholder={mode === 'memo' ? '제목 (선택)' : '어디서 봤는지 (선택)'}
-          onChange={(e) => setTitle(e.target.value)} />
-      </div>
-      {mode === 'memo' ? (
-        <textarea value={body} placeholder="찾아본 정보, 아이디어, 하고 싶은 것 등을 자유롭게 적어두세요."
-          onChange={(e) => setBody(e.target.value)} style={{ marginBottom: 8, width: '100%' }} />
-      ) : (
-        <input type="text" value={body} placeholder="https://..." onChange={(e) => setBody(e.target.value)}
-          style={{ marginBottom: 8, width: '100%' }} />
+
+      {showAdd && (
+        <Modal title={mode === 'memo' ? '메모 추가' : '링크 추가'} onClose={() => setShowAdd(false)}>
+          <div className="archive-add-tabs">
+            <button className={`pill ${mode === 'memo' ? 'active' : ''}`} onClick={() => setMode('memo')}>📝 메모</button>
+            <button className={`pill ${mode === 'link' ? 'active' : ''}`} onClick={() => setMode('link')}>🔗 링크</button>
+          </div>
+          <div className="field" style={{ marginBottom: 6 }}>
+            <input type="text" value={title} placeholder={mode === 'memo' ? '제목 (선택)' : '어디서 봤는지 (선택)'}
+              onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          {mode === 'memo' ? (
+            <textarea value={body} placeholder="찾아본 정보, 아이디어, 하고 싶은 것 등을 자유롭게 적어두세요."
+              onChange={(e) => setBody(e.target.value)} style={{ marginBottom: 8, width: '100%' }} />
+          ) : (
+            <input type="text" value={body} placeholder="https://..." onChange={(e) => setBody(e.target.value)}
+              style={{ marginBottom: 8, width: '100%' }} />
+          )}
+          <button className="btn primary small" onClick={mode === 'memo' ? addMemo : addLink}>보관함에 저장</button>
+        </Modal>
       )}
-      <button className="btn primary small" onClick={mode === 'memo' ? addMemo : addLink}>보관함에 저장</button>
 
       <div className="section-gap">
         {items.length === 0 ? (

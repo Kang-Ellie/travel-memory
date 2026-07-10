@@ -3,6 +3,9 @@ import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api } from '../api'
 import { computeSettlement, fmtMoney } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
+import Modal from './Modal'
+import Select from './Select'
+import DatePicker from './DatePicker'
 
 const CURRENCIES = ['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND']
 
@@ -28,6 +31,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [isShared, setIsShared] = useState(true)
   const [isPrebooked, setIsPrebooked] = useState(false)
   const [showMoreFields, setShowMoreFields] = useState(false)
+  const [showAddExpense, setShowAddExpense] = useState(false)
 
   const refresh = () => {
     api.tripMembers.list(trip.id).then((ms) => {
@@ -81,6 +85,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     })
     setDescription(''); setAmount(''); setPaymentMethod(''); setMemo(''); setPurchaseItems('')
     setIsShared(true); setIsPrebooked(false)
+    setShowAddExpense(false)
     refresh()
   }
 
@@ -138,85 +143,95 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
 
       {/* 지출 추가 */}
       {participants.length > 0 && (
-        <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div className="field grow">
-            <label>내용</label>
-            <input type="text" value={description} placeholder="예: 점심 - 멘타이쥬"
-              onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          <div className="field" style={{ minWidth: 110 }}>
-            <label>금액</label>
-            <input type="number" value={amount} min={0} onChange={(e) => setAmount(e.target.value)} />
-          </div>
-          <div className="field" style={{ minWidth: 90 }}>
-            <label>통화</label>
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-              {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="field" style={{ minWidth: 90 }}>
-            <label>분류</label>
-            <select value={category} onChange={(e) => setCategory(e.target.value)}>
-              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>낸 사람</label>
-            <select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-              {participants.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label>날짜</label>
-            <input type="date" value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
-          </div>
-          <div className="field">
-            <label>구분</label>
-            <div style={{ display: 'flex', gap: 10, padding: '8px 0' }}>
-              <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} /> 공동지출
-              </label>
-              <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                <input type="checkbox" checked={isPrebooked} onChange={(e) => setIsPrebooked(e.target.checked)} /> 사전예약
-              </label>
+        <div className="row">
+          <button className="btn primary small" onClick={() => setShowAddExpense(true)}>＋ 지출 기록</button>
+        </div>
+      )}
+
+      {showAddExpense && (
+        <Modal title="지출 기록" onClose={() => setShowAddExpense(false)}>
+          <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
+            <div className="field grow">
+              <label>내용</label>
+              <input type="text" value={description} placeholder="예: 점심 - 멘타이쥬"
+                onChange={(e) => setDescription(e.target.value)} />
             </div>
-          </div>
-          {isShared && (
+            <div className="field" style={{ minWidth: 110 }}>
+              <label>금액</label>
+              <input type="number" value={amount} min={0} onChange={(e) => setAmount(e.target.value)} />
+            </div>
+            <div className="field" style={{ minWidth: 90 }}>
+              <label>통화</label>
+              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </div>
+            <div className="field" style={{ minWidth: 90 }}>
+              <label>분류</label>
+              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select>
+            </div>
             <div className="field">
-              <label>정산 대상</label>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
-                {participants.map((m) => (
-                  <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                    <input type="checkbox" checked={splitWith.has(m.id)}
-                      onChange={(e) => {
-                        const next = new Set(splitWith)
-                        e.target.checked ? next.add(m.id) : next.delete(m.id)
-                        setSplitWith(next)
-                      }} />
-                    {m.name}
-                  </label>
-                ))}
+              <label>낸 사람</label>
+              <Select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
+                {participants.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+              </Select>
+            </div>
+            <div className="field">
+              <label>날짜</label>
+              <DatePicker value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>구분</label>
+              <div style={{ display: 'flex', gap: 10, padding: '8px 0' }}>
+                <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                  <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} /> 공동지출
+                </label>
+                <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                  <input type="checkbox" checked={isPrebooked} onChange={(e) => setIsPrebooked(e.target.checked)} /> 사전예약
+                </label>
               </div>
             </div>
-          )}
-          <button className="btn small" type="button" onClick={() => setShowMoreFields((v) => !v)}>
-            {showMoreFields ? '상세 닫기' : '＋ 결제수단·메모·구매목록'}
-          </button>
-          {showMoreFields && (
-            <>
-              <div className="field"><label>결제수단</label>
-                <input type="text" value={paymentMethod} placeholder="예: 카드"
-                  onChange={(e) => setPaymentMethod(e.target.value)} /></div>
-              <div className="field grow"><label>메모</label>
-                <input type="text" value={memo} placeholder="자유 메모"
-                  onChange={(e) => setMemo(e.target.value)} /></div>
-              <div className="field grow"><label>구매목록</label>
-                <input type="text" value={purchaseItems} placeholder="예: 멘타이쥬 2인분, 음료 1개"
-                  onChange={(e) => setPurchaseItems(e.target.value)} /></div>
-            </>
-          )}
-          <button className="btn primary" onClick={addExpense}>기록 ✏️</button>
-        </div>
+            {isShared && (
+              <div className="field">
+                <label>정산 대상</label>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
+                  {participants.map((m) => (
+                    <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
+                      <input type="checkbox" checked={splitWith.has(m.id)}
+                        onChange={(e) => {
+                          const next = new Set(splitWith)
+                          e.target.checked ? next.add(m.id) : next.delete(m.id)
+                          setSplitWith(next)
+                        }} />
+                      {m.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+            <button className="btn small" type="button" onClick={() => setShowMoreFields((v) => !v)}>
+              {showMoreFields ? '상세 닫기' : '＋ 결제수단·메모·구매목록'}
+            </button>
+            {showMoreFields && (
+              <>
+                <div className="field"><label>결제수단</label>
+                  <input type="text" value={paymentMethod} placeholder="예: 카드"
+                    onChange={(e) => setPaymentMethod(e.target.value)} /></div>
+                <div className="field grow"><label>메모</label>
+                  <input type="text" value={memo} placeholder="자유 메모"
+                    onChange={(e) => setMemo(e.target.value)} /></div>
+                <div className="field grow"><label>구매목록</label>
+                  <input type="text" value={purchaseItems} placeholder="예: 멘타이쥬 2인분, 음료 1개"
+                    onChange={(e) => setPurchaseItems(e.target.value)} /></div>
+              </>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <button className="btn primary" onClick={addExpense}>기록 ✏️</button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* 지출 목록 */}

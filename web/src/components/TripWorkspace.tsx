@@ -12,6 +12,7 @@ import DayNoteBox from './DayNoteBox'
 import Lightbox from './Lightbox'
 import ChecklistPanel from './ChecklistPanel'
 import Modal from './Modal'
+import Select from './Select'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -71,23 +72,27 @@ function TransitChip({
 
   if (editing) {
     return (
-      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--yellow-soft)', marginLeft: 22 }}>
-        <div className="field"><label>위치</label>
-          <select value={afterEventId} onChange={(e) => setAfterEventId(e.target.value)}>
-            <option value="">맨 앞 (첫 일정 전)</option>
-            {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
-          </select></div>
-        <div className="field"><label>교통수단</label>
-          <select value={mode} onChange={(e) => setMode(e.target.value)}>
-            {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
-          </select></div>
-        <div className="field"><label>소요시간</label>
-          <input type="text" value={durationText} onChange={(e) => setDurationText(e.target.value)} /></div>
-        <div className="field grow"><label>비고</label>
-          <input type="text" value={note} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setNote(e.target.value)} /></div>
-        <button className="btn small primary" onClick={save}>저장</button>
-        <button className="btn small" onClick={() => setEditing(false)}>취소</button>
-      </div>
+      <Modal title="이동 구간 수정" onClose={() => setEditing(false)}>
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+          <div className="field"><label>위치</label>
+            <Select value={afterEventId} onChange={(e) => setAfterEventId(e.target.value)}>
+              <option value="">맨 앞 (첫 일정 전)</option>
+              {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
+            </Select></div>
+          <div className="field"><label>교통수단</label>
+            <Select value={mode} onChange={(e) => setMode(e.target.value)}>
+              {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
+            </Select></div>
+          <div className="field"><label>소요시간</label>
+            <input type="text" value={durationText} onChange={(e) => setDurationText(e.target.value)} /></div>
+          <div className="field grow"><label>비고</label>
+            <input type="text" value={note} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setNote(e.target.value)} /></div>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn small primary" onClick={save}>저장</button>
+            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
+          </div>
+        </div>
+      </Modal>
     )
   }
 
@@ -103,10 +108,9 @@ function TransitChip({
         vouchers.length === 0 ? (
           <span className="muted">[📎 바우처] 탭에 먼저 파일을 올려두세요.</span>
         ) : (
-          <select defaultValue="" onChange={(e) => linkVoucher(e.target.value)}>
-            <option value="" disabled>바우처 선택</option>
+          <Select value="" onChange={(e) => linkVoucher(e.target.value)} placeholder="바우처 선택">
             {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
-          </select>
+          </Select>
         )
       ) : (
         <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
@@ -280,10 +284,10 @@ function EventCard({
         </div>
 
         <div className="event-content-col">
-          {editing ? (
-            <>
+          {editing && (
+            <Modal title={`${ev.place.name} 수정`} onClose={() => setEditing(false)}>
               {isAirport && (
-                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)', marginBottom: 8 }}>
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
                   <div className="field"><label>✈️ 출발시간</label>
                     <input type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
                   <div className="field"><label>🛬 도착시간</label>
@@ -307,10 +311,10 @@ function EventCard({
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>✨ 버킷리스트 연결 (선택)</label>
-                <select value={bucketItemId} onChange={(e) => setBucketItemId(e.target.value)}>
+                <Select value={bucketItemId} onChange={(e) => setBucketItemId(e.target.value)}>
                   <option value="">— 선택 안함 —</option>
                   {bucketItems.map((b) => <option key={b.id} value={b.id}>{b.done ? '✓ ' : ''}{b.title}</option>)}
-                </select>
+                </Select>
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>리뷰 · 사진 일기</label>
@@ -324,8 +328,9 @@ function EventCard({
               </div>
               <button className="btn small primary" onClick={save}>저장</button>
               <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
-            </>
-          ) : (
+            </Modal>
+          )}
+          {!editing && (
             <>
               {isAirport && ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) && (
                 <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>
@@ -370,32 +375,36 @@ function EventCard({
             <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>
           </span>
         ))}
-        {!showExpenseForm ? (
-          <button className="btn small" onClick={() => setShowExpenseForm(true)}>＋ 비용 기록</button>
-        ) : (
-          <>
+        <button className="btn small" onClick={() => setShowExpenseForm(true)}>＋ 비용 기록</button>
+      </div>
+
+      {showExpenseForm && (
+        <Modal title="비용 기록" onClose={() => setShowExpenseForm(false)}>
+          <div className="row" style={{ flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
             <input type="number" placeholder="금액" value={qe.amount} style={{ width: 90 }}
               onChange={(e) => setQe((s) => ({ ...s, amount: e.target.value }))} />
-            <select value={qe.currency} onChange={(e) => setQe((s) => ({ ...s, currency: e.target.value }))}>
+            <Select value={qe.currency} onChange={(e) => setQe((s) => ({ ...s, currency: e.target.value }))}>
               {['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND'].map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select value={qe.category} onChange={(e) => setQe((s) => ({ ...s, category: e.target.value }))}>
+            </Select>
+            <Select value={qe.category} onChange={(e) => setQe((s) => ({ ...s, category: e.target.value }))}>
               {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </Select>
             <input type="text" placeholder="뭘 먹었는지/샀는지" value={qe.purchaseItems} style={{ width: 140 }}
               onChange={(e) => setQe((s) => ({ ...s, purchaseItems: e.target.value }))} />
             {participants.length > 0 ? (
-              <select value={qe.paidBy} onChange={(e) => setQe((s) => ({ ...s, paidBy: e.target.value }))}>
+              <Select value={qe.paidBy} onChange={(e) => setQe((s) => ({ ...s, paidBy: e.target.value }))}>
                 {participants.map((m) => <option key={m.id} value={m.id}>{m.name} 냄</option>)}
-              </select>
+              </Select>
             ) : (
               <span className="muted">[🧮 정산] 탭에서 참여자를 먼저 추가하세요.</span>
             )}
-            <button className="btn small primary" onClick={addExpense}>기록</button>
-            <button className="btn small ghost" onClick={() => setShowExpenseForm(false)}>취소</button>
-          </>
-        )}
-      </div>
+            <div style={{ marginTop: 12 }}>
+              <button className="btn small primary" onClick={addExpense}>기록</button>
+              <button className="btn small ghost" onClick={() => setShowExpenseForm(false)} style={{ marginLeft: 6 }}>취소</button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -517,11 +526,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     <>
       <div className="field grow">
         <label>장소 선택</label>
-        <select value={selPlace} onChange={(e) => setSelPlace(e.target.value)}>
+        <Select value={selPlace} onChange={(e) => setSelPlace(e.target.value)}>
           <option value="">— 장소 선택 —</option>
           <option value="__new">✚ 새 장소 바로 등록</option>
           {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
-        </select>
+        </Select>
       </div>
       {selPlace === '__new' && (
         <>
@@ -535,9 +544,9 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           </div>
           <div className="field">
             <label>분류</label>
-            <select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
+            <Select value={newCategory} onChange={(e) => setNewCategory(e.target.value)}>
               {PLACE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </Select>
           </div>
           <div className="field grow">
             <label>구글 지도 링크 (선택)</label>
@@ -555,16 +564,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     <>
       <div className="field">
         <label>위치</label>
-        <select value={transitAfterId} onChange={(e) => setTransitAfterId(e.target.value)}>
+        <Select value={transitAfterId} onChange={(e) => setTransitAfterId(e.target.value)}>
           <option value="">맨 앞 (첫 일정 전)</option>
           {dayEvents.map((e) => <option key={e.id} value={e.id}>{e.place.name} 다음</option>)}
-        </select>
+        </Select>
       </div>
       <div className="field">
         <label>교통수단</label>
-        <select value={transitMode} onChange={(e) => setTransitMode(e.target.value)}>
+        <Select value={transitMode} onChange={(e) => setTransitMode(e.target.value)}>
           {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
-        </select>
+        </Select>
       </div>
       <div className="field">
         <label>소요시간</label>

@@ -3,6 +3,8 @@ import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../
 import { api } from '../api'
 import { flagEmoji, ratingColor } from '../categories'
 import Window from './Window'
+import Modal from './Modal'
+import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
@@ -48,40 +50,44 @@ function PlaceRow({
 
   if (editing) {
     return (
-      <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--yellow-soft)' }}>
-        <div className="field"><label>이름</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div className="field grow"><label>주소</label>
-          <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} /></div>
-        <div className="field"><label>분류</label>
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select></div>
-        <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
-          <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
-        <div className="field grow"><label>구글 지도 링크</label>
-          <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." onChange={(e) => setMapUrl(e.target.value)} /></div>
-        <div className="field"><label>국가 (선택)</label>
-          <select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
-            <option value="">— 선택 안함 —</option>
-            {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
-          </select></div>
-        {countryId && (
-          <div className="field"><label>도시 (선택)</label>
-            <select value={cityId} onChange={(e) => setCityId(e.target.value)}>
+      <Modal title={`${place.name} 수정`} onClose={() => setEditing(false)}>
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+          <div className="field"><label>이름</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
+          <div className="field grow"><label>주소</label>
+            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} /></div>
+          <div className="field"><label>분류</label>
+            <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </Select></div>
+          <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
+            <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
+          <div className="field grow"><label>구글 지도 링크</label>
+            <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." onChange={(e) => setMapUrl(e.target.value)} /></div>
+          <div className="field"><label>국가 (선택)</label>
+            <Select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
               <option value="">— 선택 안함 —</option>
-              {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select></div>
-        )}
-        <div className="field grow"><label>메모</label>
-          <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
-        <div className="field grow"><label>👍 장점</label>
-          <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
-        <div className="field grow"><label>👎 단점</label>
-          <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
-        <button className="btn small primary" onClick={save}>저장</button>
-        <button className="btn small" onClick={() => setEditing(false)}>취소</button>
-      </div>
+              {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
+            </Select></div>
+          {countryId && (
+            <div className="field"><label>도시 (선택)</label>
+              <Select value={cityId} onChange={(e) => setCityId(e.target.value)}>
+                <option value="">— 선택 안함 —</option>
+                {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select></div>
+          )}
+          <div className="field grow"><label>메모</label>
+            <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
+          <div className="field grow"><label>👍 장점</label>
+            <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
+          <div className="field grow"><label>👎 단점</label>
+            <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
+          <div style={{ marginTop: 12 }}>
+            <button className="btn small primary" onClick={save}>저장</button>
+            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
+          </div>
+        </div>
+      </Modal>
     )
   }
 
@@ -146,6 +152,7 @@ export default function PlacesScreen() {
   const [manAddress, setManAddress] = useState('')
   const [manCategory, setManCategory] = useState('맛집')
   const [manMapUrl, setManMapUrl] = useState('')
+  const [showAddPlace, setShowAddPlace] = useState(false)
 
   const refresh = () => {
     api.places.list().then(setPlaces)
@@ -180,6 +187,7 @@ export default function PlacesScreen() {
     if (!manName.trim()) return
     await api.places.create({ name: manName, address: manAddress, category: manCategory, mapUrl: manMapUrl.trim() || null })
     setManName(''); setManAddress(''); setManMapUrl('')
+    setShowAddPlace(false)
     refresh()
   }
 
@@ -225,27 +233,35 @@ export default function PlacesScreen() {
           모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 평점·장단점·국가/도시·구글 지도
           링크는 등록 후 [수정]에서 채울 수 있어요.
         </p>
-        <div className="form-row" style={{ marginBottom: 14 }}>
-          <div className="field">
-            <label>직접 등록 — 이름</label>
-            <input type="text" value={manName} onChange={(e) => setManName(e.target.value)} placeholder="장소명" />
-          </div>
-          <div className="field grow">
-            <label>주소 (선택)</label>
-            <input type="text" value={manAddress} onChange={(e) => setManAddress(e.target.value)} placeholder="주소" />
-          </div>
-          <div className="field">
-            <label>분류</label>
-            <select value={manCategory} onChange={(e) => setManCategory(e.target.value)}>
-              {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-          <div className="field grow">
-            <label>구글 지도 링크 (선택)</label>
-            <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
-          </div>
-          <button className="btn" onClick={addManual}>＋ 등록</button>
+        <div className="row" style={{ marginBottom: 14 }}>
+          <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 직접 등록</button>
         </div>
+
+        {showAddPlace && (
+          <Modal title="장소 직접 등록" onClose={() => setShowAddPlace(false)}>
+            <div className="form-row">
+              <div className="field">
+                <label>이름</label>
+                <input type="text" value={manName} onChange={(e) => setManName(e.target.value)} placeholder="장소명" />
+              </div>
+              <div className="field grow">
+                <label>주소 (선택)</label>
+                <input type="text" value={manAddress} onChange={(e) => setManAddress(e.target.value)} placeholder="주소" />
+              </div>
+              <div className="field">
+                <label>분류</label>
+                <Select value={manCategory} onChange={(e) => setManCategory(e.target.value)}>
+                  {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </Select>
+              </div>
+              <div className="field grow">
+                <label>구글 지도 링크 (선택)</label>
+                <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+              </div>
+            </div>
+            <button className="btn primary" onClick={addManual}>＋ 등록</button>
+          </Modal>
+        )}
 
         <div className="day-tabs">
           {CATEGORIES.map((c) => (

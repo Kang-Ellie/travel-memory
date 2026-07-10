@@ -197,6 +197,118 @@ input:focus, textarea:focus, select:focus { outline: 3px solid var(--pink-soft);
 textarea { resize: vertical; min-height: 70px; }
 
 .form-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px; }
+
+/* ── 커스텀 드롭다운(Select) ────────────── */
+.cselect { position: relative; display: inline-block; min-width: 120px; }
+.cselect-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.cselect-trigger:hover { background: var(--pink-soft); }
+.cselect-trigger.disabled { opacity: 0.45; cursor: default; background: #fff; }
+.cselect-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cselect-arrow { font-size: 11px; flex-shrink: 0; }
+.cselect-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 240px;
+  overflow-y: auto;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--shadow);
+  z-index: 120;
+  padding: 4px;
+}
+.cselect-option {
+  padding: 7px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cselect-option:hover { background: var(--blue-soft); }
+.cselect-option.active { background: var(--pink); color: #fff; }
+.cselect-option.disabled { opacity: 0.4; cursor: default; }
+
+/* ── 커스텀 날짜 선택(DatePicker) ──────────── */
+.cdate { position: relative; display: inline-block; }
+.cdate-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+  min-width: 140px;
+}
+.cdate-trigger:hover { background: var(--pink-soft); }
+.cdate-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  background: #fff;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 4px 4px 0 var(--shadow);
+  z-index: 120;
+  padding: 10px;
+  width: 240px;
+}
+.cdate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.cdate-nav {
+  border: 2px solid var(--ink);
+  border-radius: 6px;
+  background: #fff;
+  width: 26px; height: 26px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+.cdate-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cdate-weekday { text-align: center; font-size: 11px; font-weight: 800; color: rgba(45,42,62,0.5); padding: 2px 0; }
+.cdate-cell {
+  border: none;
+  background: none;
+  border-radius: 6px;
+  padding: 6px 0;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  color: var(--ink);
+}
+.cdate-cell:disabled { visibility: hidden; }
+.cdate-cell:hover:not(:disabled) { background: var(--blue-soft); }
+.cdate-cell.active { background: var(--pink); color: #fff; }
 .form-row .field { min-width: 130px; }
 .form-row .grow { flex: 1; }
 

@@ -4,6 +4,9 @@ import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import { flagEmoji } from '../categories'
 import Window from './Window'
+import Modal from './Modal'
+import Select from './Select'
+import DatePicker from './DatePicker'
 
 function tripCitiesLabel(trip: Trip): string {
   if (trip.cities.length === 0) return ''
@@ -102,7 +105,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
       </div>
 
       {creating && (
-        <Window title="NEW_TRIP.EXE" color="blue" onClose={() => setCreating(false)}>
+        <Modal title="NEW_TRIP.EXE" onClose={() => setCreating(false)}>
           <div className="form-row">
             <div className="field grow">
               <label>여행 이름</label>
@@ -111,11 +114,11 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
             </div>
             <div className="field">
               <label>시작일</label>
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+              <DatePicker value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </div>
             <div className="field">
               <label>종료일</label>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              <DatePicker value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </div>
             <div className="field">
               <label>예산 (원, 선택)</label>
@@ -129,10 +132,10 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
               <span className="muted">🌍 국가·도시 화면에서 나라를 먼저 등록하면 여기서 골라 연결할 수 있어요.</span>
             ) : (
               <>
-                <select value={selCountryId} onChange={(e) => setSelCountryId(e.target.value)}>
+                <Select value={selCountryId} onChange={(e) => setSelCountryId(e.target.value)}>
                   <option value="">— 국가 선택 —</option>
                   {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
-                </select>
+                </Select>
                 {selCountryId && (
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
                     {citiesOfSelCountry.length === 0 ? (
@@ -183,7 +186,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
           <div style={{ marginTop: 16 }}>
             <button className="btn primary" onClick={create}>여행 만들기 ✈️</button>
           </div>
-        </Window>
+        </Modal>
       )}
 
       {trips.length === 0 && !creating && (
