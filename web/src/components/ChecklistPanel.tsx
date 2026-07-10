@@ -13,6 +13,7 @@ export default function ChecklistPanel({
 }) {
   const [items, setItems] = useState<ChecklistItem[]>([])
   const [text, setText] = useState('')
+  const [showAdd, setShowAdd] = useState(false)
 
   const refresh = () => { api.checklist.list(tripId, scope, dayNumber).then(setItems) }
   useEffect(refresh, [tripId, scope, dayNumber])
@@ -21,6 +22,7 @@ export default function ChecklistPanel({
     if (!text.trim()) return
     await api.checklist.create({ tripId, scope, dayNumber: dayNumber ?? null, text: text.trim() })
     setText('')
+    setShowAdd(false)
     refresh()
   }
   const toggle = async (item: ChecklistItem) => {
@@ -34,7 +36,10 @@ export default function ChecklistPanel({
 
   return (
     <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-      <strong>{title}</strong>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <strong className="grow">{title}</strong>
+        <button className="btn small ghost" onClick={() => setShowAdd((v) => !v)}>{showAdd ? '닫기' : '＋'}</button>
+      </div>
       {items.length === 0 ? (
         <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
       ) : (
@@ -48,12 +53,14 @@ export default function ChecklistPanel({
           ))}
         </div>
       )}
-      <div style={{ display: 'flex', gap: 6 }}>
-        <input type="text" value={text} placeholder={addPlaceholder}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && add()} />
-        <button className="btn small" onClick={add}>＋ 추가</button>
-      </div>
+      {showAdd && (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input type="text" value={text} placeholder={addPlaceholder} autoFocus
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && add()} />
+          <button className="btn small primary" onClick={add}>추가</button>
+        </div>
+      )}
     </div>
   )
 }

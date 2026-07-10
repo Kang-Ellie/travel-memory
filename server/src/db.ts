@@ -218,6 +218,8 @@ export async function initSchema(): Promise<void> {
       created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
     );
     ALTER TABLE transit_segments ADD COLUMN IF NOT EXISTS note TEXT;
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS linked_place_id TEXT REFERENCES places(id) ON DELETE SET NULL;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS bucket_item_id TEXT REFERENCES bucket_items(id) ON DELETE SET NULL;
 
     -- '식당' 분류명을 '맛집'으로 통일
     UPDATE places SET category = '맛집' WHERE category = '식당';

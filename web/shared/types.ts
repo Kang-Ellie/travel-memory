@@ -108,6 +108,8 @@ export interface TimelineEvent {
   place: Place
   photos: Photo[]
   flight: FlightDetail | null
+  bucketItemId: string | null
+  bucketItemTitle: string | null
 }
 
 export const EXPENSE_CATEGORIES = ['식비', '숙소', '교통', '쇼핑', '기타'] as const
@@ -186,7 +188,7 @@ export interface GooglePlaceResult {
   googleRating: number | null
 }
 
-export type ChecklistScope = 'day' | 'packing' | 'shopping' | 'food'
+export type ChecklistScope = 'day' | 'packing'
 
 export interface ChecklistItem {
   id: string
@@ -211,5 +213,7 @@ export interface BucketItem {
   done: boolean
   linkedTripId: string | null
   linkedTripTitle: string | null
+  linkedPlaceId: string | null
+  linkedPlaceName: string | null
   createdAt: string
 }

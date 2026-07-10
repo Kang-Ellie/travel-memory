@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import type { Express as ExpressApp, Request, Response, NextFunction } from 'express'
 import { pool } from './db.js'
-import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR } from './upload.js'
+import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR, compressImageInPlace } from './upload.js'
 import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSION_COOKIE } from './auth.js'
 
 const id = (): string => crypto.randomUUID()
@@ -62,6 +62,7 @@ const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
   plannedTime: r.planned_time, rating: r.rating != null ? Number(r.rating) : null,
   review: r.review, mustTry: r.must_try, linkUrl: r.link_url, createdAt: r.created_at,
+  bucketItemId: r.bucket_item_id, bucketItemTitle: r.bucket_item_title ?? null,
 })
 const mapExpense = (r: any) => ({
   id: r.id, tripId: r.trip_id, eventId: r.event_id, amount: Number(r.amount), currency: r.currency,
@@ -94,7 +95,8 @@ const mapBucket = (r: any) => ({
   id: r.id, title: r.title, memo: r.memo, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, cityName: r.city_name ?? null,
   category: r.category, done: r.done, linkedTripId: r.linked_trip_id,
-  linkedTripTitle: r.linked_trip_title ?? null, createdAt: r.created_at,
+  linkedTripTitle: r.linked_trip_title ?? null, linkedPlaceId: r.linked_place_id,
+  linkedPlaceName: r.linked_place_name ?? null, createdAt: r.created_at,
 })
 
 const TRIP_CITIES_SUBQUERY = `
@@ -437,7 +439,10 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 동선(타임라인) ────────────────────────────────────
   async function loadEvents(tripId: string) {
-    const events = await pool.query('SELECT * FROM timeline_events WHERE trip_id = $1 ORDER BY day_number, sequence', [tripId])
+    const events = await pool.query(
+      `SELECT te.*, bi.title AS bucket_item_title FROM timeline_events te
+       LEFT JOIN bucket_items bi ON bi.id = te.bucket_item_id
+       WHERE te.trip_id = $1 ORDER BY te.day_number, te.sequence`, [tripId])
     const out = []
     for (const ev of events.rows) {
       const place = await pool.query('SELECT * FROM places WHERE id = $1', [ev.place_id])
@@ -468,12 +473,22 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.put('/api/events/:id', async (req, res) => {
-    const { rating, review, linkUrl, mustTry, plannedTime } = req.body as {
-      rating: number | null; review: string | null; linkUrl: string | null; mustTry: string | null; plannedTime: string | null
+    const { rating, review, linkUrl, mustTry, plannedTime, bucketItemId } = req.body as {
+      rating: number | null; review: string | null; linkUrl: string | null; mustTry: string | null
+      plannedTime: string | null; bucketItemId?: string | null
     }
-    await pool.query(
-      'UPDATE timeline_events SET rating=$1, review=$2, link_url=$3, must_try=$4, planned_time=$5 WHERE id=$6',
-      [rating, review, linkUrl, mustTry, plannedTime, req.params.id])
+    const sets = ['rating=$1', 'review=$2', 'link_url=$3', 'must_try=$4', 'planned_time=$5']
+    const params: any[] = [rating, review, linkUrl, mustTry, plannedTime]
+    if (bucketItemId !== undefined) { params.push(bucketItemId); sets.push(`bucket_item_id=$${params.length}`) }
+    params.push(req.params.id)
+    await pool.query(`UPDATE timeline_events SET ${sets.join(', ')} WHERE id=$${params.length}`, params)
+    if (bucketItemId) {
+      const ev = await pool.query('SELECT trip_id FROM timeline_events WHERE id = $1', [req.params.id])
+      if (ev.rows[0]) {
+        await pool.query('UPDATE bucket_items SET done = true, linked_trip_id = $1 WHERE id = $2',
+          [ev.rows[0].trip_id, bucketItemId])
+      }
+    }
     res.json({ ok: true })
   })
 
@@ -634,7 +649,8 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const voucherId = id()
-      const rel = relativeFilePath('vouchers', f.filename)
+      const finalPath = f.mimetype.startsWith('image/') ? await compressImageInPlace(f.path) : f.path
+      const rel = relativeFilePath('vouchers', path.basename(finalPath))
       const fileType = path.extname(f.originalname).replace('.', '').toUpperCase() || 'FILE'
       await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path) VALUES ($1,$2,$3,$4,$5)',
         [voucherId, req.params.tripId, f.originalname, fileType, rel])
@@ -656,7 +672,8 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const photoId = id()
-      const rel = relativeFilePath('photos', f.filename)
+      const finalPath = await compressImageInPlace(f.path)
+      const rel = relativeFilePath('photos', path.basename(finalPath))
       await pool.query('INSERT INTO photos (id, event_id, file_path) VALUES ($1,$2,$3)', [photoId, req.params.eventId, rel])
       added.push({ id: photoId, eventId: req.params.eventId, filePath: rel })
     }
@@ -699,7 +716,8 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const itemId = id()
-      const rel = relativeFilePath('archive', f.filename)
+      const finalPath = await compressImageInPlace(f.path)
+      const rel = relativeFilePath('archive', path.basename(finalPath))
       await pool.query('INSERT INTO archive_items (id, trip_id, kind, title, file_path) VALUES ($1,$2,$3,$4,$5)',
         [itemId, req.params.tripId, 'image', f.originalname, rel])
       added.push({ id: itemId, tripId: req.params.tripId, kind: 'image', title: f.originalname, body: null, filePath: rel })
@@ -807,11 +825,13 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 버킷리스트 ────────────────────────────────────────
   const BUCKET_SELECT = `
-    SELECT b.*, co.name AS country_name, ci.name AS city_name, t.title AS linked_trip_title
+    SELECT b.*, co.name AS country_name, ci.name AS city_name, t.title AS linked_trip_title,
+      p.name AS linked_place_name
     FROM bucket_items b
     LEFT JOIN countries co ON co.id = b.country_id
     LEFT JOIN cities ci ON ci.id = b.city_id
     LEFT JOIN trips t ON t.id = b.linked_trip_id
+    LEFT JOIN places p ON p.id = b.linked_place_id
   `
 
   app.get('/api/bucket', async (_req, res) => {
@@ -820,23 +840,27 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/bucket', async (req, res) => {
-    const { title, memo, countryId, cityId, category } = req.body as {
-      title: string; memo: string | null; countryId: string | null; cityId: string | null; category: string | null
+    const { title, memo, countryId, cityId, category, linkedPlaceId } = req.body as {
+      title: string; memo: string | null; countryId: string | null; cityId: string | null
+      category: string | null; linkedPlaceId?: string | null
     }
     const itemId = id()
     await pool.query(
-      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category) VALUES ($1,$2,$3,$4,$5,$6)',
-      [itemId, title.trim(), memo, countryId, cityId, category])
+      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category, linked_place_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [itemId, title.trim(), memo, countryId, cityId, category, linkedPlaceId || null])
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
     res.json(mapBucket(r.rows[0]))
   })
 
   app.put('/api/bucket/:id', async (req, res) => {
-    const { done, linkedTripId } = req.body as { done?: boolean; linkedTripId?: string | null }
+    const { done, linkedTripId, linkedPlaceId } = req.body as {
+      done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null
+    }
     const sets: string[] = []
     const params: any[] = []
     if (done !== undefined) { params.push(done); sets.push(`done = $${params.length}`) }
     if (linkedTripId !== undefined) { params.push(linkedTripId); sets.push(`linked_trip_id = $${params.length}`) }
+    if (linkedPlaceId !== undefined) { params.push(linkedPlaceId); sets.push(`linked_place_id = $${params.length}`) }
     if (sets.length === 0) { res.json({ ok: true }); return }
     params.push(req.params.id)
     await pool.query(`UPDATE bucket_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)

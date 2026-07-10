@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Place, GooglePlaceResult, Country, City } from '../../shared/types'
+import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji, ratingColor } from '../categories'
 import Window from './Window'
@@ -9,9 +9,10 @@ const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', 
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 
 function PlaceRow({
-  place, countries, cities, expanded, onToggle, onChanged,
+  place, countries, cities, linkedBucketItems, expanded, onToggle, onChanged,
 }: {
-  place: Place; countries: Country[]; cities: City[]; expanded: boolean; onToggle: () => void; onChanged: () => void
+  place: Place; countries: Country[]; cities: City[]; linkedBucketItems: BucketItem[]
+  expanded: boolean; onToggle: () => void; onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [name, setName] = useState(place.name)
@@ -118,6 +119,11 @@ function PlaceRow({
         <button className="btn small" onClick={(e) => { e.stopPropagation(); setEditing(true) }}>수정</button>
         <button className="btn small ghost" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
       </div>
+      {linkedBucketItems.length > 0 && (
+        <div className="muted" style={{ padding: '0 12px 8px' }}>
+          ✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}
+        </div>
+      )}
       {expanded && <PlaceDetailPanel placeId={place.id} />}
     </div>
   )
@@ -127,6 +133,7 @@ export default function PlacesScreen() {
   const [places, setPlaces] = useState<Place[]>([])
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
+  const [bucket, setBucket] = useState<BucketItem[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState('전체')
   const [query, setQuery] = useState('')
@@ -144,6 +151,7 @@ export default function PlacesScreen() {
     api.places.list().then(setPlaces)
     api.countries.list().then(setCountries)
     api.cities.list().then(setCities)
+    api.bucket.list().then(setBucket)
   }
   useEffect(refresh, [])
 
@@ -253,6 +261,7 @@ export default function PlacesScreen() {
             place={p}
             countries={countries}
             cities={cities}
+            linkedBucketItems={bucket.filter((b) => b.linkedPlaceId === p.id)}
             expanded={expandedId === p.id}
             onToggle={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
             onChanged={refresh}

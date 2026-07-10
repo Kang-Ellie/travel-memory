@@ -12,7 +12,6 @@ import DayNoteBox from './DayNoteBox'
 import Lightbox from './Lightbox'
 import ChecklistPanel from './ChecklistPanel'
 import Modal from './Modal'
-import Window from './Window'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -122,16 +121,18 @@ interface QuickExpenseState {
   amount: string
   currency: string
   category: string
+  purchaseItems: string
   paidBy: string
   splitWith: Set<string>
 }
 
 function EventCard({
-  ev, participants, eventExpenses, dragIndex, onDragStart, onDrop, onChanged,
+  ev, participants, eventExpenses, bucketItems, dragIndex, onDragStart, onDrop, onChanged,
 }: {
   ev: TimelineEvent
   participants: Member[]
   eventExpenses: Expense[]
+  bucketItems: BucketItem[]
   dragIndex: number
   onDragStart: (idx: number) => void
   onDrop: () => void
@@ -141,6 +142,7 @@ function EventCard({
   const [review, setReview] = useState(ev.review ?? '')
   const [linkUrl, setLinkUrl] = useState(ev.linkUrl ?? '')
   const [mustTry, setMustTry] = useState(ev.mustTry ?? '')
+  const [bucketItemId, setBucketItemId] = useState(ev.bucketItemId ?? '')
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
@@ -151,7 +153,7 @@ function EventCard({
   const [bookingRef, setBookingRef] = useState(ev.flight?.bookingRef ?? '')
   const [bookedVia, setBookedVia] = useState(ev.flight?.bookedVia ?? '')
   const [qe, setQe] = useState<QuickExpenseState>({
-    amount: '', currency: 'KRW', category: '식비',
+    amount: '', currency: 'KRW', category: '식비', purchaseItems: '',
     paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)),
   })
   const photoInput = useRef<HTMLInputElement>(null)
@@ -159,6 +161,7 @@ function EventCard({
   const startEdit = () => {
     setReview(ev.review ?? ''); setLinkUrl(ev.linkUrl ?? '')
     setMustTry(ev.mustTry ?? ''); setPlannedTime(ev.plannedTime ?? '')
+    setBucketItemId(ev.bucketItemId ?? '')
     setDepartAt(ev.flight?.departAt ?? ''); setArriveAt(ev.flight?.arriveAt ?? '')
     setDurationMinutes(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
     setBookingRef(ev.flight?.bookingRef ?? ''); setBookedVia(ev.flight?.bookedVia ?? '')
@@ -175,6 +178,7 @@ function EventCard({
     await api.events.update(ev.id, {
       rating: ev.rating, review: review.trim() || null, linkUrl: linkUrl.trim() || null,
       mustTry: mustTry.trim() || null, plannedTime: plannedTime.trim() || null,
+      bucketItemId: bucketItemId || null,
     })
     if (isAirport) {
       await api.events.setFlight(ev.id, {
@@ -200,9 +204,9 @@ function EventCard({
     await api.expenses.create({
       tripId: ev.tripId, eventId: ev.id, amount: amt, currency: qe.currency, category: qe.category,
       description: ev.place.name, paidBy: qe.paidBy, splitWith: [...qe.splitWith], spentAt: new Date().toISOString().slice(0, 10),
-      paymentMethod: null, memo: null, purchaseItems: null, isShared: true, isPrebooked: false,
+      paymentMethod: null, memo: null, purchaseItems: qe.purchaseItems.trim() || null, isShared: true, isPrebooked: false,
     })
-    setQe((s) => ({ ...s, amount: '' }))
+    setQe((s) => ({ ...s, amount: '', purchaseItems: '' }))
     setShowExpenseForm(false)
     onChanged()
   }
@@ -297,9 +301,16 @@ function EventCard({
                 <input type="time" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
-                <label>🌟 꼭 해봐야 하는 것</label>
-                <input type="text" value={mustTry} placeholder="예: 명란 정식, 창가 자리 뷰"
+                <label>🌟 꼭 해봐야 하는 것 (한 줄에 하나씩)</label>
+                <textarea value={mustTry} placeholder={'예:\n명란 정식\n창가 자리 뷰'}
                   onChange={(e) => setMustTry(e.target.value)} style={{ width: '100%' }} />
+              </div>
+              <div className="field" style={{ marginBottom: 6 }}>
+                <label>✨ 버킷리스트 연결 (선택)</label>
+                <select value={bucketItemId} onChange={(e) => setBucketItemId(e.target.value)}>
+                  <option value="">— 선택 안함 —</option>
+                  {bucketItems.map((b) => <option key={b.id} value={b.id}>{b.done ? '✓ ' : ''}{b.title}</option>)}
+                </select>
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>리뷰 · 사진 일기</label>
@@ -326,7 +337,17 @@ function EventCard({
                   {ev.flight.bookedVia && ` · ${ev.flight.bookedVia}`}
                 </div>
               )}
-              {ev.mustTry && <div className="chip pink" style={{ marginBottom: 8 }}>🌟 꼭 해봐야 하는 것: {ev.mustTry}</div>}
+              {ev.bucketItemTitle && <div className="chip purple" style={{ marginBottom: 8 }}>✨ {ev.bucketItemTitle}</div>}
+              {ev.mustTry && (
+                <div style={{ marginBottom: 8 }}>
+                  <div className="muted">🌟 꼭 해봐야 하는 것</div>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
+                    {ev.mustTry.split('\n').map((line) => line.trim()).filter(Boolean).map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {ev.review ? (
                 <p style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{ev.review}</p>
               ) : (
@@ -342,9 +363,10 @@ function EventCard({
 
       <div className="quick-expense-row">
         {eventExpenses.map((exp) => (
-          <span key={exp.id} className="event-expense-chip">
+          <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
             <span className="dot" style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
             {exp.category} {fmtMoney(exp.amount, exp.currency)}
+            {exp.purchaseItems && <span className="muted"> · {exp.purchaseItems}</span>}
             <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>
           </span>
         ))}
@@ -360,6 +382,8 @@ function EventCard({
             <select value={qe.category} onChange={(e) => setQe((s) => ({ ...s, category: e.target.value }))}>
               {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
+            <input type="text" placeholder="뭘 먹었는지/샀는지" value={qe.purchaseItems} style={{ width: 140 }}
+              onChange={(e) => setQe((s) => ({ ...s, purchaseItems: e.target.value }))} />
             {participants.length > 0 ? (
               <select value={qe.paidBy} onChange={(e) => setQe((s) => ({ ...s, paidBy: e.target.value }))}>
                 {participants.map((m) => <option key={m.id} value={m.id}>{m.name} 냄</option>)}
@@ -378,7 +402,7 @@ function EventCard({
 
 export default function TripWorkspace({ trip }: { trip: Trip }) {
   const days = dayCount(trip)
-  const [day, setDay] = useState<number | 'prep'>(1)
+  const [day, setDay] = useState(1)
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -386,7 +410,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [rates, setRates] = useState<CurrencyRate[]>([])
   const [transit, setTransit] = useState<TransitSegment[]>([])
   const [vouchers, setVouchers] = useState<Voucher[]>([])
-  const [bucket, setBucket] = useState<BucketItem[]>([])
+  const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
   const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -410,15 +434,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     api.rates.list(trip.id).then(setRates)
     api.transit.list(trip.id).then(setTransit)
     api.vouchers.list(trip.id).then(setVouchers)
-    api.bucket.list().then(setBucket)
+    api.bucket.list().then(setBucketItems)
   }
   useEffect(refresh, [trip.id])
 
-  const activeDay = typeof day === 'number' ? day : null
-  const dayEvents = activeDay != null
-    ? events.filter((e) => e.dayNumber === activeDay).sort((a, b) => a.sequence - b.sequence)
-    : []
-  const dayTransit = activeDay != null ? transit.filter((t) => t.dayNumber === activeDay) : []
+  const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => a.sequence - b.sequence)
+  const dayTransit = transit.filter((t) => t.dayNumber === day)
   const transitAfter = (eventId: string | null) => dayTransit.filter((t) => t.afterEventId === eventId)
   const expensesByEvent = new Map<string, Expense[]>()
   for (const exp of expenses) {
@@ -427,7 +448,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     list.push(exp)
     expensesByEvent.set(exp.eventId, list)
   }
-  const linkedBucket = bucket.filter((b) => b.linkedTripId === trip.id)
 
   const dayCityLabel = (d: number): string | null => {
     const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => a.sequence - b.sequence)
@@ -439,7 +459,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   }
 
   const addEvent = async () => {
-    if (activeDay == null) return
     let placeId = selPlace
     if (placeId === '__new') {
       if (!newName.trim()) return
@@ -450,14 +469,13 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       setNewName(''); setNewAddress(''); setNewMapUrl('')
     }
     if (!placeId) return
-    await api.events.create({ tripId: trip.id, placeId, dayNumber: activeDay })
+    await api.events.create({ tripId: trip.id, placeId, dayNumber: day })
     setSelPlace('')
     refresh()
     setShowAddPlace(false)
   }
 
   const reorder = async (targetIdx: number) => {
-    if (activeDay == null) return
     const from = dragFrom.current
     dragFrom.current = null
     if (from == null || from === targetIdx) return
@@ -465,20 +483,19 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     const [moved] = ids.splice(from, 1)
     ids.splice(targetIdx, 0, moved)
     setEvents((prev) => {
-      const others = prev.filter((e) => e.dayNumber !== activeDay)
+      const others = prev.filter((e) => e.dayNumber !== day)
       const reordered = ids.map((eid, i) => {
         const found = prev.find((e) => e.id === eid)!
         return { ...found, sequence: i + 1 }
       })
       return [...others, ...reordered]
     })
-    await api.events.reorder({ tripId: trip.id, dayNumber: activeDay, orderedIds: ids })
+    await api.events.reorder({ tripId: trip.id, dayNumber: day, orderedIds: ids })
   }
 
   const addTransit = async () => {
-    if (activeDay == null) return
     await api.transit.create({
-      tripId: trip.id, dayNumber: activeDay, afterEventId: transitAfterId || null,
+      tripId: trip.id, dayNumber: day, afterEventId: transitAfterId || null,
       mode: transitMode, durationText: transitDuration.trim() || null, note: transitNote.trim() || null,
     })
     setTransitDuration(''); setTransitNote('')
@@ -489,10 +506,9 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const handleZoneDrop = async (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    if (activeDay == null) return
     const archiveId = e.dataTransfer.getData(ARCHIVE_DRAG_TYPE)
     if (archiveId) {
-      await api.archive.convertToEvent({ archiveId, tripId: trip.id, dayNumber: activeDay })
+      await api.archive.convertToEvent({ archiveId, tripId: trip.id, dayNumber: day })
       refresh()
     }
   }
@@ -530,7 +546,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         </>
       )}
       <div style={{ marginTop: 12 }}>
-        <button className="btn primary" onClick={addEvent}>{activeDay}일차에 추가</button>
+        <button className="btn primary" onClick={addEvent}>{day}일차에 추가</button>
       </div>
     </>
   )
@@ -568,9 +584,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     <div className="workspace">
       {/* 좌측: 일차 내비게이션 */}
       <div className="day-nav-col">
-        <button className={`day-nav-btn ${day === 'prep' ? 'active' : ''}`} onClick={() => setDay('prep')}>
-          🧳 여행 준비
-        </button>
         {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
           const cityLabel = dayCityLabel(d)
           const spend = computeDailySpend(trip, expenses, d, rates).total
@@ -584,40 +597,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         })}
       </div>
 
-      {/* 중앙: 타임라인 + 가계부 요약, 또는 여행 준비 */}
-      {day === 'prep' ? (
-        <div>
-          {linkedBucket.length > 0 && (
-            <Window title="BUCKET_LINKED.EXE" color="pink">
-              {linkedBucket.map((b) => (
-                <div key={b.id} className="row">
-                  <input type="checkbox" checked={b.done}
-                    onChange={() => api.bucket.update(b.id, { done: !b.done }).then(refresh)} />
-                  <div className="grow">
-                    <div style={{ fontWeight: 800, textDecoration: b.done ? 'line-through' : undefined }}>{b.title}</div>
-                    {(b.countryName || b.memo) && (
-                      <div className="muted">{b.countryName && `🌍 ${b.countryName}${b.cityName ? ` · ${b.cityName}` : ''} `}{b.memo}</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </Window>
-          )}
-          <Window title="PACKING.EXE" color="yellow">
-            <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
-          </Window>
-          <Window title="SHOPPING.EXE" color="purple">
-            <ChecklistPanel tripId={trip.id} scope="shopping" title="🛍 사야할 것" addPlaceholder="예: 면세점 화장품" />
-          </Window>
-          <Window title="FOOD.EXE" color="green">
-            <ChecklistPanel tripId={trip.id} scope="food" title="🍽 먹어야할 것" addPlaceholder="예: 멘타이쥬" />
-          </Window>
-        </div>
-      ) : (
-        <div>
-          <BudgetBar trip={trip} expenses={expenses} rates={rates} />
-          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={activeDay ?? undefined} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
-          <DayNoteBox tripId={trip.id} dayNumber={activeDay ?? 1} />
+      {/* 중앙: 타임라인 + 가계부 요약 */}
+      <div>
+        <BudgetBar trip={trip} expenses={expenses} rates={rates} />
+        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+        <DayNoteBox tripId={trip.id} dayNumber={day} />
 
           <div
             className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
@@ -638,6 +622,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   ev={ev}
                   participants={members}
                   eventExpenses={expensesByEvent.get(ev.id) ?? []}
+                  bucketItems={bucketItems}
                   dragIndex={idx}
                   onDragStart={(i) => { dragFrom.current = i }}
                   onDrop={() => reorder(idx)}
@@ -667,8 +652,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               </div>
             </Modal>
           )}
-        </div>
-      )}
+      </div>
 
       {/* 우측: 지도 / 보관함 전환 */}
       <div>

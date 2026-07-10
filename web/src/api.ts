@@ -102,7 +102,7 @@ export const api = {
       req<{ id: string }>('POST', `/api/trips/${data.tripId}/events`, data),
     update: (id: string, data: {
       rating: number | null; review: string | null; linkUrl: string | null
-      mustTry: string | null; plannedTime: string | null
+      mustTry: string | null; plannedTime: string | null; bucketItemId?: string | null
     }) => req<void>('PUT', `/api/events/${id}`, data),
     reorder: (data: { tripId: string; dayNumber: number; orderedIds: string[] }) =>
       req<void>('POST', `/api/trips/${data.tripId}/events/reorder`, data),
@@ -154,9 +154,11 @@ export const api = {
 
   bucket: {
     list: () => req<BucketItem[]>('GET', '/api/bucket'),
-    create: (data: { title: string; memo: string | null; countryId: string | null; cityId: string | null; category: string | null }) =>
-      req<BucketItem>('POST', '/api/bucket', data),
-    update: (id: string, data: { done?: boolean; linkedTripId?: string | null }) =>
+    create: (data: {
+      title: string; memo: string | null; countryId: string | null; cityId: string | null
+      category: string | null; linkedPlaceId?: string | null
+    }) => req<BucketItem>('POST', '/api/bucket', data),
+    update: (id: string, data: { done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null }) =>
       req<void>('PUT', `/api/bucket/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/bucket/${id}`),
   },
