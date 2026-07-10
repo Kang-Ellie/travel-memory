@@ -104,6 +104,10 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
         </Window>
       )}
 
+      <Window title="PREDEPARTURE.EXE" color="green">
+        <ChecklistPanel tripId={trip.id} scope="predeparture" title="🛫 여행 전 Todo" addPlaceholder="예: 여행자보험 가입" />
+      </Window>
+
       <Window title="PACKING.EXE" color="yellow">
         <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
       </Window>

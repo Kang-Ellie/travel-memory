@@ -46,6 +46,7 @@ const mapPlace = (r: any) => ({
   memo: r.memo, mapUrl: r.map_url, rating: r.rating != null ? Number(r.rating) : null,
   pros: r.pros, cons: r.cons, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
+  hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
   createdAt: r.created_at,
 })
 const mapTransit = (r: any) => ({
@@ -56,8 +57,14 @@ const mapTransit = (r: any) => ({
 const mapFlightDetail = (r: any) => ({
   departAt: r.depart_at, arriveAt: r.arrive_at,
   durationMinutes: r.duration_minutes != null ? Number(r.duration_minutes) : null,
-  bookingRef: r.booking_ref, bookedVia: r.booked_via,
+  bookingRef: r.booking_ref, bookedVia: r.booked_via, departureLocation: r.departure_location,
+  confirmed: !!r.confirmed, voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null,
 })
+const FLIGHT_SELECT = `
+  SELECT fd.*, v.title AS voucher_title FROM flight_details fd
+  LEFT JOIN vouchers v ON v.id = fd.voucher_id
+  WHERE fd.event_id = $1
+`
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
   plannedTime: r.planned_time, rating: r.rating != null ? Number(r.rating) : null,
@@ -71,7 +78,8 @@ const mapExpense = (r: any) => ({
   isShared: r.is_shared, isPrebooked: r.is_prebooked,
 })
 const mapVoucher = (r: any) => ({
-  id: r.id, tripId: r.trip_id, title: r.title, fileType: r.file_type, filePath: r.file_path, createdAt: r.created_at,
+  id: r.id, tripId: r.trip_id, title: r.title, fileType: r.file_type, filePath: r.file_path,
+  category: r.category, createdAt: r.created_at,
 })
 const mapPhoto = (r: any) => ({ id: r.id, eventId: r.event_id, filePath: r.file_path })
 const mapArchive = (r: any) => ({
@@ -90,8 +98,38 @@ const mapCity = (r: any) => ({
 })
 const mapChecklist = (r: any) => ({
   id: r.id, tripId: r.trip_id, scope: r.scope, dayNumber: r.day_number, text: r.text,
-  done: r.done, sequence: r.sequence, createdAt: r.created_at,
+  category: r.category, done: r.done, sequence: r.sequence, createdAt: r.created_at,
 })
+
+const PREDEPARTURE_PRESETS = ['항공권 예약', '숙소 예약', '여행자보험 가입', '발렛 예약', '로밍 / eSIM', '환전']
+const PACKING_PRESETS: Record<string, string[]> = {
+  필수: [
+    '멀티 어댑터 & 돼지코', '물티슈 & 휴지', '상비약', '상의', '선글라스', '세면도구', '속옷', '스킨케어',
+    '양말', '여권', '외투 & 가디건', '하의', '해외 결제 가능한 신용카드', '항공권 전자티켓',
+  ],
+  선택: [
+    '국제 운전 면허증', '노트북', '마스크', '모자', '삼각대 & 셀카봉', '수영복', '우산 & 비옷',
+    '운동화 & 구두 & 샌들 & 슬리퍼', '지퍼백 & 비닐봉지 & 여행용 파우치', '태블릿',
+  ],
+  당일준비물: ['보조배터리', '선크림', '충전기'],
+}
+
+async function seedChecklistPresets(tripId: string, scope: 'predeparture' | 'packing'): Promise<void> {
+  const existing = await pool.query('SELECT text, category FROM checklist_items WHERE trip_id = $1 AND scope = $2', [tripId, scope])
+  const seen = new Set(existing.rows.map((r: any) => `${r.category ?? ''}::${r.text}`))
+  const toInsert: Array<{ text: string; category: string | null }> = scope === 'predeparture'
+    ? PREDEPARTURE_PRESETS.map((text) => ({ text, category: null }))
+    : Object.entries(PACKING_PRESETS).flatMap(([category, texts]) => texts.map((text) => ({ text, category })))
+  let seq = existing.rows.length
+  for (const item of toInsert) {
+    const key = `${item.category ?? ''}::${item.text}`
+    if (seen.has(key)) continue
+    seq += 1
+    await pool.query(
+      'INSERT INTO checklist_items (id, trip_id, scope, day_number, text, category, sequence) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [id(), tripId, scope, null, item.text, item.category, seq])
+  }
+}
 const mapBucket = (r: any) => ({
   id: r.id, title: r.title, memo: r.memo, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, cityName: r.city_name ?? null,
@@ -173,6 +211,8 @@ export function registerRoutes(app: ExpressApp): void {
       await pool.query('INSERT INTO trip_members (trip_id, member_id) VALUES ($1,$2)', [tripId, m])
     }
     await setTripCities(tripId, cityIds)
+    await seedChecklistPresets(tripId, 'predeparture')
+    await seedChecklistPresets(tripId, 'packing')
     const r = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t WHERE t.id = $1`, [tripId])
     res.json(mapTrip(r.rows[0]))
   })
@@ -250,18 +290,21 @@ export function registerRoutes(app: ExpressApp): void {
   app.post('/api/places', async (req, res) => {
     const {
       name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
+      hours, reservationNeeded, recommendedMenu,
     } = req.body as {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
+      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null
     }
     const placeId = id()
     await pool.query(
-      `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id,
+         hours, reservation_needed, recommended_menu)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
         mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
-        countryId || null, cityId || null])
+        countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null])
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
   })
@@ -269,16 +312,19 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/places/:id', async (req, res) => {
     const {
       name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
+      hours, reservationNeeded, recommendedMenu,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
+      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null
     }
     await pool.query(
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
-         country_id=$9, city_id=$10 WHERE id=$11`,
+         country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13 WHERE id=$14`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
-        pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null, req.params.id])
+        pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
+        hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, req.params.id])
     res.json({ ok: true })
   })
 
@@ -305,7 +351,7 @@ export function registerRoutes(app: ExpressApp): void {
     const visits = []
     for (const ev of events.rows) {
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      const flight = await pool.query('SELECT * FROM flight_details WHERE event_id = $1', [ev.id])
+      const flight = await pool.query(FLIGHT_SELECT, [ev.id])
       visits.push({
         ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
@@ -356,6 +402,49 @@ export function registerRoutes(app: ExpressApp): void {
       })))
     } catch (err) {
       res.json({ error: `검색 실패 (서버 인터넷 연결을 확인해주세요): ${String(err)}` })
+    }
+  })
+
+  // 구글 지도 링크(단축링크 포함)에서 이름·주소를 최대한 뽑아내본다.
+  // 단축 링크는 리다이렉트를 따라가 실제 URL의 좌표/이름 패턴을 파싱하고,
+  // API 키가 등록돼 있으면 좌표를 역지오코딩해서 정식 주소까지 가져온다. 100% 보장은 아님.
+  app.get('/api/places/resolve-map-link', async (req, res) => {
+    const url = ((req.query.url ?? '') as string).trim()
+    if (!url) { res.json({ error: '링크를 입력해주세요.' }); return }
+    try {
+      const resolved = await fetch(url, { redirect: 'follow' })
+      const finalUrl = resolved.url
+
+      const atMatch = finalUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
+      const bangMatch = finalUrl.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/)
+      const qMatch = finalUrl.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/)
+      const coords = bangMatch || atMatch || qMatch
+      const lat = coords ? Number(coords[1]) : null
+      const lng = coords ? Number(coords[2]) : null
+
+      const placeMatch = finalUrl.match(/\/place\/([^/@]+)/)
+      const name = placeMatch ? decodeURIComponent(placeMatch[1].replace(/\+/g, ' ')) : null
+
+      let address: string | null = null
+      if (lat != null && lng != null) {
+        const keyRow = await pool.query("SELECT value FROM settings WHERE key = 'googleApiKey'")
+        const key = keyRow.rows[0]?.value?.trim()
+        if (key) {
+          const gr = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}&language=ko`)
+          if (gr.ok) {
+            const json = (await gr.json()) as { results?: Array<{ formatted_address?: string }> }
+            address = json.results?.[0]?.formatted_address ?? null
+          }
+        }
+      }
+
+      if (!address && !name) {
+        res.json({ error: '이 링크에서 주소를 찾지 못했어요. 직접 입력해주세요.' })
+        return
+      }
+      res.json({ name, address, lat, lng })
+    } catch (err) {
+      res.json({ error: `링크 확인 실패 (서버 인터넷 연결을 확인해주세요): ${String(err)}` })
     }
   })
 
@@ -448,7 +537,7 @@ export function registerRoutes(app: ExpressApp): void {
     for (const ev of events.rows) {
       const place = await pool.query('SELECT * FROM places WHERE id = $1', [ev.place_id])
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      const flight = await pool.query('SELECT * FROM flight_details WHERE event_id = $1', [ev.id])
+      const flight = await pool.query(FLIGHT_SELECT, [ev.id])
       out.push({
         ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
@@ -510,17 +599,20 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 항공 상세 (공항 이벤트 1:1) ────────────────────────
   app.put('/api/events/:id/flight', async (req, res) => {
-    const { departAt, arriveAt, durationMinutes, bookingRef, bookedVia } = req.body as {
+    const { departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId } = req.body as {
       departAt: string | null; arriveAt: string | null; durationMinutes: number | null
       bookingRef: string | null; bookedVia: string | null
+      departureLocation: string | null; confirmed: boolean; voucherId: string | null
     }
     await pool.query(
-      `INSERT INTO flight_details (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO flight_details
+         (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        ON CONFLICT (event_id) DO UPDATE SET
          depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
-         booking_ref = excluded.booking_ref, booked_via = excluded.booked_via`,
-      [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia])
+         booking_ref = excluded.booking_ref, booked_via = excluded.booked_via,
+         departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id`,
+      [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId])
     res.json({ ok: true })
   })
 
@@ -647,15 +739,16 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.post('/api/trips/:tripId/vouchers', voucherUploader.array('files', 10), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
+    const category = ((req.body?.category as string | undefined) ?? '기타').trim() || '기타'
     const added = []
     for (const f of files) {
       const voucherId = id()
       const finalPath = f.mimetype.startsWith('image/') ? await compressImageInPlace(f.path) : f.path
       const rel = relativeFilePath('vouchers', path.basename(finalPath))
       const fileType = path.extname(f.originalname).replace('.', '').toUpperCase() || 'FILE'
-      await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path) VALUES ($1,$2,$3,$4,$5)',
-        [voucherId, req.params.tripId, f.originalname, fileType, rel])
-      added.push({ id: voucherId, tripId: req.params.tripId, title: f.originalname, fileType, filePath: rel })
+      await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path, category) VALUES ($1,$2,$3,$4,$5,$6)',
+        [voucherId, req.params.tripId, f.originalname, fileType, rel, category])
+      added.push({ id: voucherId, tripId: req.params.tripId, title: f.originalname, fileType, filePath: rel, category })
     }
     res.json(added)
   })
@@ -789,23 +882,33 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 일차 메모(그날의 기록·날씨) ───────────────────────
   app.get('/api/trips/:tripId/day-notes', async (req, res) => {
-    const r = await pool.query('SELECT * FROM day_notes WHERE trip_id = $1', [req.params.tripId])
+    const r = await pool.query(
+      `SELECT dn.*, c.name AS city_name, co.name AS country_name, co.code AS country_code
+       FROM day_notes dn
+       LEFT JOIN cities c ON c.id = dn.city_id
+       LEFT JOIN countries co ON co.id = c.country_id
+       WHERE dn.trip_id = $1`,
+      [req.params.tripId])
     res.json(r.rows.map((row) => ({
       tripId: row.trip_id, dayNumber: row.day_number, note: row.note, diary: row.diary,
       weatherEmoji: row.weather_emoji, weatherTemp: row.weather_temp != null ? Number(row.weather_temp) : null,
+      cityId: row.city_id, cityName: row.city_name ?? null, countryName: row.country_name ?? null,
+      countryCode: row.country_code ?? null,
     })))
   })
 
   app.put('/api/trips/:tripId/day-notes/:dayNumber', async (req, res) => {
-    const { note, diary, weatherEmoji, weatherTemp } = req.body as {
+    const { note, diary, weatherEmoji, weatherTemp, cityId } = req.body as {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
+      cityId: string | null
     }
     await pool.query(
-      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp) VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp, city_id) VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (trip_id, day_number) DO UPDATE SET
          note = excluded.note, diary = excluded.diary,
-         weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp`,
-      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp])
+         weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp,
+         city_id = excluded.city_id`,
+      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityId])
     res.json({ ok: true })
   })
 
@@ -822,16 +925,28 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/trips/:tripId/checklist', async (req, res) => {
-    const { scope, dayNumber, text } = req.body as { scope: string; dayNumber: number | null; text: string }
+    const { scope, dayNumber, text, category } = req.body as {
+      scope: string; dayNumber: number | null; text: string; category?: string | null
+    }
     const max = await pool.query(
       'SELECT COALESCE(MAX(sequence), 0) AS m FROM checklist_items WHERE trip_id = $1 AND scope = $2 AND day_number IS NOT DISTINCT FROM $3',
       [req.params.tripId, scope, dayNumber])
     const itemId = id()
     await pool.query(
-      'INSERT INTO checklist_items (id, trip_id, scope, day_number, text, sequence) VALUES ($1,$2,$3,$4,$5,$6)',
-      [itemId, req.params.tripId, scope, dayNumber, text.trim(), Number(max.rows[0].m) + 1])
+      'INSERT INTO checklist_items (id, trip_id, scope, day_number, text, category, sequence) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [itemId, req.params.tripId, scope, dayNumber, text.trim(), category ?? null, Number(max.rows[0].m) + 1])
     const r = await pool.query('SELECT * FROM checklist_items WHERE id = $1', [itemId])
     res.json(mapChecklist(r.rows[0]))
+  })
+
+  app.post('/api/trips/:tripId/checklist/seed-presets', async (req, res) => {
+    const scope = req.body?.scope as string
+    if (scope !== 'predeparture' && scope !== 'packing') {
+      res.status(400).json({ error: 'scope는 predeparture 또는 packing이어야 해요.' })
+      return
+    }
+    await seedChecklistPresets(req.params.tripId, scope)
+    res.json({ ok: true })
   })
 
   app.put('/api/checklist/:id', async (req, res) => {

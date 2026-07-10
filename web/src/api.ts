@@ -20,9 +20,10 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return (await res.json()) as T
 }
 
-async function upload<T>(path: string, files: File[]): Promise<T> {
+async function upload<T>(path: string, files: File[], fields?: Record<string, string>): Promise<T> {
   const form = new FormData()
   for (const f of files) form.append('files', f)
+  if (fields) for (const [k, v] of Object.entries(fields)) form.append(k, v)
   const res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: form })
   if (res.status === 401) throw new ApiError('UNAUTHORIZED')
   if (!res.ok) throw new ApiError(`업로드 실패 (${res.status})`)
@@ -84,16 +85,21 @@ export const api = {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
+      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null
     }) => req<Place>('POST', '/api/places', data),
     update: (id: string, data: {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
+      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null
     }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),
     googleSearch: (query: string) =>
       req<GooglePlaceResult[] | { error: string }>('GET', `/api/places/google-search?q=${encodeURIComponent(query)}`),
+    resolveMapLink: (url: string) =>
+      req<{ name: string | null; address: string | null; lat: number | null; lng: number | null } | { error: string }>(
+        'GET', `/api/places/resolve-map-link?url=${encodeURIComponent(url)}`),
   },
 
   events: {
@@ -145,11 +151,13 @@ export const api = {
   checklist: {
     list: (tripId: string, scope: ChecklistScope, dayNumber?: number) =>
       req<ChecklistItem[]>('GET', `/api/trips/${tripId}/checklist?scope=${scope}${dayNumber != null ? `&day=${dayNumber}` : ''}`),
-    create: (data: { tripId: string; scope: ChecklistScope; dayNumber: number | null; text: string }) =>
+    create: (data: { tripId: string; scope: ChecklistScope; dayNumber: number | null; text: string; category?: string | null }) =>
       req<ChecklistItem>('POST', `/api/trips/${data.tripId}/checklist`, data),
     update: (id: string, data: { text?: string; done?: boolean }) =>
       req<void>('PUT', `/api/checklist/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/checklist/${id}`),
+    seedPresets: (tripId: string, scope: 'predeparture' | 'packing') =>
+      req<void>('POST', `/api/trips/${tripId}/checklist/seed-presets`, { scope }),
   },
 
   bucket: {
@@ -165,7 +173,8 @@ export const api = {
 
   vouchers: {
     list: (tripId: string) => req<Voucher[]>('GET', `/api/trips/${tripId}/vouchers`),
-    add: (tripId: string, files: File[]) => upload<Voucher[]>(`/api/trips/${tripId}/vouchers`, files),
+    add: (tripId: string, files: File[], category: string) =>
+      upload<Voucher[]>(`/api/trips/${tripId}/vouchers`, files, { category }),
     delete: (id: string) => req<void>('DELETE', `/api/vouchers/${id}`),
   },
 
@@ -194,6 +203,7 @@ export const api = {
     list: (tripId: string) => req<DayNote[]>('GET', `/api/trips/${tripId}/day-notes`),
     set: (tripId: string, dayNumber: number, data: {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
+      cityId: string | null
     }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
   },
 

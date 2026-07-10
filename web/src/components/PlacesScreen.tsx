@@ -27,8 +27,23 @@ function PlaceRow({
   const [cons, setCons] = useState(place.cons ?? '')
   const [countryId, setCountryId] = useState(place.countryId ?? '')
   const [cityId, setCityId] = useState(place.cityId ?? '')
+  const [hours, setHours] = useState(place.hours ?? '')
+  const [reservationNeeded, setReservationNeeded] = useState(place.reservationNeeded)
+  const [recommendedMenu, setRecommendedMenu] = useState(place.recommendedMenu ?? '')
+  const [resolving, setResolving] = useState(false)
+  const [resolveError, setResolveError] = useState('')
 
   const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
+
+  const resolveMapLink = async () => {
+    if (!mapUrl.trim()) return
+    setResolving(true); setResolveError('')
+    const res = await api.places.resolveMapLink(mapUrl.trim())
+    setResolving(false)
+    if ('error' in res) { setResolveError(res.error); return }
+    if (res.address) setAddress(res.address)
+    if (res.name && !name.trim()) setName(res.name)
+  }
 
   const save = async () => {
     const r = rating.trim() === '' ? null : Number(rating)
@@ -37,6 +52,7 @@ function PlaceRow({
       rating: r != null && !Number.isNaN(r) ? r : null,
       pros: pros.trim() || null, cons: cons.trim() || null,
       countryId: countryId || null, cityId: cityId || null,
+      hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
     })
     setEditing(false)
     onChanged()
@@ -63,7 +79,15 @@ function PlaceRow({
           <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
             <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
           <div className="field grow"><label>구글 지도 링크</label>
-            <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." onChange={(e) => setMapUrl(e.target.value)} /></div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." style={{ flex: 1 }}
+                onChange={(e) => setMapUrl(e.target.value)} />
+              <button type="button" className="btn small" onClick={resolveMapLink} disabled={resolving || !mapUrl.trim()}>
+                {resolving ? '가져오는 중…' : '📍 주소 가져오기'}
+              </button>
+            </div>
+            {resolveError && <div className="error-text" style={{ marginTop: 4 }}>{resolveError}</div>}
+          </div>
           <div className="field"><label>국가 (선택)</label>
             <Select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
               <option value="">— 선택 안함 —</option>
@@ -76,6 +100,15 @@ function PlaceRow({
                 {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select></div>
           )}
+          <div className="field"><label>🕒 영업시간</label>
+            <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
+          <div className="field" style={{ justifyContent: 'flex-end' }}>
+            <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
+              <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
+            </label>
+          </div>
+          <div className="field grow"><label>🍽 추천 메뉴</label>
+            <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
           <div className="field grow"><label>메모</label>
             <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
           <div className="field grow"><label>👍 장점</label>
@@ -103,12 +136,15 @@ function PlaceRow({
             ★ {place.rating.toFixed(1)}
           </span>
         )}
+        {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
       </div>
       <div style={{ fontWeight: 800, marginTop: 8 }}>
         {place.name}
         {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
       </div>
       <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
+      {place.hours && <div className="muted">🕒 {place.hours}</div>}
+      {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
       {(place.pros || place.cons) && (
         <div className="muted">
           {place.pros && <>👍 {place.pros} </>}
@@ -152,8 +188,20 @@ export default function PlacesScreen() {
   const [manCountryId, setManCountryId] = useState('')
   const [manCityId, setManCityId] = useState('')
   const [showAddPlace, setShowAddPlace] = useState(false)
+  const [manResolving, setManResolving] = useState(false)
+  const [manResolveError, setManResolveError] = useState('')
 
   const manCitiesOfCountry = cities.filter((c) => c.countryId === manCountryId)
+
+  const resolveManMapLink = async () => {
+    if (!manMapUrl.trim()) return
+    setManResolving(true); setManResolveError('')
+    const res = await api.places.resolveMapLink(manMapUrl.trim())
+    setManResolving(false)
+    if ('error' in res) { setManResolveError(res.error); return }
+    if (res.address) setManAddress(res.address)
+    if (res.name && !manName.trim()) setManName(res.name)
+  }
 
   const refresh = () => {
     api.places.list().then(setPlaces)
@@ -260,7 +308,14 @@ export default function PlacesScreen() {
               </div>
               <div className="field grow">
                 <label>구글 지도 링크 (선택)</label>
-                <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)} placeholder="https://maps.app.goo.gl/..." />
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <input type="text" value={manMapUrl} onChange={(e) => setManMapUrl(e.target.value)}
+                    placeholder="https://maps.app.goo.gl/..." style={{ flex: 1 }} />
+                  <button type="button" className="btn small" onClick={resolveManMapLink} disabled={manResolving || !manMapUrl.trim()}>
+                    {manResolving ? '가져오는 중…' : '📍 주소 가져오기'}
+                  </button>
+                </div>
+                {manResolveError && <div className="error-text" style={{ marginTop: 4 }}>{manResolveError}</div>}
               </div>
             </div>
             <div className="form-row">

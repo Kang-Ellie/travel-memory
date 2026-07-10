@@ -38,6 +38,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
   const [budget, setBudget] = useState('')
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
+  const [showAddMember, setShowAddMember] = useState(false)
   const [selCountryId, setSelCountryId] = useState('')
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set())
 
@@ -70,6 +71,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
     setNewMemberName('')
     if ('error' in res) { alert(res.error); return }
     setSelMembers((prev) => new Set(prev).add(res.id))
+    setShowAddMember(false)
     api.members.list().then(setMembers)
   }
 
@@ -144,13 +146,19 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
                 ))}
               </div>
             )}
-            <div style={{ display: 'flex', gap: 6 }}>
-              <input type="text" value={newMemberName} placeholder="새 동행인 이름 (예: 엄마)"
-                onChange={(e) => setNewMemberName(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && addMember()} />
-              <button className="btn small" onClick={addMember}>＋ 추가</button>
-            </div>
+            <button className="btn small" onClick={() => setShowAddMember(true)}>＋ 새 동행인 추가</button>
           </div>
+
+          {showAddMember && (
+            <Modal title="새 동행인 추가" onClose={() => setShowAddMember(false)}>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input type="text" value={newMemberName} placeholder="이름 (예: 엄마)" autoFocus
+                  onChange={(e) => setNewMemberName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && addMember()} />
+                <button className="btn small primary" onClick={addMember}>＋ 추가</button>
+              </div>
+            </Modal>
+          )}
           <div style={{ marginTop: 16 }}>
             <button className="btn primary" onClick={create}>여행 만들기 ✈️</button>
           </div>

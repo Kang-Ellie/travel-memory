@@ -55,9 +55,9 @@ function BucketRow({
           {item.category && <span className="chip purple" style={{ marginLeft: 8 }}>{item.category}</span>}
         </div>
         <div className="muted">
-          {item.countryName && <>🌍 {item.countryName}{item.cityName && ` · ${item.cityName}`} </>}
-          {item.memo}
+          {item.countryName && <>🌍 {item.countryName}{item.cityName && ` · ${item.cityName}`}</>}
         </div>
+        {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
         {item.linkedPlaceId ? (
           <div className="muted" style={{ marginTop: 2 }}>
             📍 {item.linkedPlaceName}
@@ -183,14 +183,16 @@ export default function BucketListScreen() {
                   {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </Select></div>
             )}
-            <div className="field"><label>장소 족보와 연결 (선택)</label>
+            <div className="field grow"><label>장소 족보와 연결 (선택)</label>
               <Select value={linkPlaceId} onChange={(e) => setLinkPlaceId(e.target.value)}>
                 <option value="">— 선택 안함 —</option>
                 {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
               </Select></div>
-            <div className="field grow"><label>비고 (선택)</label>
-              <input type="text" value={memo} placeholder="예: 회원 할인 있음"
-                onChange={(e) => setMemo(e.target.value)} /></div>
+          </div>
+          <div className="field">
+            <label>비고 (선택 · 여러 줄 가능)</label>
+            <textarea value={memo} placeholder={'예:\n회원 할인 있음\n예약은 최소 1주일 전에'}
+              onChange={(e) => setMemo(e.target.value)} style={{ width: '100%' }} />
           </div>
           <div style={{ marginTop: 10 }}>
             <button className="btn primary" onClick={add}>＋ 버킷리스트에 추가</button>

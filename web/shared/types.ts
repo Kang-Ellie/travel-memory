@@ -63,6 +63,9 @@ export interface Place {
   countryName: string | null
   countryCode: string | null
   cityName: string | null
+  hours: string | null
+  reservationNeeded: boolean
+  recommendedMenu: string | null
   createdAt: string
 }
 
@@ -91,6 +94,10 @@ export interface FlightDetail {
   durationMinutes: number | null
   bookingRef: string | null
   bookedVia: string | null
+  departureLocation: string | null
+  confirmed: boolean
+  voucherId: string | null
+  voucherTitle: string | null
 }
 
 export interface TimelineEvent {
@@ -140,12 +147,16 @@ export interface CurrencyRate {
   krwPerUnit: number
 }
 
+export const VOUCHER_CATEGORIES = ['항공권', '숙소', '티켓', '기타'] as const
+export type VoucherCategory = (typeof VOUCHER_CATEGORIES)[number]
+
 export interface Voucher {
   id: string
   tripId: string
   title: string
   fileType: string
   filePath: string
+  category: string
   createdAt: string
 }
 
@@ -170,6 +181,10 @@ export interface DayNote {
   diary: string | null
   weatherEmoji: string | null
   weatherTemp: number | null
+  cityId: string | null
+  cityName: string | null
+  countryName: string | null
+  countryCode: string | null
 }
 
 export interface PlaceVisit extends TimelineEvent {
@@ -191,7 +206,7 @@ export interface GooglePlaceResult {
   googleRating: number | null
 }
 
-export type ChecklistScope = 'day' | 'packing'
+export type ChecklistScope = 'day' | 'packing' | 'predeparture' | 'shopping' | 'food'
 
 export interface ChecklistItem {
   id: string
@@ -199,9 +214,24 @@ export interface ChecklistItem {
   scope: ChecklistScope
   dayNumber: number | null
   text: string
+  category: string | null
   done: boolean
   sequence: number
   createdAt: string
+}
+
+export const PREDEPARTURE_PRESETS = ['항공권 예약', '숙소 예약', '여행자보험 가입', '발렛 예약', '로밍 / eSIM', '환전']
+
+export const PACKING_PRESETS: Record<string, string[]> = {
+  필수: [
+    '멀티 어댑터 & 돼지코', '물티슈 & 휴지', '상비약', '상의', '선글라스', '세면도구', '속옷', '스킨케어',
+    '양말', '여권', '외투 & 가디건', '하의', '해외 결제 가능한 신용카드', '항공권 전자티켓',
+  ],
+  선택: [
+    '국제 운전 면허증', '노트북', '마스크', '모자', '삼각대 & 셀카봉', '수영복', '우산 & 비옷',
+    '운동화 & 구두 & 샌들 & 슬리퍼', '지퍼백 & 비닐봉지 & 여행용 파우치', '태블릿',
+  ],
+  당일준비물: ['보조배터리', '선크림', '충전기'],
 }
 
 export interface BucketItem {

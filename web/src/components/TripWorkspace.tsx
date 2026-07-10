@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
-  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem,
+  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem, DayNote,
 } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend } from '../settlement'
@@ -8,9 +8,8 @@ import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
 import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
-import DayNoteBox from './DayNoteBox'
+import TripBaseSection from './TripBaseSection'
 import Lightbox from './Lightbox'
-import ChecklistPanel from './ChecklistPanel'
 import Modal from './Modal'
 import Select from './Select'
 
@@ -20,13 +19,13 @@ const TRANSIT_ICON: Record<string, string> = {
   도보: '🚶', 지하철: '🚇', 버스: '🚌', 기차: '🚄', 택시: '🚕', 비행기: '✈️', 배: '⛴',
 }
 
-function dayCount(trip: Trip): number {
+export function dayCount(trip: Trip): number {
   const s = new Date(trip.startDate + 'T00:00:00')
   const e = new Date(trip.endDate + 'T00:00:00')
   return Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
 }
 
-function dayLabel(trip: Trip, day: number): string {
+export function dayLabel(trip: Trip, day: number): string {
   const d = new Date(trip.startDate + 'T00:00:00')
   d.setDate(d.getDate() + day - 1)
   const week = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
@@ -128,15 +127,17 @@ interface QuickExpenseState {
   purchaseItems: string
   paidBy: string
   splitWith: Set<string>
+  isShared: boolean
 }
 
 function EventCard({
-  ev, participants, eventExpenses, bucketItems, dragIndex, onDragStart, onDrop, onChanged,
+  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged,
 }: {
   ev: TimelineEvent
   participants: Member[]
   eventExpenses: Expense[]
   bucketItems: BucketItem[]
+  vouchers: Voucher[]
   dragIndex: number
   onDragStart: (idx: number) => void
   onDrop: () => void
@@ -157,9 +158,12 @@ function EventCard({
   const [durationMinutes, setDurationMinutes] = useState(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
   const [bookingRef, setBookingRef] = useState(ev.flight?.bookingRef ?? '')
   const [bookedVia, setBookedVia] = useState(ev.flight?.bookedVia ?? '')
+  const [departureLocation, setDepartureLocation] = useState(ev.flight?.departureLocation ?? '')
+  const [confirmed, setConfirmed] = useState(ev.flight?.confirmed ?? false)
+  const [voucherId, setVoucherId] = useState(ev.flight?.voucherId ?? '')
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '식비', purchaseItems: '',
-    paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)),
+    paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)), isShared: true,
   })
   const photoInput = useRef<HTMLInputElement>(null)
 
@@ -171,6 +175,8 @@ function EventCard({
     setDepartAt(ev.flight?.departAt ?? ''); setArriveAt(ev.flight?.arriveAt ?? '')
     setDurationMinutes(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
     setBookingRef(ev.flight?.bookingRef ?? ''); setBookedVia(ev.flight?.bookedVia ?? '')
+    setDepartureLocation(ev.flight?.departureLocation ?? ''); setConfirmed(ev.flight?.confirmed ?? false)
+    setVoucherId(ev.flight?.voucherId ?? '')
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -191,6 +197,8 @@ function EventCard({
         departAt: departAt.trim() || null, arriveAt: arriveAt.trim() || null,
         durationMinutes: durationMinutes.trim() ? Number(durationMinutes) : null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
+        departureLocation: departureLocation.trim() || null, confirmed,
+        voucherId: voucherId || null, voucherTitle: null,
       })
     }
     setEditing(false)
@@ -209,8 +217,11 @@ function EventCard({
     if (!amt || amt <= 0 || !qe.paidBy) return
     await api.expenses.create({
       tripId: ev.tripId, eventId: ev.id, amount: amt, currency: qe.currency, category: qe.category,
-      description: ev.place.name, paidBy: qe.paidBy, splitWith: [...qe.splitWith], spentAt: new Date().toISOString().slice(0, 10),
-      paymentMethod: null, memo: null, purchaseItems: qe.purchaseItems.trim() || null, isShared: true, isPrebooked: false,
+      description: ev.place.name, paidBy: qe.paidBy,
+      splitWith: qe.isShared ? [...qe.splitWith] : [qe.paidBy],
+      spentAt: new Date().toISOString().slice(0, 10),
+      paymentMethod: null, memo: null, purchaseItems: qe.purchaseItems.trim() || null,
+      isShared: qe.isShared, isPrebooked: false,
     })
     setQe((s) => ({ ...s, amount: '', purchaseItems: '' }))
     setShowExpenseForm(false)
@@ -290,6 +301,9 @@ function EventCard({
             <Modal title={`${ev.place.name} 수정`} onClose={() => setEditing(false)}>
               {isAirport && (
                 <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
+                  <div className="field"><label>🛫 출발장소</label>
+                    <input type="text" value={departureLocation} placeholder="예: 인천공항 T2"
+                      onChange={(e) => setDepartureLocation(e.target.value)} /></div>
                   <div className="field"><label>✈️ 출발시간</label>
                     <input type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
                   <div className="field"><label>🛬 도착시간</label>
@@ -300,6 +314,15 @@ function EventCard({
                     <input type="text" value={bookingRef} placeholder="ABC123" onChange={(e) => setBookingRef(e.target.value)} /></div>
                   <div className="field grow"><label>예약처</label>
                     <input type="text" value={bookedVia} placeholder="예: 진에어 앱" onChange={(e) => setBookedVia(e.target.value)} /></div>
+                  <div className="field"><label>🎫 바우처 연결</label>
+                    <Select value={voucherId} onChange={(e) => setVoucherId(e.target.value)}>
+                      <option value="">— 선택 안함 —</option>
+                      {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+                    </Select></div>
+                  <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                    ✅ 예약 확정
+                  </label>
                 </div>
               )}
               <div className="field" style={{ marginBottom: 6 }}>
@@ -341,12 +364,19 @@ function EventCard({
             <>
               {isAirport && ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) && (
                 <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>
+                  {ev.flight.departureLocation && `${ev.flight.departureLocation} · `}
                   🛫 {ev.flight.departAt ? new Date(ev.flight.departAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
                   {' → 🛬 '}
                   {ev.flight.arriveAt ? new Date(ev.flight.arriveAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
                   {ev.flight.durationMinutes != null && ` · ${formatDuration(ev.flight.durationMinutes)}`}
                   {ev.flight.bookingRef && ` · 예약번호 ${ev.flight.bookingRef}`}
                   {ev.flight.bookedVia && ` · ${ev.flight.bookedVia}`}
+                  {ev.flight.confirmed && <span className="chip green" style={{ marginLeft: 6 }}>✅ 확정</span>}
+                  {ev.flight.voucherId && (
+                    <span className="chip green" style={{ marginLeft: 6 }} title={ev.flight.voucherTitle ?? ''}>
+                      🎫 {ev.flight.voucherTitle}
+                    </span>
+                  )}
                 </div>
               )}
               {ev.bucketItemTitle && <div className="chip purple" style={{ marginBottom: 8 }}>✨ {ev.bucketItemTitle}</div>}
@@ -380,6 +410,7 @@ function EventCard({
         {eventExpenses.map((exp) => (
           <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
             <span className="dot" style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
+            <span title={exp.isShared ? '공동지출' : '개인지출'}>{exp.isShared ? '👥' : '🙋'}</span>
             {exp.category} {fmtMoney(exp.amount, exp.currency)}
             {exp.purchaseItems && <span className="muted"> · {exp.purchaseItems}</span>}
             <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>
@@ -408,6 +439,10 @@ function EventCard({
             ) : (
               <span className="muted">[🧮 정산] 탭에서 참여자를 먼저 추가하세요.</span>
             )}
+            <label style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center', fontSize: 13 }}>
+              <input type="checkbox" checked={qe.isShared} onChange={(e) => setQe((s) => ({ ...s, isShared: e.target.checked }))} />
+              공동지출
+            </label>
             <div style={{ marginTop: 12 }}>
               <button className="btn small primary" onClick={addExpense}>기록</button>
               <button className="btn small ghost" onClick={() => setShowExpenseForm(false)} style={{ marginLeft: 6 }}>취소</button>
@@ -430,6 +465,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [transit, setTransit] = useState<TransitSegment[]>([])
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
+  const [dayNotes, setDayNotes] = useState<DayNote[]>([])
   const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -454,6 +490,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     api.transit.list(trip.id).then(setTransit)
     api.vouchers.list(trip.id).then(setVouchers)
     api.bucket.list().then(setBucketItems)
+    api.dayNotes.list(trip.id).then(setDayNotes)
   }
   useEffect(refresh, [trip.id])
 
@@ -469,6 +506,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   }
 
   const dayCityLabel = (d: number): string | null => {
+    const explicit = dayNotes.find((n) => n.dayNumber === d)?.cityName
+    if (explicit) return explicit
     const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => a.sequence - b.sequence)
     const cities = evs.map((e) => e.place.cityName).filter((c): c is string => !!c)
     if (cities.length === 0) return null
@@ -618,9 +657,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: 타임라인 + 가계부 요약 */}
       <div>
+        <TripBaseSection trip={trip} />
         <BudgetBar trip={trip} expenses={expenses} rates={rates} />
-        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
-        <DayNoteBox tripId={trip.id} dayNumber={day} />
 
           <div
             className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
@@ -642,6 +680,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   participants={members}
                   eventExpenses={expensesByEvent.get(ev.id) ?? []}
                   bucketItems={bucketItems}
+                  vouchers={vouchers}
                   dragIndex={idx}
                   onDragStart={(i) => { dragFrom.current = i }}
                   onDrop={() => reorder(idx)}

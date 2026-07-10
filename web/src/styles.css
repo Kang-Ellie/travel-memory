@@ -646,7 +646,10 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   width: 100%;
   max-width: 820px;
   max-height: 86vh;
+  max-height: 86dvh; /* 모바일 브라우저 주소창 접힘/펼침에 따른 vh 오차로 하단이 잘리는 것 방지 */
+  min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal-head {
   display: flex;
@@ -680,7 +683,7 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .modal-body .row:last-child { margin-bottom: 0; }
 @media (max-width: 640px) {
   .modal-overlay { padding: 0; align-items: flex-end; }
-  .modal-box { max-width: 100%; max-height: 92vh; border-radius: 18px 18px 0 0; }
+  .modal-box { max-width: 100%; max-height: 92vh; max-height: 92dvh; border-radius: 18px 18px 0 0; }
   .modal-head { padding: 16px 20px; }
   .modal-body { padding: 18px 20px 24px; }
 }

@@ -226,6 +226,28 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE archive_items ALTER COLUMN trip_id DROP NOT NULL;
     ALTER TABLE archive_items ADD COLUMN IF NOT EXISTS linked_place_id TEXT REFERENCES places(id) ON DELETE SET NULL;
 
+    -- 장소 족보 보강: 영업시간·예약필요·추천메뉴
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS hours TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS reservation_needed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS recommended_menu TEXT;
+
+    -- 항공 상세 보강: 탑승 위치·확정 여부·연결된 바우처
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS departure_location TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS confirmed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS voucher_id TEXT REFERENCES vouchers(id) ON DELETE SET NULL;
+
+    -- 일차별로 어느 도시에 해당하는지 명시적으로 지정 가능하게(자동 추론 대신/보완)
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS city_id TEXT REFERENCES cities(id) ON DELETE SET NULL;
+
+    -- 체크리스트: 준비물 안에서 필수/선택/당일준비물로 묶고, '여행 전 Todo' 범위 추가
+    ALTER TABLE checklist_items ADD COLUMN IF NOT EXISTS category TEXT;
+    ALTER TABLE checklist_items DROP CONSTRAINT IF EXISTS checklist_items_scope_check;
+    ALTER TABLE checklist_items ADD CONSTRAINT checklist_items_scope_check
+      CHECK (scope IN ('day', 'packing', 'shopping', 'food', 'predeparture'));
+
+    -- 바우처를 항공권/숙소/티켓 등으로 구분
+    ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
+
     -- '식당' 분류명을 '맛집'으로 통일
     UPDATE places SET category = '맛집' WHERE category = '식당';
 

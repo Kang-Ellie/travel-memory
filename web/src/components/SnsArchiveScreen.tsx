@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ArchiveItem, Place, GooglePlaceResult } from '../../shared/types'
 import { api } from '../api'
+import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
@@ -77,6 +78,7 @@ function LinkPlaceModal({
 
 function SnsCard({ item, places, onChanged }: { item: ArchiveItem; places: Place[]; onChanged: () => void }) {
   const [linking, setLinking] = useState(false)
+  const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
 
   const unlink = async () => {
     await api.archive.linkPlace(item.id, null)
@@ -99,9 +101,14 @@ function SnsCard({ item, places, onChanged }: { item: ArchiveItem; places: Place
           </a>
         )}
         {item.linkedPlaceId && (
-          <div className="muted" style={{ marginTop: 4 }}>
+          <div className="muted" style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
             📍 연결된 장소: <strong>{item.linkedPlaceName}</strong>
-            <button className="btn small ghost" style={{ marginLeft: 6 }} onClick={unlink}>연결 해제</button>
+            {linkedPlace?.countryName && (
+              <span className="chip purple">
+                {flagEmoji(linkedPlace.countryCode)} {linkedPlace.countryName}{linkedPlace.cityName ? ` · ${linkedPlace.cityName}` : ''}
+              </span>
+            )}
+            <button className="btn small ghost" onClick={unlink}>연결 해제</button>
           </div>
         )}
       </div>

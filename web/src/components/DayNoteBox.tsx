@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
-import type { DayNote } from '../../shared/types'
+import type { DayNote, TripCity } from '../../shared/types'
 import { api } from '../api'
+import { flagEmoji } from '../categories'
 import Modal from './Modal'
+import Select from './Select'
 
 const WEATHER_EMOJIS = ['☀️', '🌤', '⛅', '☁️', '🌧', '⛈', '❄️', '🌫', '💨']
 
-export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayNumber: number }) {
+export default function DayNoteBox({
+  tripId, dayNumber, cities, onChanged,
+}: { tripId: string; dayNumber: number; cities: TripCity[]; onChanged?: () => void }) {
   const [note, setNote] = useState<DayNote | null>(null)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
   const [diary, setDiary] = useState('')
   const [weatherEmoji, setWeatherEmoji] = useState('')
   const [weatherTemp, setWeatherTemp] = useState('')
+  const [cityId, setCityId] = useState('')
   const [diaryHidden, setDiaryHidden] = useState(true)
 
   useEffect(() => {
@@ -24,6 +29,7 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
       setDiary(n?.diary ?? '')
       setWeatherEmoji(n?.weatherEmoji ?? '')
       setWeatherTemp(n?.weatherTemp != null ? String(n.weatherTemp) : '')
+      setCityId(n?.cityId ?? '')
     })
   }, [tripId, dayNumber])
 
@@ -34,16 +40,31 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
       diary: diary.trim() || null,
       weatherEmoji: weatherEmoji || null,
       weatherTemp: temp != null && !Number.isNaN(temp) ? temp : null,
+      cityId: cityId || null,
     }
     await api.dayNotes.set(tripId, dayNumber, data)
-    setNote({ tripId, dayNumber, ...data })
+    const city = cities.find((c) => c.id === cityId)
+    setNote({
+      tripId, dayNumber, ...data,
+      cityName: city?.name ?? null, countryName: city?.countryName ?? null, countryCode: city?.countryCode ?? null,
+    })
     setEditing(false)
+    onChanged?.()
   }
 
   if (editing) {
     return (
       <Modal title="오늘의 기록" onClose={() => setEditing(false)}>
         <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start', border: 'none', padding: 0, margin: 0 }}>
+          {cities.length > 0 && (
+            <div className="field" style={{ width: '100%' }}>
+              <label>🌆 오늘 있는 도시</label>
+              <Select value={cityId} onChange={(e) => setCityId(e.target.value)}>
+                <option value="">— 자동 (일정에서 추측) —</option>
+                {cities.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.countryCode)} {c.countryName} · {c.name}</option>)}
+              </Select>
+            </div>
+          )}
           <div className="field" style={{ width: '100%' }}>
             <label>오늘의 날씨</label>
             <div className="emoji-pick-row">
@@ -73,7 +94,7 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
     )
   }
 
-  const empty = !note?.note && !note?.diary && !note?.weatherEmoji
+  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && !note?.cityId
   return (
     <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: empty ? undefined : 'var(--yellow-soft)' }}>
       <div className="row" style={{ border: 'none', margin: 0, padding: 0, background: 'none' }}>
@@ -82,6 +103,11 @@ export default function DayNoteBox({ tripId, dayNumber }: { tripId: string; dayN
             <span className="muted">이 날에 대한 메모가 없어요 — 날씨나 그날의 한 줄을 남겨보세요.</span>
           ) : (
             <>
+              {note?.cityName && (
+                <span className="chip purple" style={{ marginRight: 8 }}>
+                  {flagEmoji(note.countryCode)} {note.countryName} · {note.cityName}
+                </span>
+              )}
               {note?.weatherEmoji && (
                 <span className="chip yellow" style={{ marginRight: 8 }}>
                   {note.weatherEmoji}{note.weatherTemp != null ? ` ${note.weatherTemp}°` : ''}
