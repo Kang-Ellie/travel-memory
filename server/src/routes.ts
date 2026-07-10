@@ -61,7 +61,7 @@ const mapFlightDetail = (r: any) => ({
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
   plannedTime: r.planned_time, rating: r.rating != null ? Number(r.rating) : null,
-  review: r.review, mustTry: r.must_try, linkUrl: r.link_url, createdAt: r.created_at,
+  review: r.review, mustTry: r.must_try, memo: r.memo, linkUrl: r.link_url, createdAt: r.created_at,
   bucketItemId: r.bucket_item_id, bucketItemTitle: r.bucket_item_title ?? null,
 })
 const mapExpense = (r: any) => ({
@@ -474,12 +474,12 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.put('/api/events/:id', async (req, res) => {
-    const { rating, review, linkUrl, mustTry, plannedTime, bucketItemId } = req.body as {
+    const { rating, review, linkUrl, mustTry, memo, plannedTime, bucketItemId } = req.body as {
       rating: number | null; review: string | null; linkUrl: string | null; mustTry: string | null
-      plannedTime: string | null; bucketItemId?: string | null
+      memo: string | null; plannedTime: string | null; bucketItemId?: string | null
     }
-    const sets = ['rating=$1', 'review=$2', 'link_url=$3', 'must_try=$4', 'planned_time=$5']
-    const params: any[] = [rating, review, linkUrl, mustTry, plannedTime]
+    const sets = ['rating=$1', 'review=$2', 'link_url=$3', 'must_try=$4', 'planned_time=$5', 'memo=$6']
+    const params: any[] = [rating, review, linkUrl, mustTry, plannedTime, memo]
     if (bucketItemId !== undefined) { params.push(bucketItemId); sets.push(`bucket_item_id=$${params.length}`) }
     params.push(req.params.id)
     await pool.query(`UPDATE timeline_events SET ${sets.join(', ')} WHERE id=$${params.length}`, params)

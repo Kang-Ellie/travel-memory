@@ -220,6 +220,7 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE transit_segments ADD COLUMN IF NOT EXISTS note TEXT;
     ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS linked_place_id TEXT REFERENCES places(id) ON DELETE SET NULL;
     ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS bucket_item_id TEXT REFERENCES bucket_items(id) ON DELETE SET NULL;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS memo TEXT;
 
     -- 보관함 항목을 여행에 종속시키지 않고도(SNS에서 저장만 해둔 링크 등) 만들 수 있게 함
     ALTER TABLE archive_items ALTER COLUMN trip_id DROP NOT NULL;

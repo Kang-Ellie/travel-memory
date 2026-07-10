@@ -2,11 +2,11 @@ import { useEffect, useState } from 'react'
 import type { Trip, Member, Country, City } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { flagEmoji, tripCitiesLabel } from '../categories'
+import { tripCitiesLabel } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
-import Select from './Select'
 import DatePicker from './DatePicker'
+import TripCountryCityPicker from './TripCountryCityPicker'
 
 function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
@@ -48,8 +48,6 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
     api.cities.list().then(setCities)
   }
   useEffect(refresh, [])
-
-  const citiesOfSelCountry = cities.filter((c) => c.countryId === selCountryId)
 
   const create = async () => {
     if (!title.trim() || !startDate || !endDate) return
@@ -116,33 +114,15 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
           </div>
           <div className="field" style={{ marginTop: 12 }}>
             <label>어디로? (국가 · 도시, 선택)</label>
-            {countries.length === 0 ? (
-              <span className="muted">🌍 국가·도시 화면에서 나라를 먼저 등록하면 여기서 골라 연결할 수 있어요.</span>
-            ) : (
-              <>
-                <Select value={selCountryId} onChange={(e) => setSelCountryId(e.target.value)}>
-                  <option value="">— 국가 선택 —</option>
-                  {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
-                </Select>
-                {selCountryId && (
-                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 8 }}>
-                    {citiesOfSelCountry.length === 0 ? (
-                      <span className="muted">이 나라엔 등록된 도시가 없어요.</span>
-                    ) : citiesOfSelCountry.map((c) => (
-                      <label key={c.id} style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center' }}>
-                        <input type="checkbox" checked={selCityIds.has(c.id)}
-                          onChange={(e) => {
-                            const next = new Set(selCityIds)
-                            e.target.checked ? next.add(c.id) : next.delete(c.id)
-                            setSelCityIds(next)
-                          }} />
-                        {c.name}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
+            <TripCountryCityPicker
+              countries={countries}
+              cities={cities}
+              selCountryId={selCountryId}
+              onSelCountryChange={setSelCountryId}
+              selCityIds={selCityIds}
+              onSelCityIdsChange={setSelCityIds}
+              onCatalogChanged={() => { api.countries.list().then(setCountries); api.cities.list().then(setCities) }}
+            />
           </div>
           <div className="field" style={{ marginTop: 12 }}>
             <label>함께 가는 사람</label>

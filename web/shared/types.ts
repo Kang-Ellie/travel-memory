@@ -103,6 +103,7 @@ export interface TimelineEvent {
   rating: number | null
   review: string | null
   mustTry: string | null
+  memo: string | null
   linkUrl: string | null
   createdAt: string
   place: Place

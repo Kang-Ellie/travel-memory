@@ -102,7 +102,7 @@ export const api = {
       req<{ id: string }>('POST', `/api/trips/${data.tripId}/events`, data),
     update: (id: string, data: {
       rating: number | null; review: string | null; linkUrl: string | null
-      mustTry: string | null; plannedTime: string | null; bucketItemId?: string | null
+      mustTry: string | null; memo: string | null; plannedTime: string | null; bucketItemId?: string | null
     }) => req<void>('PUT', `/api/events/${id}`, data),
     reorder: (data: { tripId: string; dayNumber: number; orderedIds: string[] }) =>
       req<void>('POST', `/api/trips/${data.tripId}/events/reorder`, data),

@@ -146,6 +146,7 @@ function EventCard({
   const [review, setReview] = useState(ev.review ?? '')
   const [linkUrl, setLinkUrl] = useState(ev.linkUrl ?? '')
   const [mustTry, setMustTry] = useState(ev.mustTry ?? '')
+  const [memo, setMemo] = useState(ev.memo ?? '')
   const [bucketItemId, setBucketItemId] = useState(ev.bucketItemId ?? '')
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
@@ -165,6 +166,7 @@ function EventCard({
   const startEdit = () => {
     setReview(ev.review ?? ''); setLinkUrl(ev.linkUrl ?? '')
     setMustTry(ev.mustTry ?? ''); setPlannedTime(ev.plannedTime ?? '')
+    setMemo(ev.memo ?? '')
     setBucketItemId(ev.bucketItemId ?? '')
     setDepartAt(ev.flight?.departAt ?? ''); setArriveAt(ev.flight?.arriveAt ?? '')
     setDurationMinutes(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
@@ -174,14 +176,14 @@ function EventCard({
   const setRating = async (n: number) => {
     await api.events.update(ev.id, {
       rating: ev.rating === n ? null : n, review: ev.review, linkUrl: ev.linkUrl,
-      mustTry: ev.mustTry, plannedTime: ev.plannedTime,
+      mustTry: ev.mustTry, memo: ev.memo, plannedTime: ev.plannedTime,
     })
     onChanged()
   }
   const save = async () => {
     await api.events.update(ev.id, {
       rating: ev.rating, review: review.trim() || null, linkUrl: linkUrl.trim() || null,
-      mustTry: mustTry.trim() || null, plannedTime: plannedTime.trim() || null,
+      mustTry: mustTry.trim() || null, memo: memo.trim() || null, plannedTime: plannedTime.trim() || null,
       bucketItemId: bucketItemId || null,
     })
     if (isAirport) {
@@ -305,6 +307,11 @@ function EventCard({
                 <input type="time" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
+                <label>📝 메모 (발렛·주차·입장코드 등 실용 정보)</label>
+                <textarea value={memo} placeholder="예: 발렛 맡김 — OO발렛 010-1234-5678, 3층 입구"
+                  onChange={(e) => setMemo(e.target.value)} style={{ width: '100%' }} />
+              </div>
+              <div className="field" style={{ marginBottom: 6 }}>
                 <label>🌟 꼭 해봐야 하는 것 (한 줄에 하나씩)</label>
                 <textarea value={mustTry} placeholder={'예:\n명란 정식\n창가 자리 뷰'}
                   onChange={(e) => setMustTry(e.target.value)} style={{ width: '100%' }} />
@@ -343,6 +350,9 @@ function EventCard({
                 </div>
               )}
               {ev.bucketItemTitle && <div className="chip purple" style={{ marginBottom: 8 }}>✨ {ev.bucketItemTitle}</div>}
+              {ev.memo && (
+                <div className="muted" style={{ marginBottom: 8, whiteSpace: 'pre-wrap' }}>📝 {ev.memo}</div>
+              )}
               {ev.mustTry && (
                 <div style={{ marginBottom: 8 }}>
                   <div className="muted">🌟 꼭 해봐야 하는 것</div>

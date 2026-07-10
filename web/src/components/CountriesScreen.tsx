@@ -5,14 +5,14 @@ import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 
-type CountryForm = Omit<Country, 'id' | 'createdAt'>
+export type CountryForm = Omit<Country, 'id' | 'createdAt'>
 
-const EMPTY_FORM: CountryForm = {
+export const EMPTY_COUNTRY_FORM: CountryForm = {
   name: '', code: '', capital: '', phoneCode: '', currency: '', voltage: '',
   language: '', visa: '', prepDocs: '', emergencyPolice: '', emergencyMedical: '',
 }
 
-function CountryFields({ form, onChange }: { form: CountryForm; onChange: (f: CountryForm) => void }) {
+export function CountryFields({ form, onChange }: { form: CountryForm; onChange: (f: CountryForm) => void }) {
   const set = (k: keyof CountryForm) => (e: React.ChangeEvent<HTMLInputElement>) => onChange({ ...form, [k]: e.target.value })
   return (
     <>
@@ -204,7 +204,7 @@ export default function CountriesScreen() {
   const [cities, setCities] = useState<City[]>([])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState<CountryForm>(EMPTY_FORM)
+  const [form, setForm] = useState<CountryForm>(EMPTY_COUNTRY_FORM)
 
   const refresh = () => {
     api.countries.list().then(setCountries)
@@ -215,7 +215,7 @@ export default function CountriesScreen() {
   const create = async () => {
     if (!form.name.trim()) return
     await api.countries.create(form)
-    setForm(EMPTY_FORM)
+    setForm(EMPTY_COUNTRY_FORM)
     setCreating(false)
     refresh()
   }
@@ -237,11 +237,11 @@ export default function CountriesScreen() {
       </Window>
 
       {creating && (
-        <Modal title="새 국가 등록" onClose={() => { setCreating(false); setForm(EMPTY_FORM) }}>
+        <Modal title="새 국가 등록" onClose={() => { setCreating(false); setForm(EMPTY_COUNTRY_FORM) }}>
           <CountryFields form={form} onChange={setForm} />
           <div style={{ marginTop: 8 }}>
             <button className="btn primary" onClick={create}>등록</button>
-            <button className="btn" style={{ marginLeft: 6 }} onClick={() => { setCreating(false); setForm(EMPTY_FORM) }}>취소</button>
+            <button className="btn" style={{ marginLeft: 6 }} onClick={() => { setCreating(false); setForm(EMPTY_COUNTRY_FORM) }}>취소</button>
           </div>
         </Modal>
       )}
