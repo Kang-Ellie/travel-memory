@@ -14,6 +14,7 @@ import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
 import DayNoteBox from './DayNoteBox'
+import DropdownMenu from './DropdownMenu'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -148,38 +149,6 @@ interface QuickExpenseState {
   isShared: boolean
 }
 
-function EventMenu({
-  onAddPhoto, onAddExpense, onEdit, onDelete,
-}: { onAddPhoto: () => void; onAddExpense: () => void; onEdit: () => void; onDelete: () => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onDocClick)
-    return () => document.removeEventListener('mousedown', onDocClick)
-  }, [open])
-
-  const pick = (fn: () => void) => () => { fn(); setOpen(false) }
-
-  return (
-    <div className="event-menu" ref={ref}>
-      <button type="button" className="btn small ghost" onClick={() => setOpen((v) => !v)} title="더보기">⋮</button>
-      {open && (
-        <div className="event-menu-panel">
-          <button type="button" onClick={pick(onAddPhoto)}>📷 사진 추가</button>
-          <button type="button" onClick={pick(onAddExpense)}>💰 비용 기록</button>
-          <div className="menu-divider" />
-          <button type="button" onClick={pick(onEdit)}>✏️ 수정</button>
-          <button type="button" className="danger" onClick={pick(onDelete)}>🗑 삭제</button>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function EventCard({
   ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged,
@@ -303,13 +272,18 @@ function EventCard({
           ))}
         </span>
         <span style={{ marginLeft: 'auto' }}>
-          <EventMenu
-            onAddPhoto={() => photoInput.current?.click()}
-            onAddExpense={() => setShowExpenseForm(true)}
-            onEdit={startEdit}
-            onDelete={() => {
-              if (confirm(`'${ev.place.name}' 일정을 삭제할까요?`)) api.events.delete(ev.id).then(onChanged)
-            }}
+          <DropdownMenu
+            actions={[
+              { label: '📷 사진 추가', onClick: () => photoInput.current?.click() },
+              { label: '💰 비용 기록', onClick: () => setShowExpenseForm(true) },
+              'divider',
+              { label: '✏️ 수정', onClick: startEdit },
+              {
+                label: '🗑 삭제', danger: true, onClick: () => {
+                  if (confirm(`'${ev.place.name}' 일정을 삭제할까요?`)) api.events.delete(ev.id).then(onChanged)
+                },
+              },
+            ]}
           />
         </span>
       </div>

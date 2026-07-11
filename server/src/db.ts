@@ -261,6 +261,9 @@ export async function initSchema(): Promise<void> {
     -- 일차별 하루 예산(설정하면 TODAY 카드에서 지출 대비 상태 등급을 보여줌)
     ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS budget DOUBLE PRECISION;
 
+    -- 버킷리스트 항목에 직접 참고 이미지를 올려둘 수 있게(아직 안 가본 곳은 장소 족보에 방문 사진이 없으므로)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS image_path TEXT;
+
     -- 업로드 저장 경로와 DB 기록 경로가 어긋났던 과거 버그로 깨진 file_path 복구
     -- (실제 파일은 photos/vouchers/archive 하위에 평평하게 저장되어 있었음)
     UPDATE photos SET file_path = 'photos/' || split_part(file_path, '/', 3)

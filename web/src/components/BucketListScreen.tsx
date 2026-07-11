@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BucketItem, Country, City, Trip, Place, BucketKind } from '../../shared/types'
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from '../../shared/types'
 import { api, fileUrl } from '../api'
@@ -6,6 +6,7 @@ import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
+import DropdownMenu from './DropdownMenu'
 
 const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
@@ -19,7 +20,9 @@ function BucketCard({
   const [tripId, setTripId] = useState('')
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
+  const photoInput = useRef<HTMLInputElement>(null)
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
+  const coverPhoto = item.imagePath ?? linkedPlace?.coverPhoto ?? null
 
   const toggleDone = async () => {
     await api.bucket.update(item.id, { done: !item.done })
@@ -50,6 +53,17 @@ function BucketCard({
     await api.bucket.delete(item.id)
     onChanged()
   }
+  const onPhotoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    await api.bucket.uploadPhoto(item.id, file)
+    onChanged()
+  }
+  const removePhoto = async () => {
+    await api.bucket.deletePhoto(item.id)
+    onChanged()
+  }
 
   const kind = bucketKindOf(item.category)
   const subCategory = kind === 'bucket' ? item.category : null
@@ -58,13 +72,27 @@ function BucketCard({
 
   return (
     <div className="place-card" style={{ cursor: 'default' }}>
-      {linkedPlace?.coverPhoto && <img className="place-card-photo" src={fileUrl(linkedPlace.coverPhoto)} alt="" />}
+      {coverPhoto && <img className="place-card-photo" src={fileUrl(coverPhoto)} alt="" />}
+      <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="place-card-body">
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
           <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" style={{ marginTop: 3 }} />
           <div className="grow" style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>
             {item.title}
           </div>
+          <DropdownMenu actions={[
+            { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
+            ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
+            'divider' as const,
+            ...(item.linkedPlaceId
+              ? [{ label: '장소 연결 해제', onClick: unlinkPlace }] as const
+              : [{ label: '📍 장소 족보와 연결', onClick: () => setLinkingPlace(true) }] as const),
+            ...(item.linkedTripId
+              ? [{ label: '여행 연결 해제', onClick: unlink }] as const
+              : [{ label: '여행에 연결', onClick: () => setLinking(true) }] as const),
+            'divider' as const,
+            { label: '🗑 삭제', danger: true, onClick: remove },
+          ]} />
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           <span className="chip purple">{BUCKET_KIND_LABEL[kind]}</span>
@@ -105,19 +133,6 @@ function BucketCard({
             <button className="btn small" onClick={() => setLinking(false)}>취소</button>
           </div>
         )}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
-          {item.linkedPlaceId ? (
-            <button className="btn small ghost" onClick={unlinkPlace}>장소 연결 해제</button>
-          ) : !linkingPlace && (
-            <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
-          )}
-          {item.linkedTripId ? (
-            <button className="btn small ghost" onClick={unlink}>여행 연결 해제</button>
-          ) : !linking && (
-            <button className="btn small" onClick={() => setLinking(true)}>여행에 연결</button>
-          )}
-          <button className="btn small ghost" onClick={remove}>×</button>
-        </div>
       </div>
     </div>
   )

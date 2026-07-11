@@ -261,5 +261,6 @@ export interface BucketItem {
   linkedTripTitle: string | null
   linkedPlaceId: string | null
   linkedPlaceName: string | null
+  imagePath: string | null
   createdAt: string
 }

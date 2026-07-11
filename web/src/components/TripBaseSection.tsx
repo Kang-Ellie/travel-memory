@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Trip, Country, City, BucketItem, Place, BucketKind } from '../../shared/types'
 import { BUCKET_KIND_LABEL, bucketKindOf } from '../../shared/types'
 import { api, fileUrl } from '../api'
@@ -7,6 +7,7 @@ import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
+import DropdownMenu from './DropdownMenu'
 
 const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
@@ -18,8 +19,10 @@ function BaseListCard({
   const [open, setOpen] = useState(false)
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
+  const photoInput = useRef<HTMLInputElement>(null)
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
   const inTrip = item.linkedTripId === tripId
+  const coverPhoto = item.imagePath ?? linkedPlace?.coverPhoto ?? null
 
   const toggleDone = async () => {
     await api.bucket.update(item.id, { done: !item.done })
@@ -39,6 +42,17 @@ function BaseListCard({
     await api.bucket.update(item.id, { linkedPlaceId: null })
     onChanged()
   }
+  const onPhotoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    await api.bucket.uploadPhoto(item.id, file)
+    onChanged()
+  }
+  const removePhoto = async () => {
+    await api.bucket.deletePhoto(item.id)
+    onChanged()
+  }
 
   const placeLine = () => {
     if (!linkedPlace) return null
@@ -54,8 +68,8 @@ function BaseListCard({
   return (
     <>
       <div className="place-card" onClick={() => setOpen(true)}>
-        {linkedPlace?.coverPhoto && (
-          <img className="place-card-photo" src={fileUrl(linkedPlace.coverPhoto)} alt=""
+        {coverPhoto && (
+          <img className="place-card-photo" src={fileUrl(coverPhoto)} alt=""
             style={{ opacity: item.done ? 0.5 : 1 }} />
         )}
         <div className="place-card-body">
@@ -67,16 +81,27 @@ function BaseListCard({
       </div>
       {open && (
         <Modal title={item.title} onClose={() => setOpen(false)}>
-          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700, marginBottom: 16 }}>
-            <input type="checkbox" checked={item.done} onChange={toggleDone} /> 달성 완료로 표시
-          </label>
+          <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+            <DropdownMenu actions={[
+              { label: item.done ? '🔲 미완료로 표시' : '✅ 완료로 표시', onClick: toggleDone },
+              { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
+              ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
+              'divider' as const,
+              ...(linkedPlace
+                ? [{ label: '장소 연결 해제', onClick: unlinkPlace }] as const
+                : [{ label: '📍 장소 족보와 연결', onClick: () => setLinkingPlace(true) }] as const),
+              ...(!inTrip ? [{ label: '＋ 이 여행에 담기', onClick: addToTrip }] as const : []),
+            ]} />
+          </div>
+          {coverPhoto && (
+            <img src={fileUrl(coverPhoto)} alt="" style={{ width: '100%', borderRadius: 10, marginBottom: 12, display: 'block' }} />
+          )}
           {item.memo && <p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{item.memo}</p>}
-          {linkedPlace ? (
-            <div className="muted" style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {placeLine()}
-              <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
-            </div>
-          ) : linkingPlace ? (
+          {linkedPlace && (
+            <div className="muted" style={{ marginBottom: 12 }}>{placeLine()}</div>
+          )}
+          {linkingPlace && (
             <div className="row" style={{ border: 'none', padding: 0 }}>
               <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
                 <option value="">— 장소 선택 —</option>
@@ -84,13 +109,6 @@ function BaseListCard({
               </Select>
               <button className="btn small primary" onClick={linkPlace}>연결</button>
               <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
-            </div>
-          ) : (
-            <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
-          )}
-          {!inTrip && (
-            <div style={{ marginTop: 14 }}>
-              <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>
             </div>
           )}
         </Modal>

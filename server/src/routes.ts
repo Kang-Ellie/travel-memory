@@ -32,6 +32,7 @@ function installAsyncErrorHandling(app: ExpressApp): void {
 const photoUploader = makeUploader('photos')
 const voucherUploader = makeUploader('vouchers')
 const archiveUploader = makeUploader('archive')
+const bucketUploader = makeUploader('bucket')
 
 // ── 행 매핑 (snake_case DB → camelCase API) ──────────────
 const mapTrip = (r: any) => ({
@@ -135,7 +136,7 @@ const mapBucket = (r: any) => ({
   countryIds: r.country_ids ?? [], cityIds: r.city_ids ?? [],
   category: r.category, done: r.done, linkedTripId: r.linked_trip_id,
   linkedTripTitle: r.linked_trip_title ?? null, linkedPlaceId: r.linked_place_id,
-  linkedPlaceName: r.linked_place_name ?? null, createdAt: r.created_at,
+  linkedPlaceName: r.linked_place_name ?? null, imagePath: r.image_path ?? null, createdAt: r.created_at,
 })
 
 const TRIP_CITIES_SUBQUERY = `
@@ -1009,7 +1010,29 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/bucket/:id', async (req, res) => {
+    const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM bucket_items WHERE id = $1', [req.params.id])
+    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    res.json({ ok: true })
+  })
+
+  app.post('/api/bucket/:id/photo', bucketUploader.array('files', 1), async (req, res) => {
+    const files = (req.files ?? []) as Express.Multer.File[]
+    const file = files[0]
+    if (!file) { res.status(400).json({ error: '파일이 없어요.' }); return }
+    const finalPath = await compressImageInPlace(file.path)
+    const rel = relativeFilePath('bucket', path.basename(finalPath))
+    const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
+    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    await pool.query('UPDATE bucket_items SET image_path = $1 WHERE id = $2', [rel, req.params.id])
+    const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [req.params.id])
+    res.json(mapBucket(r.rows[0]))
+  })
+
+  app.delete('/api/bucket/:id/photo', async (req, res) => {
+    const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
+    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    await pool.query('UPDATE bucket_items SET image_path = NULL WHERE id = $1', [req.params.id])
     res.json({ ok: true })
   })
 

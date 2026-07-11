@@ -169,6 +169,8 @@ export const api = {
     update: (id: string, data: { done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null }) =>
       req<void>('PUT', `/api/bucket/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/bucket/${id}`),
+    uploadPhoto: (id: string, file: File) => upload<BucketItem>(`/api/bucket/${id}/photo`, [file]),
+    deletePhoto: (id: string) => req<void>('DELETE', `/api/bucket/${id}/photo`),
   },
 
   vouchers: {
