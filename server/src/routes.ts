@@ -1223,4 +1223,88 @@ export function registerRoutes(app: ExpressApp): void {
       [req.params.key, value])
     res.json({ ok: true })
   })
+
+  // ── 대시보드 (여행 전체를 아우르는 요약·캘린더·사진첩) ─────
+  app.get('/api/dashboard', async (_req, res) => {
+    const tripsR = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t ORDER BY t.start_date DESC`)
+    const trips = tripsR.rows.map(mapTrip)
+
+    const expensesR = await pool.query('SELECT trip_id, amount, currency FROM expenses')
+    const ratesR = await pool.query('SELECT trip_id, currency, krw_per_unit FROM trip_currency_rates')
+    const ratesByTrip = new Map<string, Map<string, number>>()
+    for (const r of ratesR.rows) {
+      const m = ratesByTrip.get(r.trip_id) ?? new Map<string, number>()
+      m.set(r.currency, Number(r.krw_per_unit))
+      ratesByTrip.set(r.trip_id, m)
+    }
+    const spendByTrip = new Map<string, number>()
+    for (const e of expensesR.rows) {
+      const krw = e.currency === 'KRW' ? Number(e.amount)
+        : (() => { const rate = ratesByTrip.get(e.trip_id)?.get(e.currency); return rate != null ? Number(e.amount) * rate : null })()
+      if (krw == null) continue
+      spendByTrip.set(e.trip_id, (spendByTrip.get(e.trip_id) ?? 0) + krw)
+    }
+
+    let totalSpentKrw = 0
+    let domesticTrips = 0
+    let internationalTrips = 0
+    let totalDays = 0
+    let maxSpendTrip: { title: string; amount: number } | null = null
+    let minSpendTrip: { title: string; amount: number } | null = null
+    for (const t of trips) {
+      const spend = spendByTrip.get(t.id) ?? 0
+      totalSpentKrw += spend
+      const isDomestic = t.cities.length > 0 && t.cities.every((c: { countryCode: string | null }) => c.countryCode === 'KR')
+      if (isDomestic) domesticTrips++; else internationalTrips++
+      const s = new Date(t.startDate + 'T00:00:00')
+      const e = new Date(t.endDate + 'T00:00:00')
+      totalDays += Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+      if (maxSpendTrip == null || spend > maxSpendTrip.amount) maxSpendTrip = { title: t.title, amount: spend }
+      if (minSpendTrip == null || spend < minSpendTrip.amount) minSpendTrip = { title: t.title, amount: spend }
+    }
+
+    const bucketCountR = await pool.query('SELECT COUNT(*)::int AS c FROM bucket_items')
+
+    // 캘린더 사진: 일차 번호를 여행 시작일 기준 실제 날짜로 변환
+    const dayPhotosR = await pool.query(
+      `SELECT dnp.day_number, dnp.file_path, dnp.created_at, t.start_date
+       FROM day_note_photos dnp JOIN trips t ON t.id = dnp.trip_id
+       ORDER BY dnp.created_at`)
+    const calendarPhotoByDate = new Map<string, string>()
+    for (const row of dayPhotosR.rows) {
+      const s = new Date(row.start_date + 'T00:00:00')
+      s.setDate(s.getDate() + Number(row.day_number) - 1)
+      const iso = `${s.getFullYear()}-${String(s.getMonth() + 1).padStart(2, '0')}-${String(s.getDate()).padStart(2, '0')}`
+      if (!calendarPhotoByDate.has(iso)) calendarPhotoByDate.set(iso, row.file_path)
+    }
+
+    // 사진첩: 오늘의 일기 사진(일기 텍스트를 캡션으로) + 일정 사진(장소명을 캡션으로)
+    const diaryPhotosR = await pool.query(
+      `SELECT dnp.id, dnp.file_path, dnp.created_at, dn.diary
+       FROM day_note_photos dnp
+       LEFT JOIN day_notes dn ON dn.trip_id = dnp.trip_id AND dn.day_number = dnp.day_number
+       ORDER BY dnp.created_at DESC LIMIT 300`)
+    const eventPhotosR = await pool.query(
+      `SELECT ph.id, ph.file_path, ph.created_at, p.name AS place_name
+       FROM photos ph JOIN timeline_events te ON te.id = ph.event_id JOIN places p ON p.id = te.place_id
+       ORDER BY ph.created_at DESC LIMIT 300`)
+    const gallery = [
+      ...diaryPhotosR.rows.map((r) => ({
+        id: r.id, filePath: r.file_path, createdAt: r.created_at,
+        caption: r.diary ? (r.diary.length > 40 ? `${r.diary.slice(0, 40)}…` : r.diary) : null,
+      })),
+      ...eventPhotosR.rows.map((r) => ({
+        id: r.id, filePath: r.file_path, createdAt: r.created_at, caption: r.place_name ?? null,
+      })),
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    res.json({
+      summary: {
+        totalTrips: trips.length, domesticTrips, internationalTrips, totalDays,
+        bucketCount: Number(bucketCountR.rows[0].c), totalSpentKrw, maxSpendTrip, minSpendTrip,
+      },
+      calendarPhotos: [...calendarPhotoByDate.entries()].map(([date, filePath]) => ({ date, filePath })),
+      gallery,
+    })
+  })
 }

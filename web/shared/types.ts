@@ -309,3 +309,32 @@ export interface BucketItem {
   imagePath: string | null
   createdAt: string
 }
+
+export interface DashboardSummary {
+  totalTrips: number
+  domesticTrips: number
+  internationalTrips: number
+  totalDays: number
+  bucketCount: number
+  totalSpentKrw: number
+  maxSpendTrip: { title: string; amount: number } | null
+  minSpendTrip: { title: string; amount: number } | null
+}
+
+export interface DashboardCalendarPhoto {
+  date: string
+  filePath: string
+}
+
+export interface DashboardGalleryItem {
+  id: string
+  filePath: string
+  caption: string | null
+  createdAt: string
+}
+
+export interface DashboardData {
+  summary: DashboardSummary
+  calendarPhotos: DashboardCalendarPhoto[]
+  gallery: DashboardGalleryItem[]
+}

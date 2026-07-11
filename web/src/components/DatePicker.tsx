@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 
-function pad(n: number): string { return String(n).padStart(2, '0') }
+export function pad(n: number): string { return String(n).padStart(2, '0') }
 function toISO(y: number, m: number, d: number): string { return `${y}-${pad(m + 1)}-${pad(d)}` }
 function parseISO(v: string): Date | null {
   if (!v) return null

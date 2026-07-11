@@ -1,6 +1,7 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
   ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
+  DashboardData,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
 } from '../shared/types'
 
@@ -224,5 +225,9 @@ export const api = {
   settings: {
     get: (key: string) => req<{ value: string | null }>('GET', `/api/settings/${key}`).then((r) => r.value),
     set: (key: string, value: string) => req<void>('PUT', `/api/settings/${key}`, { value }),
+  },
+
+  dashboard: {
+    get: () => req<DashboardData>('GET', '/api/dashboard'),
   },
 }

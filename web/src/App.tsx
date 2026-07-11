@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Trip } from '../shared/types'
 import { auth } from './api'
 import Login from './Login'
+import DashboardScreen from './components/DashboardScreen'
 import TripsScreen from './components/TripsScreen'
 import TripWindow from './components/TripWindow'
 import PlacesScreen from './components/PlacesScreen'
@@ -11,9 +12,10 @@ import SnsArchiveScreen from './components/SnsArchiveScreen'
 import MembersScreen from './components/MembersScreen'
 import SettingsScreen from './components/SettingsScreen'
 
-type Screen = 'trips' | 'places' | 'countries' | 'bucket' | 'sns' | 'members' | 'settings'
+type Screen = 'dashboard' | 'trips' | 'places' | 'countries' | 'bucket' | 'sns' | 'members' | 'settings'
 
 const NAV: Array<{ key: Screen; label: string }> = [
+  { key: 'dashboard', label: '🏠 대시보드' },
   { key: 'trips', label: '🏝 여행' },
   { key: 'places', label: '📍 장소 족보' },
   { key: 'countries', label: '🌍 국가·도시' },
@@ -51,7 +53,7 @@ function extractSharePrefill(): SharePrefill | null {
 
 export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null)
-  const [screen, setScreen] = useState<Screen>('trips')
+  const [screen, setScreen] = useState<Screen>('dashboard')
   const [openTrip, setOpenTrip] = useState<Trip | null>(null)
   const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null)
   const clock = useClock()
@@ -104,6 +106,7 @@ export default function App() {
           <TripWindow trip={openTrip} onClose={() => setOpenTrip(null)} onTripChanged={setOpenTrip} />
         ) : (
           <>
+            {screen === 'dashboard' && <DashboardScreen onOpenTrip={setOpenTrip} />}
             {screen === 'trips' && <TripsScreen onOpenTrip={setOpenTrip} />}
             {screen === 'places' && <PlacesScreen />}
             {screen === 'countries' && <CountriesScreen />}

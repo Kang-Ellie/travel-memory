@@ -334,6 +334,33 @@ textarea { resize: vertical; min-height: 70px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px; }
 .city-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 
+/* ── 대시보드: 사진 캘린더 ─────────────── */
+.dash-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.dash-calendar-weekday { text-align: center; font-weight: 800; font-size: 12px; padding: 4px 0; }
+.dash-calendar-cell {
+  position: relative; aspect-ratio: 1; border-radius: 8px;
+  border: 1.5px solid rgba(45,42,62,0.15); overflow: hidden;
+  display: flex; align-items: flex-start; justify-content: flex-start;
+  background: rgba(45,42,62,0.03);
+}
+.dash-calendar-cell img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.dash-calendar-cell.has-photo { cursor: zoom-in; border-color: var(--ink); }
+.dash-calendar-daynum {
+  position: relative; z-index: 1; font-size: 11px; font-weight: 700; padding: 3px 5px;
+}
+.dash-calendar-cell.has-photo .dash-calendar-daynum {
+  background: rgba(0,0,0,0.45); color: #fff; border-radius: 0 0 6px 0;
+}
+
+/* ── 대시보드: 여행 기록 및 사진첩 ─────────── */
+.dash-gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.dash-gallery-item { cursor: zoom-in; }
+.dash-gallery-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; display: block; }
+.dash-gallery-caption {
+  margin-top: 4px; font-size: 11px; color: rgba(45,42,62,0.7);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+
 /* ── 사진 갤러리 카드 (장소·버킷리스트) ───── */
 .place-card {
   border: 2px solid var(--ink);

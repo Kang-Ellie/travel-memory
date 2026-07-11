@@ -8,7 +8,7 @@ import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 
-function fmtRange(t: Trip): string {
+export function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
   const e = new Date(t.endDate + 'T00:00:00')
   const f = (d: Date) => `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
@@ -16,7 +16,7 @@ function fmtRange(t: Trip): string {
   return `${f(s)} ~ ${f(e)} (${nights}박 ${nights + 1}일)`
 }
 
-function dday(t: Trip): string {
+export function dday(t: Trip): string {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const s = new Date(t.startDate + 'T00:00:00')
