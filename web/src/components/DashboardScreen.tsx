@@ -3,17 +3,25 @@ import type { Trip, DashboardData } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney } from '../settlement'
 import { tripCitiesLabel } from '../categories'
-import { fmtRange, dday } from './TripsScreen'
+import { fmtRange, dday, tripStatus, type TripStatus } from './TripsScreen'
 import { pad } from './DatePicker'
 import Window from './Window'
 import Lightbox from './Lightbox'
+import FolderIcon, { type FolderColor } from './FolderIcon'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
 
+const STATUS_TABS: Array<{ key: TripStatus; label: string; color: FolderColor }> = [
+  { key: 'upcoming', label: '다가오는 여행', color: 'blue' },
+  { key: 'ongoing', label: '여행 중', color: 'pink' },
+  { key: 'past', label: '지난 여행', color: 'purple' },
+]
+
 export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
   const [trips, setTrips] = useState<Trip[]>([])
   const [data, setData] = useState<DashboardData | null>(null)
+  const [statusFilter, setStatusFilter] = useState<TripStatus>('upcoming')
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
   const [galleryLightbox, setGalleryLightbox] = useState<number | null>(null)
@@ -44,60 +52,62 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const summary = data?.summary
   const gallery = data?.gallery ?? []
   const galleryUrls = gallery.map((g) => fileUrl(g.filePath))
+  const activeTab = STATUS_TABS.find((s) => s.key === statusFilter)!
+  const filteredTrips = trips.filter((t) => tripStatus(t) === statusFilter)
 
   return (
     <div>
-      <div className="hero">
-        <span className="badge">🏠 DASHBOARD</span>
-        <h1>대시보드</h1>
-        <p style={{ fontWeight: 700 }}>우리 여행 전체를 한눈에.</p>
-      </div>
+      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 280px' }}>
+          <Window title="TRIP_SUMMARY.EXE" color="blue">
+            {!summary ? (
+              <div className="empty">불러오는 중…</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div>🌏 총 {summary.totalTrips}개의 기록 (국내 {summary.domesticTrips}, 해외 {summary.internationalTrips})</div>
+                <div>✈️ 지금까지 {summary.totalDays}일 동안 여행했어요</div>
+                <div>💬 {summary.bucketCount}개의 여행 버킷리스트가 있어요</div>
+                <div>💰 지금까지 총 {fmtMoney(summary.totalSpentKrw, 'KRW')}을 썼어요</div>
+                {summary.maxSpendTrip && (
+                  <div className="muted">-- 최대 지출 여행 : {summary.maxSpendTrip.title} ({fmtMoney(summary.maxSpendTrip.amount, 'KRW')})</div>
+                )}
+                {summary.minSpendTrip && (
+                  <div className="muted">-- 최소 지출 여행 : {summary.minSpendTrip.title} ({fmtMoney(summary.minSpendTrip.amount, 'KRW')})</div>
+                )}
+              </div>
+            )}
+          </Window>
+        </div>
 
-      <Window title="TRIP_LIST.EXE" color="purple">
-        {trips.length === 0 ? (
-          <div className="empty">아직 여행이 없어요.</div>
-        ) : (
-          <div className="grid">
-            {trips.map((t) => (
-              <Window
-                key={t.id}
-                title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
-                color="pink"
-                footer={
-                  <div className="card-footer">
-                    <span>🧳 {dday(t)}</span>
-                    <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
+        <div style={{ flex: '2 1 420px' }}>
+          <Window title="TRIP_LIST.EXE" color="purple">
+            <div className="folder-tabs">
+              {STATUS_TABS.map((tab) => (
+                <button key={tab.key} className={`folder-tab ${statusFilter === tab.key ? 'active' : ''}`}
+                  onClick={() => setStatusFilter(tab.key)}>
+                  <FolderIcon color={tab.color} />
+                  <span>{tab.label} ({trips.filter((t) => tripStatus(t) === tab.key).length})</span>
+                </button>
+              ))}
+            </div>
+            {filteredTrips.length === 0 ? (
+              <div className="empty">{activeTab.label}이 없어요.</div>
+            ) : (
+              <div className="trip-folder-grid">
+                {filteredTrips.map((t) => (
+                  <div key={t.id} className="trip-folder-card" onClick={() => onOpenTrip(t)}>
+                    <FolderIcon color={activeTab.color} size={64} />
+                    <div className="title">{t.title}</div>
+                    <div className="meta">{fmtRange(t)}</div>
+                    {t.cities.length > 0 && <div className="meta">{tripCitiesLabel(t)}</div>}
+                    <div className="meta">{dday(t)}</div>
                   </div>
-                }
-              >
-                <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
-                <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
-                {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
-                {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
-              </Window>
-            ))}
-          </div>
-        )}
-      </Window>
-
-      <Window title="TRIP_SUMMARY.EXE" color="blue">
-        {!summary ? (
-          <div className="empty">불러오는 중…</div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div>🌏 총 {summary.totalTrips}개의 기록 (국내 {summary.domesticTrips}, 해외 {summary.internationalTrips})</div>
-            <div>✈️ 지금까지 {summary.totalDays}일 동안 여행했어요</div>
-            <div>💬 {summary.bucketCount}개의 여행 버킷리스트가 있어요</div>
-            <div>💰 지금까지 총 {fmtMoney(summary.totalSpentKrw, 'KRW')}을 썼어요</div>
-            {summary.maxSpendTrip && (
-              <div className="muted">-- 최대 지출 여행 : {summary.maxSpendTrip.title} ({fmtMoney(summary.maxSpendTrip.amount, 'KRW')})</div>
+                ))}
+              </div>
             )}
-            {summary.minSpendTrip && (
-              <div className="muted">-- 최소 지출 여행 : {summary.minSpendTrip.title} ({fmtMoney(summary.minSpendTrip.amount, 'KRW')})</div>
-            )}
-          </div>
-        )}
-      </Window>
+          </Window>
+        </div>
+      </div>
 
       <Window title="TRIP_CALENDAR.EXE" color="green">
         <div className="row" style={{ justifyContent: 'center', gap: 16, marginBottom: 12 }}>

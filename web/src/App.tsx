@@ -85,40 +85,42 @@ export default function App() {
     <div className="app">
       <div className="ticker">{tickerItems}{tickerItems}</div>
 
-      <nav className="nav">
-        {NAV.map((n) => (
-          <button
-            key={n.key}
-            className={`pill ${screen === n.key && !openTrip ? 'active' : ''}`}
-            onClick={() => { setScreen(n.key); setOpenTrip(null) }}
-          >
-            {n.label}
+      <div className="app-body">
+        <nav className="nav sidebar-nav">
+          {NAV.map((n) => (
+            <button
+              key={n.key}
+              className={`pill ${screen === n.key && !openTrip ? 'active' : ''}`}
+              onClick={() => { setScreen(n.key); setOpenTrip(null) }}
+            >
+              {n.label}
+            </button>
+          ))}
+          {openTrip && <button className="pill active">✈️ {openTrip.title}</button>}
+          <button className="pill logout" onClick={() => auth.logout().then(() => setAuthed(false))}>
+            🚪 로그아웃
           </button>
-        ))}
-        {openTrip && <button className="pill active">✈️ {openTrip.title}</button>}
-        <button className="pill" style={{ marginLeft: 'auto' }} onClick={() => auth.logout().then(() => setAuthed(false))}>
-          🚪 로그아웃
-        </button>
-      </nav>
+        </nav>
 
-      <main className="content">
-        {openTrip ? (
-          <TripWindow trip={openTrip} onClose={() => setOpenTrip(null)} onTripChanged={setOpenTrip} />
-        ) : (
-          <>
-            {screen === 'dashboard' && <DashboardScreen onOpenTrip={setOpenTrip} />}
-            {screen === 'trips' && <TripsScreen onOpenTrip={setOpenTrip} />}
-            {screen === 'places' && <PlacesScreen />}
-            {screen === 'countries' && <CountriesScreen />}
-            {screen === 'bucket' && <BucketListScreen />}
-            {screen === 'sns' && (
-              <SnsArchiveScreen prefill={sharePrefill} onConsumedPrefill={() => setSharePrefill(null)} />
-            )}
-            {screen === 'members' && <MembersScreen />}
-            {screen === 'settings' && <SettingsScreen />}
-          </>
-        )}
-      </main>
+        <main className="content">
+          {openTrip ? (
+            <TripWindow trip={openTrip} onClose={() => setOpenTrip(null)} onTripChanged={setOpenTrip} />
+          ) : (
+            <>
+              {screen === 'dashboard' && <DashboardScreen onOpenTrip={setOpenTrip} />}
+              {screen === 'trips' && <TripsScreen onOpenTrip={setOpenTrip} />}
+              {screen === 'places' && <PlacesScreen />}
+              {screen === 'countries' && <CountriesScreen />}
+              {screen === 'bucket' && <BucketListScreen />}
+              {screen === 'sns' && (
+                <SnsArchiveScreen prefill={sharePrefill} onConsumedPrefill={() => setSharePrefill(null)} />
+              )}
+              {screen === 'members' && <MembersScreen />}
+              {screen === 'settings' && <SettingsScreen />}
+            </>
+          )}
+        </main>
+      </div>
 
       <footer className="taskbar">
         <span className="start-btn">🌸 start</span>

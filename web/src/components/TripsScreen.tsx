@@ -16,14 +16,26 @@ export function fmtRange(t: Trip): string {
   return `${f(s)} ~ ${f(e)} (${nights}박 ${nights + 1}일)`
 }
 
-export function dday(t: Trip): string {
+export type TripStatus = 'upcoming' | 'ongoing' | 'past'
+
+export function tripStatus(t: Trip): TripStatus {
   const today = new Date()
   today.setHours(0, 0, 0, 0)
   const s = new Date(t.startDate + 'T00:00:00')
   const e = new Date(t.endDate + 'T00:00:00')
-  if (today < s) return `D-${Math.round((s.getTime() - today.getTime()) / 86_400_000)}`
-  if (today <= e) return '여행 중! ✈️'
-  return '다녀옴 💝'
+  if (today < s) return 'upcoming'
+  if (today <= e) return 'ongoing'
+  return 'past'
+}
+
+export function dday(t: Trip): string {
+  const status = tripStatus(t)
+  if (status === 'ongoing') return '여행 중! ✈️'
+  if (status === 'past') return '다녀옴 💝'
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const s = new Date(t.startDate + 'T00:00:00')
+  return `D-${Math.round((s.getTime() - today.getTime()) / 86_400_000)}`
 }
 
 export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
