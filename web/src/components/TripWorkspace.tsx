@@ -14,6 +14,7 @@ import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
 import DayNoteEditModal from './DayNoteEditModal'
+import DayDiaryModal from './DayDiaryModal'
 import DropdownMenu from './DropdownMenu'
 import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
@@ -864,17 +865,14 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           />
         )}
         {diaryDay != null && (
-          <Modal title={`📔 ${diaryDay}일차 오늘의 일기`} onClose={() => setDiaryDay(null)}>
-            {(dayNotes.find((n) => n.dayNumber === diaryDay)?.diary) ? (
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{dayNotes.find((n) => n.dayNumber === diaryDay)!.diary}</p>
-            ) : (
-              <span className="muted">아직 일기가 없어요 — 왼쪽 일차의 ⋮ 메뉴에서 [✏️ 수정]을 눌러 적어보세요.</span>
-            )}
-            <div style={{ marginTop: 12 }}>
-              <button className="btn small primary" onClick={() => { setEditingDay(diaryDay); setDiaryDay(null) }}>✏️ 수정</button>
-              <button className="btn small" onClick={() => setDiaryDay(null)} style={{ marginLeft: 6 }}>닫기</button>
-            </div>
-          </Modal>
+          <DayDiaryModal
+            tripId={trip.id}
+            dayNumber={diaryDay}
+            note={dayNotes.find((n) => n.dayNumber === diaryDay) ?? null}
+            onClose={() => setDiaryDay(null)}
+            onChanged={refresh}
+            onEdit={() => { setEditingDay(diaryDay); setDiaryDay(null) }}
+          />
         )}
       </div>
 

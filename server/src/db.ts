@@ -321,5 +321,14 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE places ADD COLUMN IF NOT EXISTS directions TEXT;
     ALTER TABLE places ADD COLUMN IF NOT EXISTS baby_menu TEXT;
     ALTER TABLE places ADD COLUMN IF NOT EXISTS recommend BOOLEAN;
+
+    -- 오늘의 일기 전용 사진첩 (특정 장소 방문과 무관하게 그날 하루를 남기는 사진)
+    CREATE TABLE IF NOT EXISTS day_note_photos (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      day_number INT NOT NULL,
+      file_path  TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
   `)
 }

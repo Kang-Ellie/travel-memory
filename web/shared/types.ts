@@ -214,6 +214,12 @@ export interface ArchiveItem {
   createdAt: string
 }
 
+export interface DayPhoto {
+  id: string
+  dayNumber: number
+  filePath: string
+}
+
 export interface DayNote {
   tripId: string
   dayNumber: number
@@ -223,6 +229,7 @@ export interface DayNote {
   weatherTemp: number | null
   cityIds: string[]
   budget: number | null
+  photos: DayPhoto[]
 }
 
 export interface PlaceVisit extends TimelineEvent {

@@ -443,6 +443,17 @@ textarea { resize: vertical; min-height: 70px; }
 .star.on { color: #ffb400; }
 
 .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* ── 오늘의 일기: 왼쪽 사진첩 + 오른쪽 일기 2단 레이아웃 ─── */
+.day-diary-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
+.day-diary-photos-col { flex: 1 1 260px; min-width: 240px; }
+.day-diary-text-col {
+  flex: 1 1 260px; min-width: 240px;
+  border-left: 2px solid var(--ink); padding-left: 20px;
+}
+@media (max-width: 640px) {
+  .day-diary-text-col { border-left: none; padding-left: 0; border-top: 2px solid var(--ink); padding-top: 16px; }
+}
 .photo-thumb { position: relative; }
 .photo-thumb img {
   width: 92px; height: 92px; object-fit: cover;

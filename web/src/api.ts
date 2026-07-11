@@ -1,6 +1,6 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
-  ArchiveItem, DayNote, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
+  ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
 } from '../shared/types'
 
@@ -216,6 +216,9 @@ export const api = {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
       cityIds: string[]; budget: number | null
     }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
+    addPhotos: (tripId: string, dayNumber: number, files: File[]) =>
+      upload<DayPhoto[]>(`/api/trips/${tripId}/day-notes/${dayNumber}/photos`, files),
+    deletePhoto: (id: string) => req<void>('DELETE', `/api/day-note-photos/${id}`),
   },
 
   settings: {

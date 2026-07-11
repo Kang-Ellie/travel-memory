@@ -34,6 +34,7 @@ const voucherUploader = makeUploader('vouchers')
 const archiveUploader = makeUploader('archive')
 const bucketUploader = makeUploader('bucket')
 const flightLogoUploader = makeUploader('flight-logos')
+const dayPhotoUploader = makeUploader('day-photos')
 
 // ── 행 매핑 (snake_case DB → camelCase API) ──────────────
 const mapTrip = (r: any) => ({
@@ -1024,11 +1025,25 @@ export function registerRoutes(app: ExpressApp): void {
   // ── 일차 메모(그날의 기록·날씨) ───────────────────────
   app.get('/api/trips/:tripId/day-notes', async (req, res) => {
     const r = await pool.query('SELECT * FROM day_notes WHERE trip_id = $1', [req.params.tripId])
-    res.json(r.rows.map((row) => ({
-      tripId: row.trip_id, dayNumber: row.day_number, note: row.note, diary: row.diary,
-      weatherEmoji: row.weather_emoji, weatherTemp: row.weather_temp != null ? Number(row.weather_temp) : null,
-      cityIds: row.city_ids ?? [], budget: row.budget != null ? Number(row.budget) : null,
-    })))
+    const photosR = await pool.query(
+      'SELECT * FROM day_note_photos WHERE trip_id = $1 ORDER BY created_at', [req.params.tripId])
+    const photosByDay = new Map<number, Array<{ id: string; dayNumber: number; filePath: string }>>()
+    for (const p of photosR.rows) {
+      const list = photosByDay.get(p.day_number) ?? []
+      list.push({ id: p.id, dayNumber: p.day_number, filePath: p.file_path })
+      photosByDay.set(p.day_number, list)
+    }
+    const dayNumbers = new Set([...r.rows.map((row) => row.day_number), ...photosByDay.keys()])
+    const byDayNumber = new Map(r.rows.map((row) => [row.day_number, row]))
+    res.json([...dayNumbers].map((dayNumber) => {
+      const row = byDayNumber.get(dayNumber)
+      return {
+        tripId: req.params.tripId, dayNumber, note: row?.note ?? null, diary: row?.diary ?? null,
+        weatherEmoji: row?.weather_emoji ?? null, weatherTemp: row?.weather_temp != null ? Number(row.weather_temp) : null,
+        cityIds: row?.city_ids ?? [], budget: row?.budget != null ? Number(row.budget) : null,
+        photos: photosByDay.get(dayNumber) ?? [],
+      }
+    }))
   })
 
   app.put('/api/trips/:tripId/day-notes/:dayNumber', async (req, res) => {
@@ -1043,6 +1058,32 @@ export function registerRoutes(app: ExpressApp): void {
          weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp,
          city_ids = excluded.city_ids, budget = excluded.budget`,
       [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityIds ?? [], budget])
+    res.json({ ok: true })
+  })
+
+  app.post('/api/trips/:tripId/day-notes/:dayNumber/photos',
+    dayPhotoUploader.array('files', 20), async (req, res) => {
+      const dayNumber = Number(req.params.dayNumber)
+      await pool.query(
+        'INSERT INTO day_notes (trip_id, day_number) VALUES ($1,$2) ON CONFLICT (trip_id, day_number) DO NOTHING',
+        [req.params.tripId, dayNumber])
+      const files = (req.files ?? []) as Express.Multer.File[]
+      const added = []
+      for (const f of files) {
+        const photoId = id()
+        const finalPath = await compressImageInPlace(f.path)
+        const rel = relativeFilePath('day-photos', path.basename(finalPath))
+        await pool.query('INSERT INTO day_note_photos (id, trip_id, day_number, file_path) VALUES ($1,$2,$3,$4)',
+          [photoId, req.params.tripId, dayNumber, rel])
+        added.push({ id: photoId, dayNumber, filePath: rel })
+      }
+      res.json(added)
+    })
+
+  app.delete('/api/day-note-photos/:id', async (req, res) => {
+    const r = await pool.query('SELECT file_path FROM day_note_photos WHERE id = $1', [req.params.id])
+    await pool.query('DELETE FROM day_note_photos WHERE id = $1', [req.params.id])
+    if (r.rows[0]) safeUnlink(r.rows[0].file_path)
     res.json({ ok: true })
   })
 
