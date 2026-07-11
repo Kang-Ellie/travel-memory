@@ -431,9 +431,13 @@ function EventCard({
           )}
           {!editing && (
             <>
-              {isAirport && ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) && (
+              {isAirport && (
                 <div style={{ marginBottom: 8 }}>
-                  <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
+                  {ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) ? (
+                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
+                  ) : (
+                    <button type="button" className="btn small" onClick={startEdit}>✈️ 탑승권 정보 입력하기</button>
+                  )}
                 </div>
               )}
               {ev.bucketItemTitle && <div className="chip purple" style={{ marginBottom: 8 }}>✨ {ev.bucketItemTitle}</div>}
@@ -773,14 +777,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: 오늘 할 일 + 일기 + 타임라인 */}
       <div>
-        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}>
+        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--pink-soft)' }}>
           <div style={{ fontWeight: 800, marginBottom: 8 }}>📔 오늘의 일기</div>
           {todayNote?.diary ? (
             <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{todayNote.diary}</p>
           ) : (
             <span className="muted">아직 일기가 없어요 — 왼쪽 일차의 ⋮ 메뉴에서 [✏️ 수정]을 눌러 적어보세요.</span>
           )}
+        </div>
+        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12, background: 'var(--yellow-soft)' }}>
+          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
         </div>
 
           <div

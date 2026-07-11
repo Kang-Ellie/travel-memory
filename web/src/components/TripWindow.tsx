@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Country, City, Trip } from '../../shared/types'
 import { api } from '../api'
-import { tripCitiesLabel } from '../categories'
+import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
@@ -67,17 +67,30 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
     setEditing(false)
   }
 
+  const citiesByCountry = new Map<string, { code: string | null; name: string; cities: string[] }>()
+  for (const c of trip.cities) {
+    const entry = citiesByCountry.get(c.countryName) ?? { code: c.countryCode, name: c.countryName, cities: [] }
+    entry.cities.push(c.name)
+    citiesByCountry.set(c.countryName, entry)
+  }
+
   return (
-    <Window title={`${trip.title.replace(/\s+/g, '_').toUpperCase()}.EXE`} color="blue" onClose={onClose}>
+    <Window
+      title={`${trip.title.replace(/\s+/g, '_').toUpperCase()}.EXE`}
+      color="blue"
+      onClose={onClose}
+      headerActions={<button className="window-icon-btn" onClick={startEdit} title="여행 정보 수정">⚙️</button>}
+    >
       <div className="row" style={{ flexWrap: 'wrap' }}>
-        <div className="grow">
-          {trip.cities.length > 0 ? (
-            <span className="muted">{tripCitiesLabel(trip)}</span>
-          ) : (
-            <span className="muted">🌍 국가·도시가 아직 연결 안 됐어요.</span>
-          )}
-        </div>
-        <button className="btn small" onClick={startEdit}>✏️ 여행 정보 수정</button>
+        {trip.cities.length > 0 ? (
+          [...citiesByCountry.values()].map((c) => (
+            <span key={c.name} className="chip purple" style={{ fontSize: 13, padding: '6px 12px' }}>
+              {flagEmoji(c.code)} {c.name} · {c.cities.join(', ')}
+            </span>
+          ))
+        ) : (
+          <span style={{ color: 'var(--ink)' }}>🌍 국가·도시가 아직 연결 안 됐어요 — 오른쪽 위 ⚙️에서 등록해보세요.</span>
+        )}
       </div>
 
       {editing && (

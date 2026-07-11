@@ -138,6 +138,18 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   cursor: pointer;
   line-height: 1;
 }
+.window-icon-btn {
+  border: 1.5px solid var(--ink);
+  border-radius: 6px;
+  background: #fff;
+  width: 24px;
+  height: 24px;
+  font-size: 13px;
+  cursor: pointer;
+  line-height: 1;
+  margin-right: 6px;
+}
+.window-icon-btn:hover { background: var(--pink-soft); }
 
 .window-body { padding: 22px; }
 
@@ -720,6 +732,18 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .archive-card-body { font-size: 12px; color: rgba(45,42,62,0.7); margin-top: 4px; white-space: pre-wrap; word-break: break-word; }
 .archive-card img { width: 100%; max-height: 120px; object-fit: cover; border-radius: 8px; margin-top: 6px; border: 1.5px solid var(--ink); }
 .archive-add-tabs { display: flex; gap: 6px; margin-bottom: 8px; }
+.archive-add-btn {
+  border: 1.5px solid rgba(45,42,62,0.35);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.6);
+  padding: 5px 10px;
+  font-weight: 700;
+  font-size: 12px;
+  color: rgba(45,42,62,0.8);
+  cursor: pointer;
+  font-family: inherit;
+}
+.archive-add-btn:hover { background: #fff; border-color: var(--ink); color: var(--ink); }
 
 /* ── 사진 라이트박스 ────────────────────── */
 /* ── 모달 ──────────────────────────────── */

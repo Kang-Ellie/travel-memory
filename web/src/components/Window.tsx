@@ -4,11 +4,12 @@ interface WindowProps {
   title: string
   color?: 'pink' | 'blue' | 'purple' | 'green' | 'yellow'
   onClose?: () => void
+  headerActions?: ReactNode
   children: ReactNode
   footer?: ReactNode
 }
 
-export default function Window({ title, color = 'pink', onClose, children, footer }: WindowProps) {
+export default function Window({ title, color = 'pink', onClose, headerActions, children, footer }: WindowProps) {
   return (
     <div className="window">
       <div className={`window-titlebar ${color === 'pink' ? '' : color}`}>
@@ -18,6 +19,7 @@ export default function Window({ title, color = 'pink', onClose, children, foote
           <span className="dot g" />
         </div>
         <span className="window-title">{title}</span>
+        {headerActions}
         {onClose && (
           <button className="window-close" onClick={onClose} title="닫기">×</button>
         )}

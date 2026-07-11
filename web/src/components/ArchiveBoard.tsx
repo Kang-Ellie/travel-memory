@@ -77,10 +77,11 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
   return (
     <div className="archive-board">
       <input ref={fileInput} type="file" multiple accept="image/*" hidden onChange={onImagesPicked} />
-      <div className="archive-add-tabs">
-        <button className="pill" onClick={() => { setMode('memo'); setShowAdd(true) }}>📝 메모 추가</button>
-        <button className="pill" onClick={() => { setMode('link'); setShowAdd(true) }}>🔗 링크 추가</button>
-        <button className="pill" onClick={() => fileInput.current?.click()}>🖼 이미지 추가</button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+        <span className="muted" style={{ fontSize: 11 }}>＋ 추가:</span>
+        <button className="archive-add-btn" onClick={() => { setMode('memo'); setShowAdd(true) }}>📝 메모</button>
+        <button className="archive-add-btn" onClick={() => { setMode('link'); setShowAdd(true) }}>🔗 링크</button>
+        <button className="archive-add-btn" onClick={() => fileInput.current?.click()}>🖼 이미지</button>
       </div>
 
       {showAdd && (
