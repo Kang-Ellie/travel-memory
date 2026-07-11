@@ -49,7 +49,7 @@ export default function MembersScreen() {
         <div key={m.id} className="row">
           <span style={{ fontSize: 20 }}>🧑‍🤝‍🧑</span>
           <div className="grow" style={{ fontWeight: 800 }}>{m.name}</div>
-          <button className="btn small ghost" onClick={() => remove(m)}>×</button>
+          <button className="x-btn" onClick={() => remove(m)}>×</button>
         </div>
       ))}
     </Window>

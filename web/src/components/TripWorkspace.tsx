@@ -4,7 +4,7 @@ import type {
 } from '../../shared/types'
 import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
-import { fmtMoney, computeDailySpend } from '../settlement'
+import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
@@ -13,8 +13,10 @@ import Lightbox from './Lightbox'
 import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
-import DayNoteBox from './DayNoteBox'
+import DayNoteEditModal from './DayNoteEditModal'
 import DropdownMenu from './DropdownMenu'
+import BoardingPassCard from './BoardingPassCard'
+import PlaceDetailPanel from './PlaceDetailPanel'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -33,12 +35,6 @@ export function dayLabel(trip: Trip, day: number): string {
   d.setDate(d.getDate() + day - 1)
   const week = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()]
   return `${d.getMonth() + 1}/${d.getDate()} (${week})`
-}
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
 function TransitChip({
@@ -119,7 +115,7 @@ function TransitChip({
         <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
       )}
       <button className="btn small ghost" onClick={() => setEditing(true)}>수정</button>
-      <button className="btn small ghost" onClick={remove}>×</button>
+      <button className="x-btn" onClick={remove}>×</button>
       {linking && (
         <Modal title="바우처 연결" onClose={() => setLinking(false)}>
           {vouchers.length === 0 ? (
@@ -172,6 +168,7 @@ function EventCard({
   const [plannedTime, setPlannedTime] = useState(ev.plannedTime ?? '')
   const [showExpenseForm, setShowExpenseForm] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [placeDetailOpen, setPlaceDetailOpen] = useState(false)
   const isAirport = ev.place.category === '공항'
   const [departAt, setDepartAt] = useState(ev.flight?.departAt ?? '')
   const [arriveAt, setArriveAt] = useState(ev.flight?.arriveAt ?? '')
@@ -181,6 +178,13 @@ function EventCard({
   const [departureLocation, setDepartureLocation] = useState(ev.flight?.departureLocation ?? '')
   const [confirmed, setConfirmed] = useState(ev.flight?.confirmed ?? false)
   const [voucherId, setVoucherId] = useState(ev.flight?.voucherId ?? '')
+  const [airline, setAirline] = useState(ev.flight?.airline ?? '')
+  const [flightNo, setFlightNo] = useState(ev.flight?.flightNo ?? '')
+  const [destination, setDestination] = useState(ev.flight?.destination ?? '')
+  const [gate, setGate] = useState(ev.flight?.gate ?? '')
+  const [seat, setSeat] = useState(ev.flight?.seat ?? '')
+  const [flightClass, setFlightClass] = useState(ev.flight?.flightClass ?? '')
+  const logoInput = useRef<HTMLInputElement>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
     paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)), isShared: true,
@@ -197,6 +201,9 @@ function EventCard({
     setBookingRef(ev.flight?.bookingRef ?? ''); setBookedVia(ev.flight?.bookedVia ?? '')
     setDepartureLocation(ev.flight?.departureLocation ?? ''); setConfirmed(ev.flight?.confirmed ?? false)
     setVoucherId(ev.flight?.voucherId ?? '')
+    setAirline(ev.flight?.airline ?? ''); setFlightNo(ev.flight?.flightNo ?? '')
+    setDestination(ev.flight?.destination ?? ''); setGate(ev.flight?.gate ?? '')
+    setSeat(ev.flight?.seat ?? ''); setFlightClass(ev.flight?.flightClass ?? '')
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -219,9 +226,19 @@ function EventCard({
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
         departureLocation: departureLocation.trim() || null, confirmed,
         voucherId: voucherId || null, voucherTitle: null,
+        airline: airline.trim() || null, airlineLogoPath: ev.flight?.airlineLogoPath ?? null,
+        flightNo: flightNo.trim() || null, destination: destination.trim() || null,
+        gate: gate.trim() || null, seat: seat.trim() || null, flightClass: flightClass.trim() || null,
       })
     }
     setEditing(false)
+    onChanged()
+  }
+  const onLogoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    await api.events.uploadFlightLogo(ev.id, file)
     onChanged()
   }
   const onPhotosPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -262,7 +279,9 @@ function EventCard({
     >
       <div className="event-head">
         <span className="seq-badge">{ev.sequence}</span>
-        <span className="event-place">{ev.place.name}</span>
+        <span className="event-place" style={{ cursor: 'pointer' }} onClick={() => setPlaceDetailOpen(true)} title="장소 족보에서 상세 정보 보기">
+          {ev.place.name}
+        </span>
         <span className="chip blue">{ev.place.category}</span>
         {ev.plannedTime && !editing && <span className="chip yellow">🕒 {ev.plannedTime}</span>}
         <span className="stars">
@@ -290,7 +309,7 @@ function EventCard({
       {(ev.place.address || ev.place.mapUrl) && (
         <div className="muted" style={{ marginTop: 6 }}>
           {ev.place.mapUrl ? (
-            <a href={ev.place.mapUrl} target="_blank" rel="noreferrer" title="지도에서 보기">
+            <a className="plain-link" href={ev.place.mapUrl} target="_blank" rel="noreferrer" title="지도에서 보기">
               📍 {ev.place.address || '지도에서 보기'}
             </a>
           ) : (
@@ -334,6 +353,17 @@ function EventCard({
               </p>
               {isAirport && (
                 <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
+                  <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogoPicked} />
+                  <div className="field"><label>항공사 로고 (선택)</label>
+                    <button type="button" className="btn small" onClick={() => logoInput.current?.click()}>
+                      {ev.flight?.airlineLogoPath ? '🖼 로고 변경' : '🖼 로고 업로드'}
+                    </button></div>
+                  <div className="field"><label>항공사</label>
+                    <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
+                  <div className="field"><label>편명</label>
+                    <input type="text" value={flightNo} placeholder="예: LJ203" onChange={(e) => setFlightNo(e.target.value)} /></div>
+                  <div className="field grow"><label>도착지</label>
+                    <input type="text" value={destination} placeholder="예: 나리타 (NRT)" onChange={(e) => setDestination(e.target.value)} /></div>
                   <div className="field"><label>🛫 출발장소</label>
                     <input type="text" value={departureLocation} placeholder="예: 인천공항 T2"
                       onChange={(e) => setDepartureLocation(e.target.value)} /></div>
@@ -343,6 +373,12 @@ function EventCard({
                     <input type="datetime-local" value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
                   <div className="field" style={{ maxWidth: 100 }}><label>소요(분)</label>
                     <input type="number" value={durationMinutes} placeholder="75" onChange={(e) => setDurationMinutes(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 100 }}><label>게이트</label>
+                    <input type="text" value={gate} placeholder="83E" onChange={(e) => setGate(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 100 }}><label>좌석</label>
+                    <input type="text" value={seat} placeholder="04B" onChange={(e) => setSeat(e.target.value)} /></div>
+                  <div className="field"><label>클래스</label>
+                    <input type="text" value={flightClass} placeholder="예: 이코노미" onChange={(e) => setFlightClass(e.target.value)} /></div>
                   <div className="field"><label>예약번호</label>
                     <input type="text" value={bookingRef} placeholder="ABC123" onChange={(e) => setBookingRef(e.target.value)} /></div>
                   <div className="field grow"><label>예약처</label>
@@ -396,20 +432,8 @@ function EventCard({
           {!editing && (
             <>
               {isAirport && ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) && (
-                <div className="muted" style={{ marginBottom: 8, fontWeight: 700 }}>
-                  {ev.flight.departureLocation && `${ev.flight.departureLocation} · `}
-                  🛫 {ev.flight.departAt ? new Date(ev.flight.departAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
-                  {' → 🛬 '}
-                  {ev.flight.arriveAt ? new Date(ev.flight.arriveAt).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '?'}
-                  {ev.flight.durationMinutes != null && ` · ${formatDuration(ev.flight.durationMinutes)}`}
-                  {ev.flight.bookingRef && ` · 예약번호 ${ev.flight.bookingRef}`}
-                  {ev.flight.bookedVia && ` · ${ev.flight.bookedVia}`}
-                  {ev.flight.confirmed && <span className="chip green" style={{ marginLeft: 6 }}>✅ 확정</span>}
-                  {ev.flight.voucherId && (
-                    <span className="chip green" style={{ marginLeft: 6 }} title={ev.flight.voucherTitle ?? ''}>
-                      🎫 {ev.flight.voucherTitle}
-                    </span>
-                  )}
+                <div style={{ marginBottom: 8 }}>
+                  <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
                 </div>
               )}
               {ev.bucketItemTitle && <div className="chip purple" style={{ marginBottom: 8 }}>✨ {ev.bucketItemTitle}</div>}
@@ -499,6 +523,11 @@ function EventCard({
           </div>
         </Modal>
       )}
+      {placeDetailOpen && (
+        <Modal title={`${ev.place.name} · 방문 기록`} onClose={() => setPlaceDetailOpen(false)}>
+          <PlaceDetailPanel placeId={ev.place.id} />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -515,6 +544,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
   const [dayNotes, setDayNotes] = useState<DayNote[]>([])
+  const [editingDay, setEditingDay] = useState<number | null>(null)
   const [rightPanel, setRightPanel] = useState<'map' | 'archive' | 'planb'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -577,7 +607,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     }
   }
 
-  const todaySpend = computeDailySpend(trip, expenses, day, rates).total
+  const todayNote = dayNotes.find((n) => n.dayNumber === day) ?? null
 
   const addEvent = async () => {
     let placeId = selPlace
@@ -708,28 +738,49 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
           const cityInfo = dayCityInfo(d)
           const spend = computeDailySpend(trip, expenses, d, rates).total
+          const note = dayNotes.find((n) => n.dayNumber === d) ?? null
+          const status = dailyBudgetStatus(spend, note?.budget ?? null)
           return (
-            <button key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`} onClick={() => setDay(d)}>
-              <div>{d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span></div>
-              {cityInfo && <div style={{ fontWeight: 400, fontSize: 11 }}>{cityInfo.flags} {cityInfo.label}</div>}
-              <div style={{ fontWeight: 400, fontSize: 11 }}>💸 {fmtMoney(spend, 'KRW')}</div>
-            </button>
+            <div key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`}
+              style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setDay(d)}>
+              <div className="day-nav-content" style={{ paddingRight: 20 }}>
+                <div>
+                  {d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span>
+                  {note?.weatherEmoji && <span style={{ marginLeft: 4 }}>{note.weatherEmoji}</span>}
+                </div>
+                {note?.note && <div style={{ fontWeight: 400, fontSize: 11 }}>{note.note}</div>}
+                {cityInfo && <div style={{ fontWeight: 400, fontSize: 11 }}>{cityInfo.flags} {cityInfo.label}</div>}
+                <div style={{ fontWeight: 400, fontSize: 11 }}>💸 {fmtMoney(spend, 'KRW')}</div>
+                {status && <div style={{ fontWeight: 400, fontSize: 11 }}>{status.emoji} {status.label}</div>}
+              </div>
+              <div style={{ position: 'absolute', top: 2, right: 2 }}>
+                <DropdownMenu actions={[{ label: '✏️ 수정', onClick: () => setEditingDay(d) }]} />
+              </div>
+            </div>
           )
         })}
+        {editingDay != null && (
+          <DayNoteEditModal
+            tripId={trip.id}
+            dayNumber={editingDay}
+            note={dayNotes.find((n) => n.dayNumber === editingDay) ?? null}
+            cities={trip.cities}
+            onClose={() => setEditingDay(null)}
+            onSaved={refresh}
+          />
+        )}
       </div>
 
-      {/* 중앙: TODAY + 타임라인 */}
+      {/* 중앙: 오늘 할 일 + 일기 + 타임라인 */}
       <div>
-        <div className="today-split">
-          <DayNoteBox
-            tripId={trip.id}
-            dayNumber={day}
-            dayHeaderText={`${day}일차 · ${dayLabel(trip, day)}`}
-            cities={trip.cities}
-            spend={todaySpend}
-            onChanged={refresh}
-          />
-          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12 }}>
+          <div style={{ fontWeight: 800, marginBottom: 8 }}>📔 오늘의 일기</div>
+          {todayNote?.diary ? (
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{todayNote.diary}</p>
+          ) : (
+            <span className="muted">아직 일기가 없어요 — 왼쪽 일차의 ⋮ 메뉴에서 [✏️ 수정]을 눌러 적어보세요.</span>
+          )}
         </div>
 
           <div

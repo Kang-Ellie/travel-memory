@@ -11,15 +11,16 @@ import TripBaseSection from './TripBaseSection'
 import ExpensesTab from './ExpensesTab'
 import VouchersTab from './VouchersTab'
 import TripPrepTab from './TripPrepTab'
+import FolderIcon, { type FolderColor } from './FolderIcon'
 
 type Tab = 'base' | 'workspace' | 'settlement' | 'vouchers' | 'prep'
 
-const TABS: Array<{ key: Tab; label: string }> = [
-  { key: 'base', label: '🧭 BASE' },
-  { key: 'workspace', label: '📅 일정 & 지출' },
-  { key: 'settlement', label: '🧮 정산' },
-  { key: 'vouchers', label: '📎 바우처' },
-  { key: 'prep', label: '🧳 여행 준비' },
+const TABS: Array<{ key: Tab; label: string; color: FolderColor }> = [
+  { key: 'base', label: 'BASE', color: 'blue' },
+  { key: 'workspace', label: '일정 & 지출', color: 'purple' },
+  { key: 'settlement', label: '정산', color: 'pink' },
+  { key: 'vouchers', label: '바우처', color: 'yellow' },
+  { key: 'prep', label: '여행 준비', color: 'green' },
 ]
 
 interface Props {
@@ -123,10 +124,11 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
         </Modal>
       )}
 
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18, marginTop: 12 }}>
+      <div className="folder-tabs">
         {TABS.map((t) => (
-          <button key={t.key} className={`pill ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-            {t.label}
+          <button key={t.key} className={`folder-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
+            <FolderIcon color={t.color} />
+            <span>{t.label}</span>
           </button>
         ))}
       </div>

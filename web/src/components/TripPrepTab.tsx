@@ -4,17 +4,7 @@ import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import Window from './Window'
 import AddExpenseModal from './AddExpenseModal'
-
-function formatDuration(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
-}
-
-function fmtDateTime(v: string | null): string {
-  if (!v) return '?'
-  return new Date(v).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
+import BoardingPassCard from './BoardingPassCard'
 
 export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [events, setEvents] = useState<TimelineEvent[]>([])
@@ -75,7 +65,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
                   </div>
                 </div>
                 <span className="chip green" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</span>
-                <button className="btn small ghost" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
+                <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
               </div>
             ))}
           </div>
@@ -88,21 +78,19 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               <div className="section-gap">
                 <strong>✈️ 항공</strong>
                 {flights.map((ev) => (
-                  <div key={ev.id} className="row">
-                    <span className="chip blue">{ev.dayNumber}일차</span>
-                    <div className="grow">
-                      <div style={{ fontWeight: 800 }}>{ev.place.name}</div>
-                      {ev.flight ? (
-                        <div className="muted">
-                          {fmtDateTime(ev.flight.departAt)} → {fmtDateTime(ev.flight.arriveAt)}
-                          {ev.flight.durationMinutes != null && ` · ${formatDuration(ev.flight.durationMinutes)}`}
-                          {ev.flight.bookingRef ? ` · 예약번호 ${ev.flight.bookingRef}` : ' · 예약번호 미입력'}
-                        </div>
-                      ) : <div className="muted">아직 항공 상세정보가 없어요 — 동선에서 입력해주세요.</div>}
+                  <div key={ev.id} style={{ marginTop: 8 }}>
+                    <div className="row" style={{ marginBottom: 6 }}>
+                      <span className="chip blue">{ev.dayNumber}일차</span>
+                      <span className="grow" />
+                      <span className={`chip ${prebookedForEvent(ev.id) ? 'green' : 'yellow'}`}>
+                        {prebookedForEvent(ev.id) ? '💳 결제 기록됨' : '결제 미기록'}
+                      </span>
                     </div>
-                    <span className={`chip ${prebookedForEvent(ev.id) ? 'green' : 'yellow'}`}>
-                      {prebookedForEvent(ev.id) ? '💳 결제 기록됨' : '결제 미기록'}
-                    </span>
+                    {ev.flight ? (
+                      <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
+                    ) : (
+                      <div className="row"><span className="muted">아직 항공 상세정보가 없어요 — 동선에서 입력해주세요.</span></div>
+                    )}
                   </div>
                 ))}
               </div>

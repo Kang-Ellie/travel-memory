@@ -60,7 +60,7 @@ export default function ChecklistPanel({
     <label key={item.id} className="checklist-row">
       <input type="checkbox" checked={item.done} onChange={() => toggle(item)} />
       <span className={item.done ? 'checklist-done' : ''}>{item.text}</span>
-      <button className="btn small ghost" onClick={() => remove(item.id)}>×</button>
+      <button className="x-btn" onClick={() => remove(item.id)}>×</button>
     </label>
   )
 

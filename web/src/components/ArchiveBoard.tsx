@@ -22,7 +22,7 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
       <div className="archive-card-head">
         <span>{ICON[item.kind]}</span>
         <span className="archive-card-title">{item.title}</span>
-        <button className="btn small ghost" onClick={() => {
+        <button className="x-btn" onClick={() => {
           if (confirm('보관함에서 삭제할까요?')) api.archive.delete(item.id).then(onChanged)
         }}>×</button>
       </div>

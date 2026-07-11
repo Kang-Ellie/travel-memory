@@ -85,13 +85,13 @@ export const api = {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
-      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null
+      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
     }) => req<Place>('POST', '/api/places', data),
     update: (id: string, data: {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
-      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null
+      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
     }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),
@@ -114,6 +114,7 @@ export const api = {
       req<void>('POST', `/api/trips/${data.tripId}/events/reorder`, data),
     delete: (id: string) => req<void>('DELETE', `/api/events/${id}`),
     setFlight: (id: string, data: FlightDetail) => req<void>('PUT', `/api/events/${id}/flight`, data),
+    uploadFlightLogo: (id: string, file: File) => upload<FlightDetail>(`/api/events/${id}/flight/logo`, [file]),
     deleteFlight: (id: string) => req<void>('DELETE', `/api/events/${id}/flight`),
   },
 

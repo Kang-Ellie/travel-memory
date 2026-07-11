@@ -115,7 +115,7 @@ function SnsCard({ item, places, onChanged }: { item: ArchiveItem; places: Place
       {!item.linkedPlaceId && (
         <button className="btn small" onClick={() => setLinking(true)}>📍 장소로 만들기</button>
       )}
-      <button className="btn small ghost" onClick={remove}>×</button>
+      <button className="x-btn" onClick={remove}>×</button>
       {linking && (
         <LinkPlaceModal
           item={item}

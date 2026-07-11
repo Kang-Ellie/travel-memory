@@ -155,7 +155,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                     <td>{e.payerName}</td>
                     <td className="num" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</td>
                     <td className="num">
-                      <button className="btn small ghost" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
+                      <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
                     </td>
                   </tr>
                 ))}

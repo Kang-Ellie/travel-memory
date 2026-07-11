@@ -21,7 +21,7 @@ export default function DropdownMenu({ actions }: { actions: Array<MenuAction | 
 
   return (
     <div className="event-menu" ref={ref} onClick={(e) => e.stopPropagation()}>
-      <button type="button" className="btn small ghost" onClick={() => setOpen((v) => !v)} title="더보기">⋮</button>
+      <button type="button" className="event-menu-trigger" onClick={() => setOpen((v) => !v)} title="더보기">⋮</button>
       {open && (
         <div className="event-menu-panel">
           {actions.map((a, i) => (

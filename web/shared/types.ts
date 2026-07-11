@@ -66,6 +66,7 @@ export interface Place {
   hours: string | null
   reservationNeeded: boolean
   recommendedMenu: string | null
+  breakTime: string | null
   coverPhoto: string | null
   createdAt: string
 }
@@ -99,6 +100,13 @@ export interface FlightDetail {
   confirmed: boolean
   voucherId: string | null
   voucherTitle: string | null
+  airline: string | null
+  airlineLogoPath: string | null
+  flightNo: string | null
+  destination: string | null
+  gate: string | null
+  seat: string | null
+  flightClass: string | null
 }
 
 export interface TimelineEvent {

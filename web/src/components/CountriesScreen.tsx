@@ -92,7 +92,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         <span className={`chip ${city.visited ? 'green' : 'yellow'}`}>{city.visited ? '✅ 방문완료' : '⏳ 미방문'}</span>
         <div className="grow" style={{ fontWeight: 800 }}>{city.name}</div>
         <button className="btn small" onClick={() => setEditing(true)}>수정</button>
-        <button className="btn small ghost" onClick={remove}>×</button>
+        <button className="x-btn" onClick={remove}>×</button>
       </div>
       <div className="muted" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
         {city.flightDuration && <span>✈️ {city.flightDuration}</span>}
@@ -144,7 +144,7 @@ function CountryRow({
         </div>
         <span className="muted">{expanded ? '접기 ▲' : '상세 보기 ▼'}</span>
         <button className="btn small" onClick={(e) => { e.stopPropagation(); setForm(country); setEditing(true) }}>수정</button>
-        <button className="btn small ghost" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
+        <button className="x-btn" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
       </div>
 
       {editing && (

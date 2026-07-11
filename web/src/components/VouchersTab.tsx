@@ -20,7 +20,7 @@ function VoucherGroup({ cat, items, onRemove }: { cat: string; items: Voucher[];
             <div className="muted">{v.fileType} · {v.createdAt.slice(0, 10)} 저장됨</div>
           </div>
           <a className="btn small" href={fileUrl(v.filePath)} target="_blank" rel="noreferrer">열기</a>
-          <button className="btn small ghost" onClick={() => onRemove(v)}>×</button>
+          <button className="x-btn" onClick={() => onRemove(v)}>×</button>
         </div>
       ))}
     </div>

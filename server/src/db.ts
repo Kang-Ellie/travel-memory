@@ -264,6 +264,18 @@ export async function initSchema(): Promise<void> {
     -- 버킷리스트 항목에 직접 참고 이미지를 올려둘 수 있게(아직 안 가본 곳은 장소 족보에 방문 사진이 없으므로)
     ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS image_path TEXT;
 
+    -- 맛집 브레이크타임(점심·저녁 사이 휴식 시간)
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS break_time TEXT;
+
+    -- 항공권을 탑승권 카드 형태로 보여주기 위한 정보
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS airline TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS airline_logo_path TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS flight_no TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS destination TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS gate TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS seat TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS flight_class TEXT;
+
     -- 업로드 저장 경로와 DB 기록 경로가 어긋났던 과거 버그로 깨진 file_path 복구
     -- (실제 파일은 photos/vouchers/archive 하위에 평평하게 저장되어 있었음)
     UPDATE photos SET file_path = 'photos/' || split_part(file_path, '/', 3)

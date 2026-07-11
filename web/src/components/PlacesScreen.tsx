@@ -6,6 +6,7 @@ import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
+import DropdownMenu from './DropdownMenu'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
@@ -31,6 +32,7 @@ function PlaceCard({
   const [hours, setHours] = useState(place.hours ?? '')
   const [reservationNeeded, setReservationNeeded] = useState(place.reservationNeeded)
   const [recommendedMenu, setRecommendedMenu] = useState(place.recommendedMenu ?? '')
+  const [breakTime, setBreakTime] = useState(place.breakTime ?? '')
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
 
@@ -54,6 +56,7 @@ function PlaceCard({
       pros: pros.trim() || null, cons: cons.trim() || null,
       countryId: countryId || null, cityId: cityId || null,
       hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
+      breakTime: breakTime.trim() || null,
     })
     setEditing(false)
     onChanged()
@@ -103,6 +106,8 @@ function PlaceCard({
           )}
           <div className="field"><label>🕒 영업시간</label>
             <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
+          <div className="field"><label>⏸ 브레이크타임</label>
+            <input type="text" value={breakTime} placeholder="예: 15:00~17:00" onChange={(e) => setBreakTime(e.target.value)} /></div>
           <div className="field" style={{ justifyContent: 'flex-end' }}>
             <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
               <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
@@ -143,8 +148,16 @@ function PlaceCard({
         </div>
         <div style={{ fontWeight: 800 }}>{place.name}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
-          {place.hours && <div className="muted">🕒 {place.hours}</div>}
+          <div className="muted">
+            {place.mapUrl ? (
+              <a className="plain-link" href={place.mapUrl} target="_blank" rel="noreferrer"
+                onClick={(e) => e.stopPropagation()} title="지도에서 보기">
+                {place.address || '지도에서 보기'}
+              </a>
+            ) : (place.address || '주소 없음')}
+            {place.memo ? ` · 📝 ${place.memo}` : ''}
+          </div>
+          {place.hours && <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>}
           {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
           {(place.pros || place.cons) && (
             <div className="muted">
@@ -156,12 +169,11 @@ function PlaceCard({
             <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
           )}
         </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
-          {place.mapUrl && (
-            <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer">🗺 지도</a>
-          )}
-          <button className="btn small" onClick={() => setEditing(true)}>수정</button>
-          <button className="btn small ghost" onClick={remove}>×</button>
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
+          <DropdownMenu actions={[
+            { label: '✏️ 수정', onClick: () => setEditing(true) },
+            { label: '🗑 삭제', danger: true, onClick: remove },
+          ]} />
         </div>
       </div>
       {detailOpen && (

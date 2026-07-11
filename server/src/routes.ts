@@ -33,6 +33,7 @@ const photoUploader = makeUploader('photos')
 const voucherUploader = makeUploader('vouchers')
 const archiveUploader = makeUploader('archive')
 const bucketUploader = makeUploader('bucket')
+const flightLogoUploader = makeUploader('flight-logos')
 
 // ── 행 매핑 (snake_case DB → camelCase API) ──────────────
 const mapTrip = (r: any) => ({
@@ -48,7 +49,7 @@ const mapPlace = (r: any) => ({
   pros: r.pros, cons: r.cons, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
-  coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
+  breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
 })
 const mapTransit = (r: any) => ({
   id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
@@ -60,6 +61,8 @@ const mapFlightDetail = (r: any) => ({
   durationMinutes: r.duration_minutes != null ? Number(r.duration_minutes) : null,
   bookingRef: r.booking_ref, bookedVia: r.booked_via, departureLocation: r.departure_location,
   confirmed: !!r.confirmed, voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null,
+  airline: r.airline, airlineLogoPath: r.airline_logo_path ?? null, flightNo: r.flight_no,
+  destination: r.destination, gate: r.gate, seat: r.seat, flightClass: r.flight_class,
 })
 const FLIGHT_SELECT = `
   SELECT fd.*, v.title AS voucher_title FROM flight_details fd
@@ -297,21 +300,22 @@ export function registerRoutes(app: ExpressApp): void {
   app.post('/api/places', async (req, res) => {
     const {
       name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
-      hours, reservationNeeded, recommendedMenu,
+      hours, reservationNeeded, recommendedMenu, breakTime,
     } = req.body as {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
-      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null
+      hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
     }
     const placeId = id()
     await pool.query(
       `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id,
-         hours, reservation_needed, recommended_menu)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+         hours, reservation_needed, recommended_menu, break_time)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
       [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
         mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
-        countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null])
+        countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null,
+        breakTime?.trim() || null])
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
   })
@@ -319,19 +323,20 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/places/:id', async (req, res) => {
     const {
       name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
-      hours, reservationNeeded, recommendedMenu,
+      hours, reservationNeeded, recommendedMenu, breakTime,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
-      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null
+      hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
     }
     await pool.query(
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
-         country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13 WHERE id=$14`,
+         country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14 WHERE id=$15`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
         pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
-        hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, req.params.id])
+        hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, breakTime?.trim() || null,
+        req.params.id])
     res.json({ ok: true })
   })
 
@@ -606,24 +611,52 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 항공 상세 (공항 이벤트 1:1) ────────────────────────
   app.put('/api/events/:id/flight', async (req, res) => {
-    const { departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId } = req.body as {
+    const {
+      departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId,
+      airline, flightNo, destination, gate, seat, flightClass,
+    } = req.body as {
       departAt: string | null; arriveAt: string | null; durationMinutes: number | null
       bookingRef: string | null; bookedVia: string | null
       departureLocation: string | null; confirmed: boolean; voucherId: string | null
+      airline: string | null; flightNo: string | null; destination: string | null
+      gate: string | null; seat: string | null; flightClass: string | null
     }
     await pool.query(
       `INSERT INTO flight_details
-         (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id,
+          airline, flight_no, destination, gate, seat, flight_class)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (event_id) DO UPDATE SET
          depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
          booking_ref = excluded.booking_ref, booked_via = excluded.booked_via,
-         departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id`,
-      [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId])
+         departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id,
+         airline = excluded.airline, flight_no = excluded.flight_no, destination = excluded.destination,
+         gate = excluded.gate, seat = excluded.seat, flight_class = excluded.flight_class`,
+      [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId,
+        airline?.trim() || null, flightNo?.trim() || null, destination?.trim() || null,
+        gate?.trim() || null, seat?.trim() || null, flightClass?.trim() || null])
     res.json({ ok: true })
   })
 
+  app.post('/api/events/:id/flight/logo', flightLogoUploader.array('files', 1), async (req, res) => {
+    const files = (req.files ?? []) as Express.Multer.File[]
+    const file = files[0]
+    if (!file) { res.status(400).json({ error: '파일이 없어요.' }); return }
+    const finalPath = await compressImageInPlace(file.path)
+    const rel = relativeFilePath('flight-logos', path.basename(finalPath))
+    const old = await pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id])
+    if (old.rows[0]?.airline_logo_path) safeUnlink(old.rows[0].airline_logo_path)
+    await pool.query(
+      `INSERT INTO flight_details (event_id, airline_logo_path) VALUES ($1,$2)
+       ON CONFLICT (event_id) DO UPDATE SET airline_logo_path = excluded.airline_logo_path`,
+      [req.params.id, rel])
+    const r = await pool.query(FLIGHT_SELECT, [req.params.id])
+    res.json(mapFlightDetail(r.rows[0]))
+  })
+
   app.delete('/api/events/:id/flight', async (req, res) => {
+    const old = await pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id])
+    if (old.rows[0]?.airline_logo_path) safeUnlink(old.rows[0].airline_logo_path)
     await pool.query('DELETE FROM flight_details WHERE event_id = $1', [req.params.id])
     res.json({ ok: true })
   })
