@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { BucketItem, Country, City, Trip, Place, BucketKind } from '../../shared/types'
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from '../../shared/types'
-import { api } from '../api'
+import { api, fileUrl } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
@@ -10,7 +10,7 @@ import Select from './Select'
 const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
 
-function BucketRow({
+function BucketCard({
   item, trips, places, countries, cities, onChanged,
 }: {
   item: BucketItem; trips: Trip[]; places: Place[]; countries: Country[]; cities: City[]; onChanged: () => void
@@ -19,6 +19,7 @@ function BucketRow({
   const [tripId, setTripId] = useState('')
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
+  const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
 
   const toggleDone = async () => {
     await api.bucket.update(item.id, { done: !item.done })
@@ -56,16 +57,21 @@ function BucketRow({
   const itemCities = item.cityIds.map((id) => cities.find((c) => c.id === id)).filter((c): c is City => !!c)
 
   return (
-    <div className="row" style={{ flexWrap: 'wrap' }}>
-      <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" />
-      <div className="grow">
-        <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>
-          {item.title}
-          <span className="chip purple" style={{ marginLeft: 8 }}>{BUCKET_KIND_LABEL[kind]}</span>
-          {subCategory && <span className="chip blue" style={{ marginLeft: 6 }}>{subCategory}</span>}
+    <div className="place-card" style={{ cursor: 'default' }}>
+      {linkedPlace?.coverPhoto && <img className="place-card-photo" src={fileUrl(linkedPlace.coverPhoto)} alt="" />}
+      <div className="place-card-body">
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" style={{ marginTop: 3 }} />
+          <div className="grow" style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>
+            {item.title}
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="chip purple">{BUCKET_KIND_LABEL[kind]}</span>
+          {subCategory && <span className="chip blue">{subCategory}</span>}
         </div>
         {itemCountries.length > 0 && (
-          <div className="muted" style={{ marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div className="muted" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {itemCountries.map((co) => {
               const citiesHere = itemCities.filter((c) => c.countryId === co.id)
               return (
@@ -76,15 +82,11 @@ function BucketRow({
             })}
           </div>
         )}
-        {item.memo && <div className="muted" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
-        {item.linkedPlaceId && (
-          <div className="muted" style={{ marginTop: 4 }}>📍 {item.linkedPlaceName}</div>
-        )}
-        {item.linkedTripId && (
-          <div className="muted" style={{ marginTop: 4 }}>✈️ {item.linkedTripTitle}에서 완료</div>
-        )}
+        {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
+        {item.linkedPlaceId && <div className="muted">📍 {item.linkedPlaceName}</div>}
+        {item.linkedTripId && <div className="muted">✈️ {item.linkedTripTitle}에서 완료</div>}
         {linkingPlace && (
-          <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
+          <div className="row" style={{ border: 'none', padding: 0 }}>
             <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
               <option value="">— 장소 선택 —</option>
               {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
@@ -94,7 +96,7 @@ function BucketRow({
           </div>
         )}
         {linking && (
-          <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
+          <div className="row" style={{ border: 'none', padding: 0 }}>
             <Select value={tripId} onChange={(e) => setTripId(e.target.value)}>
               <option value="">— 여행 선택 —</option>
               {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
@@ -103,19 +105,19 @@ function BucketRow({
             <button className="btn small" onClick={() => setLinking(false)}>취소</button>
           </div>
         )}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        {item.linkedPlaceId ? (
-          <button className="btn small ghost" onClick={unlinkPlace}>장소 연결 해제</button>
-        ) : !linkingPlace && (
-          <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
-        )}
-        {item.linkedTripId ? (
-          <button className="btn small ghost" onClick={unlink}>여행 연결 해제</button>
-        ) : !linking && (
-          <button className="btn small" onClick={() => setLinking(true)}>여행에 연결</button>
-        )}
-        <button className="btn small ghost" onClick={remove}>×</button>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+          {item.linkedPlaceId ? (
+            <button className="btn small ghost" onClick={unlinkPlace}>장소 연결 해제</button>
+          ) : !linkingPlace && (
+            <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
+          )}
+          {item.linkedTripId ? (
+            <button className="btn small ghost" onClick={unlink}>여행 연결 해제</button>
+          ) : !linking && (
+            <button className="btn small" onClick={() => setLinking(true)}>여행에 연결</button>
+          )}
+          <button className="btn small ghost" onClick={remove}>×</button>
+        </div>
       </div>
     </div>
   )
@@ -306,9 +308,13 @@ export default function BucketListScreen() {
         )}
         {filtered.length === 0 ? (
           <div className="empty">항목이 없어요.</div>
-        ) : filtered.map((item) => (
-          <BucketRow key={item.id} item={item} trips={trips} places={places} countries={countries} cities={cities} onChanged={refresh} />
-        ))}
+        ) : (
+          <div className="grid">
+            {filtered.map((item) => (
+              <BucketCard key={item.id} item={item} trips={trips} places={places} countries={countries} cities={cities} onChanged={refresh} />
+            ))}
+          </div>
+        )}
       </Window>
     </div>
   )

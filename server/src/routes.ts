@@ -47,7 +47,7 @@ const mapPlace = (r: any) => ({
   pros: r.pros, cons: r.cons, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
-  createdAt: r.created_at,
+  coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
 })
 const mapTransit = (r: any) => ({
   id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
@@ -276,7 +276,13 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 장소 족보 ─────────────────────────────────────────
   const PLACE_SELECT = `
-    SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name
+    SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name,
+      (
+        SELECT ph.file_path FROM photos ph
+        JOIN timeline_events te ON te.id = ph.event_id
+        WHERE te.place_id = p.id
+        ORDER BY ph.id LIMIT 1
+      ) AS cover_photo_path
     FROM places p
     LEFT JOIN countries co ON co.id = p.country_id
     LEFT JOIN cities ci ON ci.id = p.city_id

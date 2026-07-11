@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Trip, Country, City, BucketItem, Place, BucketKind } from '../../shared/types'
 import { BUCKET_KIND_LABEL, bucketKindOf } from '../../shared/types'
-import { api } from '../api'
+import { api, fileUrl } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
+import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
 
@@ -11,9 +12,10 @@ const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
 }
 
-function BaseListRow({
+function BaseListCard({
   item, kind, places, tripId, onChanged,
 }: { item: BucketItem; kind: BucketKind; places: Place[]; tripId: string; onChanged: () => void }) {
+  const [open, setOpen] = useState(false)
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
@@ -50,34 +52,50 @@ function BaseListRow({
   }
 
   return (
-    <div className="row" style={{ flexWrap: 'wrap' }}>
-      <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" />
-      <div className="grow">
-        <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>{item.title}</div>
-        {item.memo && <div style={{ color: 'var(--ink)', opacity: 0.75, fontSize: 13, whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
-        {linkedPlace && (
-          <div style={{ color: 'var(--ink)', opacity: 0.8, fontSize: 13, marginTop: 2 }}>{placeLine()}</div>
+    <>
+      <div className="place-card" onClick={() => setOpen(true)}>
+        {linkedPlace?.coverPhoto && (
+          <img className="place-card-photo" src={fileUrl(linkedPlace.coverPhoto)} alt=""
+            style={{ opacity: item.done ? 0.5 : 1 }} />
         )}
-        {linkingPlace && (
-          <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
-            <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
-              <option value="">— 장소 선택 —</option>
-              {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
-            </Select>
-            <button className="btn small primary" onClick={linkPlace}>연결</button>
-            <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
-          </div>
-        )}
+        <div className="place-card-body">
+          <span className={`chip ${item.done ? 'green' : 'yellow'}`} style={{ alignSelf: 'flex-start' }}>
+            {item.done ? '✅ 완료' : '⏳ 미완료'}
+          </span>
+          <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>{item.title}</div>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        {linkedPlace ? (
-          <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
-        ) : !linkingPlace && (
-          <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
-        )}
-        {!inTrip && <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>}
-      </div>
-    </div>
+      {open && (
+        <Modal title={item.title} onClose={() => setOpen(false)}>
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontWeight: 700, marginBottom: 16 }}>
+            <input type="checkbox" checked={item.done} onChange={toggleDone} /> 달성 완료로 표시
+          </label>
+          {item.memo && <p style={{ whiteSpace: 'pre-wrap', marginTop: 0 }}>{item.memo}</p>}
+          {linkedPlace ? (
+            <div className="muted" style={{ marginBottom: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              {placeLine()}
+              <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+            </div>
+          ) : linkingPlace ? (
+            <div className="row" style={{ border: 'none', padding: 0 }}>
+              <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+                <option value="">— 장소 선택 —</option>
+                {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
+              </Select>
+              <button className="btn small primary" onClick={linkPlace}>연결</button>
+              <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+            </div>
+          ) : (
+            <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
+          )}
+          {!inTrip && (
+            <div style={{ marginTop: 14 }}>
+              <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>
+            </div>
+          )}
+        </Modal>
+      )}
+    </>
   )
 }
 
@@ -168,12 +186,16 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
             const items = byKind(kind)
             return (
               <div key={kind} style={{ marginTop: 14, paddingTop: 14, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
-                <div style={{ fontWeight: 700, marginBottom: 6 }}>{BUCKET_KIND_LABEL[kind]}</div>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>{BUCKET_KIND_LABEL[kind]}</div>
                 {items.length === 0 ? (
                   <div className="empty">{KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요. 버킷리스트 탭에서 추가해보세요.</div>
-                ) : items.map((b) => (
-                  <BaseListRow key={b.id} item={b} kind={kind} places={places} tripId={trip.id} onChanged={refresh} />
-                ))}
+                ) : (
+                  <div className="city-grid">
+                    {items.map((b) => (
+                      <BaseListCard key={b.id} item={b} kind={kind} places={places} tripId={trip.id} onChanged={refresh} />
+                    ))}
+                  </div>
+                )}
               </div>
             )
           })}

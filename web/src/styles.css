@@ -314,6 +314,20 @@ textarea { resize: vertical; min-height: 70px; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 22px; }
 .city-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 
+/* ── 사진 갤러리 카드 (장소·버킷리스트) ───── */
+.place-card {
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--shadow);
+  overflow: hidden;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+}
+.place-card-photo { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.place-card-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+
 /* ── BASE 국가/도시 2단 분할 ───────────────── */
 .base-split { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 @media (max-width: 640px) {
@@ -325,6 +339,12 @@ textarea { resize: vertical; min-height: 70px; }
 .prep-split { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
 @media (max-width: 900px) {
   .prep-split { grid-template-columns: 1fr; }
+}
+
+/* ── TODAY 카드: 오늘 정보(왼쪽) : 오늘 할일(오른쪽) 분할 ─── */
+.today-split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 24px; align-items: start; }
+@media (max-width: 760px) {
+  .today-split { grid-template-columns: 1fr; }
 }
 
 .card-footer {
@@ -527,12 +547,12 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   .day-nav-btn { flex-shrink: 0; min-width: 128px; }
 }
 
-.day-nav-col { display: flex; flex-direction: column; gap: 8px; }
+.day-nav-col { display: flex; flex-direction: column; gap: 10px; }
 .day-nav-btn {
   border: 2px solid var(--ink);
   border-radius: 10px;
   background: #fff;
-  padding: 8px 10px;
+  padding: 12px 14px;
   font-weight: 800;
   font-size: 13px;
   text-align: left;
@@ -540,6 +560,7 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   box-shadow: 2px 2px 0 var(--shadow);
   font-family: inherit;
 }
+.day-nav-btn > div + div { margin-top: 6px; }
 .day-nav-btn.active { background: var(--pink); color: #fff; }
 
 .transit-chip {

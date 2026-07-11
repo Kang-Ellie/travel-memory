@@ -66,6 +66,7 @@ export interface Place {
   hours: string | null
   reservationNeeded: boolean
   recommendedMenu: string | null
+  coverPhoto: string | null
   createdAt: string
 }
 

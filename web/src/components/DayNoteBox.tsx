@@ -8,21 +8,21 @@ import Modal from './Modal'
 const WEATHER_EMOJIS = ['☀️', '🌤', '⛅', '☁️', '🌧', '⛈', '❄️', '🌫', '💨']
 
 export default function DayNoteBox({
-  tripId, dayNumber, cities, spend, onChanged,
-}: { tripId: string; dayNumber: number; cities: TripCity[]; spend: number; onChanged?: () => void }) {
+  tripId, dayNumber, dayHeaderText, cities, spend, onChanged,
+}: { tripId: string; dayNumber: number; dayHeaderText: string; cities: TripCity[]; spend: number; onChanged?: () => void }) {
   const [note, setNote] = useState<DayNote | null>(null)
   const [editing, setEditing] = useState(false)
+  const [diaryOpen, setDiaryOpen] = useState(false)
   const [text, setText] = useState('')
   const [diary, setDiary] = useState('')
   const [weatherEmoji, setWeatherEmoji] = useState('')
   const [weatherTemp, setWeatherTemp] = useState('')
   const [cityIds, setCityIds] = useState<Set<string>>(new Set())
   const [budget, setBudget] = useState('')
-  const [diaryHidden, setDiaryHidden] = useState(true)
 
   useEffect(() => {
     setEditing(false)
-    setDiaryHidden(true)
+    setDiaryOpen(false)
     api.dayNotes.list(tripId).then((notes) => {
       const n = notes.find((x) => x.dayNumber === dayNumber) ?? null
       setNote(n)
@@ -79,6 +79,11 @@ export default function DayNoteBox({
                   </label>
                 ))}
               </div>
+              <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
+                💡 도시가 여러 곳이면 날씨는 대표 도시 기준으로만 남기고, 나머지는 아래 "오늘은 어떤 날?"이나 일기에
+                자유롭게 적어주세요 (예: "오전 후쿠오카 맑음, 오후 벳푸 흐림"). 도시별로 날씨를 따로 관리하기엔
+                수동 입력이라 오히려 번거로워요.
+              </p>
             </div>
           )}
           <div className="field">
@@ -115,33 +120,34 @@ export default function DayNoteBox({
     )
   }
 
-  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && notedCities.length === 0 && note?.budget == null
   return (
-    <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: empty ? undefined : 'var(--yellow-soft)' }}>
-      <div className="row" style={{ border: 'none', margin: 0, padding: 0, background: 'none' }}>
-        <div className="grow">
-          {empty ? (
-            <span className="muted">이 날에 대한 메모가 없어요 — 하루 예산이나 날씨, 그날의 한 줄을 남겨보세요.</span>
-          ) : (
-            <>
-              {notedCities.map((c) => (
-                <span key={c.id} className="chip purple" style={{ marginRight: 8 }}>
-                  {flagEmoji(c.countryCode)} {c.countryName} · {c.name}
-                </span>
-              ))}
-              {note?.weatherEmoji && (
-                <span className="chip yellow" style={{ marginRight: 8 }}>
-                  {note.weatherEmoji}{note.weatherTemp != null ? ` ${note.weatherTemp}°` : ''}
-                </span>
-              )}
-              {note?.note && <span style={{ fontWeight: 700 }}>{note.note}</span>}
-            </>
-          )}
+    <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', position: 'relative', background: 'var(--pink-soft)' }}>
+      <span style={{ position: 'absolute', top: 12, right: 14, fontSize: 20 }}>☘️</span>
+      <button className="btn small ghost" style={{ position: 'absolute', top: 10, right: 46 }} onClick={() => setEditing(true)}>
+        수정
+      </button>
+
+      <div style={{ cursor: 'pointer', paddingRight: 90 }} onClick={() => setDiaryOpen(true)}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontWeight: 800, fontSize: 16 }}>
+          <span>{dayHeaderText}</span>
+          {note?.weatherEmoji && <span title={note.weatherTemp != null ? `${note.weatherTemp}°` : undefined}>{note.weatherEmoji}</span>}
         </div>
-        <button className="btn small" onClick={() => setEditing(true)}>수정</button>
+        {notedCities.length > 0 && (
+          <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {notedCities.map((c) => (
+              <span key={c.id} className="chip purple">{flagEmoji(c.countryCode)} {c.countryName} · {c.name}</span>
+            ))}
+          </div>
+        )}
+        {note?.note ? (
+          <div style={{ marginTop: 10, fontWeight: 700 }}>{note.note}</div>
+        ) : (
+          <div className="muted" style={{ marginTop: 10 }}>이 날에 대한 메모가 없어요 — 눌러서 일기를 남겨보세요.</div>
+        )}
       </div>
+
       {note?.budget != null && (
-        <div style={{ marginTop: 10 }}>
+        <div style={{ marginTop: 14 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
             <span>💰 {fmtMoney(spend, 'KRW')} / {fmtMoney(note.budget, 'KRW')}</span>
             {status && <span>{status.emoji} {status.label}</span>}
@@ -156,16 +162,15 @@ export default function DayNoteBox({
           </div>
         </div>
       )}
-      {note?.diary && (
-        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
-          <div className="muted" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span className="grow">📔 오늘의 일기</span>
-            <button className="btn small ghost" onClick={() => setDiaryHidden((v) => !v)}>
-              {diaryHidden ? '보기' : '숨기기'}
-            </button>
-          </div>
-          {!diaryHidden && <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{note.diary}</p>}
-        </div>
+
+      {diaryOpen && (
+        <Modal title={`📔 ${dayHeaderText} 일기`} onClose={() => setDiaryOpen(false)}>
+          {note?.diary ? (
+            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{note.diary}</p>
+          ) : (
+            <div className="empty">아직 일기가 없어요. [수정]에서 적어보세요.</div>
+          )}
+        </Modal>
       )}
     </div>
   )

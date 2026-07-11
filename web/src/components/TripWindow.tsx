@@ -37,7 +37,7 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const [startDate, setStartDate] = useState(trip.startDate)
   const [endDate, setEndDate] = useState(trip.endDate)
   const [budget, setBudget] = useState(String(trip.budget || ''))
-  const [selCountryId, setSelCountryId] = useState('')
+  const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set(trip.cities.map((c) => c.id)))
 
   useEffect(() => {
@@ -48,9 +48,10 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const startEdit = () => {
     setTitle(trip.title); setStartDate(trip.startDate); setEndDate(trip.endDate)
     setBudget(String(trip.budget || '')); setSelCityIds(new Set(trip.cities.map((c) => c.id)))
-    const firstCity = trip.cities[0]
-    const firstCountry = firstCity ? cities.find((c) => c.id === firstCity.id)?.countryId ?? '' : ''
-    setSelCountryId(firstCountry)
+    const tripCountryIds = new Set(
+      trip.cities.map((tc) => cities.find((c) => c.id === tc.id)?.countryId).filter((id): id is string => !!id),
+    )
+    setSelCountryIds(tripCountryIds)
     setEditing(true)
   }
 
@@ -103,8 +104,8 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
             <TripCountryCityPicker
               countries={countries}
               cities={cities}
-              selCountryId={selCountryId}
-              onSelCountryChange={setSelCountryId}
+              selCountryIds={selCountryIds}
+              onSelCountryIdsChange={setSelCountryIds}
               selCityIds={selCityIds}
               onSelCityIdsChange={setSelCityIds}
               onCatalogChanged={() => { api.countries.list().then(setCountries); api.cities.list().then(setCities) }}

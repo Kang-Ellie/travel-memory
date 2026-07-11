@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
-import { api } from '../api'
+import { api, fileUrl } from '../api'
 import { flagEmoji, ratingColor } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
@@ -10,13 +10,14 @@ import PlaceDetailPanel from './PlaceDetailPanel'
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 
-function PlaceRow({
-  place, countries, cities, linkedBucketItems, expanded, onToggle, onChanged,
+function PlaceCard({
+  place, countries, cities, linkedBucketItems, onChanged,
 }: {
   place: Place; countries: Country[]; cities: City[]; linkedBucketItems: BucketItem[]
-  expanded: boolean; onToggle: () => void; onChanged: () => void
+  onChanged: () => void
 }) {
   const [editing, setEditing] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
   const [name, setName] = useState(place.name)
   const [address, setAddress] = useState(place.address)
   const [category, setCategory] = useState(place.category)
@@ -125,47 +126,49 @@ function PlaceRow({
   }
 
   return (
-    <div className="row place-row" style={{ flexDirection: 'column', alignItems: 'stretch', cursor: 'pointer' }} onClick={onToggle}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        <span className="chip blue">{place.category}</span>
-        {place.countryName && (
-          <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
-        )}
-        {place.rating != null && (
-          <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
-            ★ {place.rating.toFixed(1)}
-          </span>
-        )}
-        {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
+    <div className="place-card" onClick={() => setDetailOpen(true)}>
+      {place.coverPhoto && <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />}
+      <div className="place-card-body">
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="chip blue">{place.category}</span>
+          {place.countryName && (
+            <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
+          )}
+          {place.rating != null && (
+            <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
+              ★ {place.rating.toFixed(1)}
+            </span>
+          )}
+          {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
+        </div>
+        <div style={{ fontWeight: 800 }}>{place.name}</div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
+          {place.hours && <div className="muted">🕒 {place.hours}</div>}
+          {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
+          {(place.pros || place.cons) && (
+            <div className="muted">
+              {place.pros && <>👍 {place.pros} </>}
+              {place.cons && <>👎 {place.cons}</>}
+            </div>
+          )}
+          {linkedBucketItems.length > 0 && (
+            <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
+          )}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 4 }} onClick={(e) => e.stopPropagation()}>
+          {place.mapUrl && (
+            <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer">🗺 지도</a>
+          )}
+          <button className="btn small" onClick={() => setEditing(true)}>수정</button>
+          <button className="btn small ghost" onClick={remove}>×</button>
+        </div>
       </div>
-      <div style={{ fontWeight: 800, marginTop: 8 }}>
-        {place.name}
-        {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
-        <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
-        {place.hours && <div className="muted">🕒 {place.hours}</div>}
-        {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
-        {(place.pros || place.cons) && (
-          <div className="muted">
-            {place.pros && <>👍 {place.pros} </>}
-            {place.cons && <>👎 {place.cons}</>}
-          </div>
-        )}
-        {linkedBucketItems.length > 0 && (
-          <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
-        )}
-      </div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 12 }} onClick={(e) => e.stopPropagation()}>
-        <span className="muted" style={{ cursor: 'pointer' }} onClick={onToggle}>{expanded ? '접기 ▲' : '방문 기록 보기 ▼'}</span>
-        <span className="grow" />
-        {place.mapUrl && (
-          <a className="btn small" href={place.mapUrl} target="_blank" rel="noreferrer">🗺 지도</a>
-        )}
-        <button className="btn small" onClick={() => setEditing(true)}>수정</button>
-        <button className="btn small ghost" onClick={remove}>×</button>
-      </div>
-      {expanded && <PlaceDetailPanel placeId={place.id} />}
+      {detailOpen && (
+        <Modal title={`${place.name} · 방문 기록`} onClose={() => setDetailOpen(false)}>
+          <PlaceDetailPanel placeId={place.id} />
+        </Modal>
+      )}
     </div>
   )
 }
@@ -175,7 +178,6 @@ export default function PlacesScreen() {
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [bucket, setBucket] = useState<BucketItem[]>([])
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState('전체')
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
@@ -283,9 +285,9 @@ export default function PlacesScreen() {
 
       <Window title="OUR_PLACES.EXE" color="purple">
         <p className="muted" style={{ marginTop: 0 }}>
-          한 번 저장해두면 여러 여행에서 재사용할 수 있는 우리만의 장소 DB예요. 이름을 누르면 이 장소를 방문했던
-          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 평점·장단점·국가/도시·구글 지도
-          링크는 등록 후 [수정]에서 채울 수 있어요.
+          한 번 저장해두면 여러 여행에서 재사용할 수 있는 우리만의 장소 DB예요. 카드를 누르면 이 장소를 방문했던
+          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 사진은 이 장소에서 찍어둔 사진이
+          있으면 자동으로 카드에 표시돼요. 평점·장단점·국가/도시·구글 지도 링크는 등록 후 [수정]에서 채울 수 있어요.
         </p>
         <div className="row" style={{ marginBottom: 14 }}>
           <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 직접 등록</button>
@@ -350,18 +352,20 @@ export default function PlacesScreen() {
 
         {filtered.length === 0 ? (
           <div className="empty">등록된 장소가 없어요. 위에서 검색하거나 직접 등록해보세요!</div>
-        ) : filtered.map((p) => (
-          <PlaceRow
-            key={p.id}
-            place={p}
-            countries={countries}
-            cities={cities}
-            linkedBucketItems={bucket.filter((b) => b.linkedPlaceId === p.id)}
-            expanded={expandedId === p.id}
-            onToggle={() => setExpandedId((cur) => (cur === p.id ? null : p.id))}
-            onChanged={refresh}
-          />
-        ))}
+        ) : (
+          <div className="grid">
+            {filtered.map((p) => (
+              <PlaceCard
+                key={p.id}
+                place={p}
+                countries={countries}
+                cities={cities}
+                linkedBucketItems={bucket.filter((b) => b.linkedPlaceId === p.id)}
+                onChanged={refresh}
+              />
+            ))}
+          </div>
+        )}
       </Window>
     </div>
   )

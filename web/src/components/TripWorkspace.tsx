@@ -102,9 +102,18 @@ function TransitChip({
       <span>{TRANSIT_ICON[segment.mode] ?? '➡️'} {segment.mode}{segment.durationText ? ` · ${segment.durationText}` : ''}</span>
       {segment.note && <span className="muted">· {segment.note}</span>}
       {segment.voucherId ? (
-        <span className="chip green" title={`📎 ${segment.voucherTitle ?? ''} — 눌러서 연결 해제`} style={{ cursor: 'pointer' }} onClick={unlink}>
-          📎
-        </span>
+        <>
+          <a
+            className="chip green"
+            title={segment.voucherTitle ?? ''}
+            href={fileUrl(vouchers.find((v) => v.id === segment.voucherId)?.filePath ?? '')}
+            target="_blank"
+            rel="noreferrer"
+          >
+            📎
+          </a>
+          <button className="btn small ghost" onClick={unlink} title="바우처 연결 해제">연결 해제</button>
+        </>
       ) : (
         <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
       )}
@@ -594,7 +603,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     }
   }
 
-  const todayCityInfo = dayCityInfo(day)
   const todaySpend = computeDailySpend(trip, expenses, day, rates).total
 
   const addEvent = async () => {
@@ -738,14 +746,17 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: TODAY + 타임라인 */}
       <div>
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--pink-soft)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontWeight: 800, fontSize: 16 }}>☘️ TODAY · {day}일차 {dayLabel(trip, day)}</span>
-            {todayCityInfo && <span className="chip purple">{todayCityInfo.flags} {todayCityInfo.label}</span>}
-          </div>
+        <div className="today-split">
+          <DayNoteBox
+            tripId={trip.id}
+            dayNumber={day}
+            dayHeaderText={`${day}일차 · ${dayLabel(trip, day)}`}
+            cities={trip.cities}
+            spend={todaySpend}
+            onChanged={refresh}
+          />
           <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
         </div>
-        <DayNoteBox tripId={trip.id} dayNumber={day} cities={trip.cities} spend={todaySpend} onChanged={refresh} />
 
           <div
             className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}

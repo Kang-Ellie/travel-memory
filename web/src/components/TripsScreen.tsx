@@ -39,7 +39,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
   const [showAddMember, setShowAddMember] = useState(false)
-  const [selCountryId, setSelCountryId] = useState('')
+  const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set())
 
   const refresh = () => {
@@ -61,7 +61,7 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
       budget: parseFloat(budget) || 0, memberIds: [...selMembers], cityIds: [...selCityIds],
     })
     setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setSelMembers(new Set())
-    setSelCountryId(''); setSelCityIds(new Set()); setCreating(false)
+    setSelCountryIds(new Set()); setSelCityIds(new Set()); setCreating(false)
     refresh()
   }
 
@@ -119,8 +119,8 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
             <TripCountryCityPicker
               countries={countries}
               cities={cities}
-              selCountryId={selCountryId}
-              onSelCountryChange={setSelCountryId}
+              selCountryIds={selCountryIds}
+              onSelCountryIdsChange={setSelCountryIds}
               selCityIds={selCityIds}
               onSelCityIdsChange={setSelCityIds}
               onCatalogChanged={() => { api.countries.list().then(setCountries); api.cities.list().then(setCities) }}
