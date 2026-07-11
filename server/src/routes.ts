@@ -131,8 +131,8 @@ async function seedChecklistPresets(tripId: string, scope: 'predeparture' | 'pac
   }
 }
 const mapBucket = (r: any) => ({
-  id: r.id, title: r.title, memo: r.memo, countryId: r.country_id, cityId: r.city_id,
-  countryName: r.country_name ?? null, cityName: r.city_name ?? null,
+  id: r.id, title: r.title, memo: r.memo,
+  countryIds: r.country_ids ?? [], cityIds: r.city_ids ?? [],
   category: r.category, done: r.done, linkedTripId: r.linked_trip_id,
   linkedTripTitle: r.linked_trip_title ?? null, linkedPlaceId: r.linked_place_id,
   linkedPlaceName: r.linked_place_name ?? null, createdAt: r.created_at,
@@ -888,22 +888,22 @@ export function registerRoutes(app: ExpressApp): void {
     res.json(r.rows.map((row) => ({
       tripId: row.trip_id, dayNumber: row.day_number, note: row.note, diary: row.diary,
       weatherEmoji: row.weather_emoji, weatherTemp: row.weather_temp != null ? Number(row.weather_temp) : null,
-      cityIds: row.city_ids ?? [],
+      cityIds: row.city_ids ?? [], budget: row.budget != null ? Number(row.budget) : null,
     })))
   })
 
   app.put('/api/trips/:tripId/day-notes/:dayNumber', async (req, res) => {
-    const { note, diary, weatherEmoji, weatherTemp, cityIds } = req.body as {
+    const { note, diary, weatherEmoji, weatherTemp, cityIds, budget } = req.body as {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
-      cityIds: string[]
+      cityIds: string[]; budget: number | null
     }
     await pool.query(
-      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp, city_ids) VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp, city_ids, budget) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (trip_id, day_number) DO UPDATE SET
          note = excluded.note, diary = excluded.diary,
          weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp,
-         city_ids = excluded.city_ids`,
-      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityIds ?? []])
+         city_ids = excluded.city_ids, budget = excluded.budget`,
+      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityIds ?? [], budget])
     res.json({ ok: true })
   })
 
@@ -963,11 +963,8 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 버킷리스트 ────────────────────────────────────────
   const BUCKET_SELECT = `
-    SELECT b.*, co.name AS country_name, ci.name AS city_name, t.title AS linked_trip_title,
-      p.name AS linked_place_name
+    SELECT b.*, t.title AS linked_trip_title, p.name AS linked_place_name
     FROM bucket_items b
-    LEFT JOIN countries co ON co.id = b.country_id
-    LEFT JOIN cities ci ON ci.id = b.city_id
     LEFT JOIN trips t ON t.id = b.linked_trip_id
     LEFT JOIN places p ON p.id = b.linked_place_id
   `
@@ -978,14 +975,14 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/bucket', async (req, res) => {
-    const { title, memo, countryId, cityId, category, linkedPlaceId, linkedTripId } = req.body as {
-      title: string; memo: string | null; countryId: string | null; cityId: string | null
+    const { title, memo, countryIds, cityIds, category, linkedPlaceId, linkedTripId } = req.body as {
+      title: string; memo: string | null; countryIds: string[]; cityIds: string[]
       category: string | null; linkedPlaceId?: string | null; linkedTripId?: string | null
     }
     const itemId = id()
     await pool.query(
-      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [itemId, title.trim(), memo, countryId, cityId, category, linkedPlaceId || null, linkedTripId || null])
+      'INSERT INTO bucket_items (id, title, memo, country_ids, city_ids, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [itemId, title.trim(), memo, countryIds ?? [], cityIds ?? [], category, linkedPlaceId || null, linkedTripId || null])
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
     res.json(mapBucket(r.rows[0]))
   })

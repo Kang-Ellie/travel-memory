@@ -147,6 +147,23 @@ export function computeDailySpend(trip: Trip, expenses: Expense[], dayNumber: nu
   return { total, unconvertedCount }
 }
 
+export interface DailyBudgetStatus {
+  emoji: string
+  label: string
+  percent: number
+}
+
+// 하루 예산 대비 지출 비율에 따른 상태 등급 (0~30 / 31~50 / 51~70 / 71~100 / 101~)
+export function dailyBudgetStatus(spent: number, budget: number | null): DailyBudgetStatus | null {
+  if (!budget || budget <= 0) return null
+  const percent = (spent / budget) * 100
+  if (percent <= 30) return { emoji: '💖', label: '완전 여유', percent }
+  if (percent <= 50) return { emoji: '🛎️', label: '절반 돌파', percent }
+  if (percent <= 70) return { emoji: '🚨', label: '관리 필요', percent }
+  if (percent <= 100) return { emoji: '🔥', label: '예산 꽉참', percent }
+  return { emoji: '🚀', label: '이성 탈주', percent }
+}
+
 export function fmtMoney(amount: number, currency: string): string {
   const decimals = currency === 'KRW' || currency === 'JPY' || currency === 'VND' ? 0 : 2
   return `${new Intl.NumberFormat('ko-KR', {

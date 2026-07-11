@@ -252,6 +252,15 @@ export async function initSchema(): Promise<void> {
     -- '식당' 분류명을 '맛집'으로 통일
     UPDATE places SET category = '맛집' WHERE category = '식당';
 
+    -- 버킷리스트 항목 하나가 여러 국가·도시에 걸칠 수 있게(먹킷/위시 모두 여러 지역에서 유명할 수 있으므로)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS country_ids TEXT[] NOT NULL DEFAULT '{}';
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS city_ids TEXT[] NOT NULL DEFAULT '{}';
+    UPDATE bucket_items SET country_ids = ARRAY[country_id] WHERE country_id IS NOT NULL AND country_ids = '{}';
+    UPDATE bucket_items SET city_ids = ARRAY[city_id] WHERE city_id IS NOT NULL AND city_ids = '{}';
+
+    -- 일차별 하루 예산(설정하면 TODAY 카드에서 지출 대비 상태 등급을 보여줌)
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS budget DOUBLE PRECISION;
+
     -- 업로드 저장 경로와 DB 기록 경로가 어긋났던 과거 버그로 깨진 file_path 복구
     -- (실제 파일은 photos/vouchers/archive 하위에 평평하게 저장되어 있었음)
     UPDATE photos SET file_path = 'photos/' || split_part(file_path, '/', 3)

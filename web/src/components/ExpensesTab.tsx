@@ -4,6 +4,7 @@ import { api } from '../api'
 import { computeSettlement, fmtMoney } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
 import AddExpenseModal from './AddExpenseModal'
+import BudgetBar from './BudgetBar'
 
 export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [participants, setParticipants] = useState<Member[]>([])
@@ -55,6 +56,8 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
 
   return (
     <div>
+      <BudgetBar trip={trip} expenses={expenses} rates={rates} />
+
       {/* 참여자 */}
       <div className="row" style={{ flexWrap: 'wrap' }}>
         <strong>참여자:</strong>

@@ -8,17 +8,15 @@ import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 import TripWorkspace from './TripWorkspace'
 import TripBaseSection from './TripBaseSection'
-import DayLogTab from './DayLogTab'
 import ExpensesTab from './ExpensesTab'
 import VouchersTab from './VouchersTab'
 import TripPrepTab from './TripPrepTab'
 
-type Tab = 'base' | 'workspace' | 'daylog' | 'settlement' | 'vouchers' | 'prep'
+type Tab = 'base' | 'workspace' | 'settlement' | 'vouchers' | 'prep'
 
 const TABS: Array<{ key: Tab; label: string }> = [
   { key: 'base', label: '🧭 BASE' },
   { key: 'workspace', label: '📅 일정 & 지출' },
-  { key: 'daylog', label: '📔 할일 & 일기' },
   { key: 'settlement', label: '🧮 정산' },
   { key: 'vouchers', label: '📎 바우처' },
   { key: 'prep', label: '🧳 여행 준비' },
@@ -134,7 +132,6 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
 
       {tab === 'base' && <TripBaseSection trip={trip} />}
       {tab === 'workspace' && <TripWorkspace trip={trip} />}
-      {tab === 'daylog' && <DayLogTab trip={trip} />}
       {tab === 'settlement' && <ExpensesTab trip={trip} />}
       {tab === 'vouchers' && <VouchersTab trip={trip} />}
       {tab === 'prep' && <TripPrepTab trip={trip} />}

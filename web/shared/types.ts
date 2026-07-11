@@ -183,6 +183,7 @@ export interface DayNote {
   weatherEmoji: string | null
   weatherTemp: number | null
   cityIds: string[]
+  budget: number | null
 }
 
 export interface PlaceVisit extends TimelineEvent {
@@ -251,10 +252,8 @@ export interface BucketItem {
   id: string
   title: string
   memo: string | null
-  countryId: string | null
-  cityId: string | null
-  countryName: string | null
-  cityName: string | null
+  countryIds: string[]
+  cityIds: string[]
   category: string | null
   done: boolean
   linkedTripId: string | null

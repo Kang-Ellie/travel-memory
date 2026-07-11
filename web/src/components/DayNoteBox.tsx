@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import type { DayNote, TripCity } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
+import { dailyBudgetStatus, fmtMoney } from '../settlement'
 import Modal from './Modal'
 
 const WEATHER_EMOJIS = ['☀️', '🌤', '⛅', '☁️', '🌧', '⛈', '❄️', '🌫', '💨']
 
 export default function DayNoteBox({
-  tripId, dayNumber, cities, onChanged,
-}: { tripId: string; dayNumber: number; cities: TripCity[]; onChanged?: () => void }) {
+  tripId, dayNumber, cities, spend, onChanged,
+}: { tripId: string; dayNumber: number; cities: TripCity[]; spend: number; onChanged?: () => void }) {
   const [note, setNote] = useState<DayNote | null>(null)
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
@@ -16,6 +17,7 @@ export default function DayNoteBox({
   const [weatherEmoji, setWeatherEmoji] = useState('')
   const [weatherTemp, setWeatherTemp] = useState('')
   const [cityIds, setCityIds] = useState<Set<string>>(new Set())
+  const [budget, setBudget] = useState('')
   const [diaryHidden, setDiaryHidden] = useState(true)
 
   useEffect(() => {
@@ -29,6 +31,7 @@ export default function DayNoteBox({
       setWeatherEmoji(n?.weatherEmoji ?? '')
       setWeatherTemp(n?.weatherTemp != null ? String(n.weatherTemp) : '')
       setCityIds(new Set(n?.cityIds ?? []))
+      setBudget(n?.budget != null ? String(n.budget) : '')
     })
   }, [tripId, dayNumber])
 
@@ -42,12 +45,14 @@ export default function DayNoteBox({
 
   const save = async () => {
     const temp = weatherTemp.trim() === '' ? null : Number(weatherTemp)
+    const budgetNum = budget.trim() === '' ? null : Number(budget)
     const data = {
       note: text.trim() || null,
       diary: diary.trim() || null,
       weatherEmoji: weatherEmoji || null,
       weatherTemp: temp != null && !Number.isNaN(temp) ? temp : null,
       cityIds: [...cityIds],
+      budget: budgetNum != null && !Number.isNaN(budgetNum) ? budgetNum : null,
     }
     await api.dayNotes.set(tripId, dayNumber, data)
     setNote({ tripId, dayNumber, ...data })
@@ -56,6 +61,7 @@ export default function DayNoteBox({
   }
 
   const notedCities = (note?.cityIds ?? []).map((id) => cities.find((c) => c.id === id)).filter((c): c is TripCity => !!c)
+  const status = dailyBudgetStatus(spend, note?.budget ?? null)
 
   if (editing) {
     return (
@@ -75,7 +81,12 @@ export default function DayNoteBox({
               </div>
             </div>
           )}
-          <div className="field" style={{ width: '100%' }}>
+          <div className="field">
+            <label>💰 하루 예산 (선택, 원)</label>
+            <input type="number" value={budget} placeholder="예: 150000" style={{ width: 140 }}
+              onChange={(e) => setBudget(e.target.value)} />
+          </div>
+          <div className="field">
             <label>오늘의 날씨</label>
             <div className="emoji-pick-row">
               {WEATHER_EMOJIS.map((e) => (
@@ -104,13 +115,13 @@ export default function DayNoteBox({
     )
   }
 
-  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && notedCities.length === 0
+  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && notedCities.length === 0 && note?.budget == null
   return (
     <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: empty ? undefined : 'var(--yellow-soft)' }}>
       <div className="row" style={{ border: 'none', margin: 0, padding: 0, background: 'none' }}>
         <div className="grow">
           {empty ? (
-            <span className="muted">이 날에 대한 메모가 없어요 — 날씨나 그날의 한 줄을 남겨보세요.</span>
+            <span className="muted">이 날에 대한 메모가 없어요 — 하루 예산이나 날씨, 그날의 한 줄을 남겨보세요.</span>
           ) : (
             <>
               {notedCities.map((c) => (
@@ -129,6 +140,22 @@ export default function DayNoteBox({
         </div>
         <button className="btn small" onClick={() => setEditing(true)}>수정</button>
       </div>
+      {note?.budget != null && (
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+            <span>💰 {fmtMoney(spend, 'KRW')} / {fmtMoney(note.budget, 'KRW')}</span>
+            {status && <span>{status.emoji} {status.label}</span>}
+          </div>
+          <div className="meter">
+            <div className="meter-track">
+              <div className="meter-fill" style={{
+                width: `${Math.min(status?.percent ?? 0, 100)}%`,
+                background: (status?.percent ?? 0) > 100 ? '#d03b3b' : (status?.percent ?? 0) > 70 ? '#fab219' : '#2a78d6',
+              }} />
+            </div>
+          </div>
+        </div>
+      )}
       {note?.diary && (
         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
           <div className="muted" style={{ marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>

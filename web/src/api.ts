@@ -163,7 +163,7 @@ export const api = {
   bucket: {
     list: () => req<BucketItem[]>('GET', '/api/bucket'),
     create: (data: {
-      title: string; memo: string | null; countryId: string | null; cityId: string | null
+      title: string; memo: string | null; countryIds: string[]; cityIds: string[]
       category: string | null; linkedPlaceId?: string | null; linkedTripId?: string | null
     }) => req<BucketItem>('POST', '/api/bucket', data),
     update: (id: string, data: { done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null }) =>
@@ -203,7 +203,7 @@ export const api = {
     list: (tripId: string) => req<DayNote[]>('GET', `/api/trips/${tripId}/day-notes`),
     set: (tripId: string, dayNumber: number, data: {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
-      cityIds: string[]
+      cityIds: string[]; budget: number | null
     }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
   },
 

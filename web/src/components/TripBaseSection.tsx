@@ -5,6 +5,7 @@ import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Select from './Select'
+import ChecklistPanel from './ChecklistPanel'
 
 const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
@@ -54,12 +55,10 @@ function BaseListRow({
       <div className="grow">
         <div style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>{item.title}</div>
         {item.memo && <div style={{ color: 'var(--ink)', opacity: 0.75, fontSize: 13, whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
-        {linkedPlace ? (
-          <div style={{ color: 'var(--ink)', opacity: 0.8, fontSize: 13, marginTop: 2, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            {placeLine()}
-            <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
-          </div>
-        ) : linkingPlace ? (
+        {linkedPlace && (
+          <div style={{ color: 'var(--ink)', opacity: 0.8, fontSize: 13, marginTop: 2 }}>{placeLine()}</div>
+        )}
+        {linkingPlace && (
           <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
             <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
               <option value="">— 장소 선택 —</option>
@@ -68,13 +67,16 @@ function BaseListRow({
             <button className="btn small primary" onClick={linkPlace}>연결</button>
             <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
           </div>
-        ) : (
-          <button className="btn small ghost" style={{ marginTop: 2 }} onClick={() => setLinkingPlace(true)}>
-            📍 장소 족보와 연결
-          </button>
         )}
       </div>
-      {!inTrip && <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {linkedPlace ? (
+          <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+        ) : !linkingPlace && (
+          <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
+        )}
+        {!inTrip && <button className="btn small" onClick={addToTrip}>＋ 이 여행에 담기</button>}
+      </div>
     </div>
   )
 }
@@ -109,7 +111,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
     .filter((c): c is City => !!c)
   const countryIds = new Set(tripCityRecords.map((c) => c.countryId))
   const tripCountries = countries.filter((c) => countryIds.has(c.id))
-  const itemsForBase = bucket.filter((b) => (b.countryId && countryIds.has(b.countryId)) || b.linkedTripId === trip.id)
+  const itemsForBase = bucket.filter((b) => b.countryIds.some((id) => countryIds.has(id)) || b.linkedTripId === trip.id)
   const byKind = (kind: BucketKind) => itemsForBase.filter((b) => bucketKindOf(b.category) === kind)
 
   return (
@@ -154,6 +156,13 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               </div>
             )
           })}
+
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
+            <div className="prep-split">
+              <ChecklistPanel tripId={trip.id} scope="predeparture" title="🛫 여행 전 Todo" addPlaceholder="예: 여행자보험 가입" />
+              <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
+            </div>
+          </div>
 
           {(['bucket', 'food', 'wish'] as BucketKind[]).map((kind) => {
             const items = byKind(kind)

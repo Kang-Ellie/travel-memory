@@ -6,12 +6,14 @@ import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
-import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
+import PlanBPanel from './PlanBPanel'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
 import Select from './Select'
+import ChecklistPanel from './ChecklistPanel'
+import DayNoteBox from './DayNoteBox'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -530,7 +532,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
   const [dayNotes, setDayNotes] = useState<DayNote[]>([])
-  const [rightPanel, setRightPanel] = useState<'map' | 'archive'>('archive')
+  const [rightPanel, setRightPanel] = useState<'map' | 'archive' | 'planb'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
@@ -591,6 +593,9 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       flags: codes.map((c) => flagEmoji(c)).join('') || '🌆',
     }
   }
+
+  const todayCityInfo = dayCityInfo(day)
+  const todaySpend = computeDailySpend(trip, expenses, day, rates).total
 
   const addEvent = async () => {
     let placeId = selPlace
@@ -731,9 +736,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         })}
       </div>
 
-      {/* 중앙: 타임라인 + 가계부 요약 */}
+      {/* 중앙: TODAY + 타임라인 */}
       <div>
-        <BudgetBar trip={trip} expenses={expenses} rates={rates} />
+        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--pink-soft)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontWeight: 800, fontSize: 16 }}>☘️ TODAY · {day}일차 {dayLabel(trip, day)}</span>
+            {todayCityInfo && <span className="chip purple">{todayCityInfo.flags} {todayCityInfo.label}</span>}
+          </div>
+          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+        </div>
+        <DayNoteBox tripId={trip.id} dayNumber={day} cities={trip.cities} spend={todaySpend} onChanged={refresh} />
 
           <div
             className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
@@ -791,9 +803,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       <div>
         <div className="right-toggle">
           <button className={`pill ${rightPanel === 'archive' ? 'active' : ''}`} onClick={() => setRightPanel('archive')}>📎 보관함</button>
+          <button className={`pill ${rightPanel === 'planb' ? 'active' : ''}`} onClick={() => setRightPanel('planb')}>🌀 PLAN B</button>
           <button className={`pill ${rightPanel === 'map' ? 'active' : ''}`} onClick={() => setRightPanel('map')}>🗺 지도</button>
         </div>
-        {rightPanel === 'archive' ? <ArchiveBoard tripId={trip.id} /> : <MapTab trip={trip} />}
+        {rightPanel === 'archive' && <ArchiveBoard tripId={trip.id} />}
+        {rightPanel === 'planb' && <PlanBPanel trip={trip} places={places} events={events} day={day} onAdded={refresh} />}
+        {rightPanel === 'map' && <MapTab trip={trip} />}
       </div>
     </div>
   )

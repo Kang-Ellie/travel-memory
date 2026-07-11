@@ -11,8 +11,10 @@ const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
 
 function BucketRow({
-  item, trips, places, onChanged,
-}: { item: BucketItem; trips: Trip[]; places: Place[]; onChanged: () => void }) {
+  item, trips, places, countries, cities, onChanged,
+}: {
+  item: BucketItem; trips: Trip[]; places: Place[]; countries: Country[]; cities: City[]; onChanged: () => void
+}) {
   const [linking, setLinking] = useState(false)
   const [tripId, setTripId] = useState('')
   const [linkingPlace, setLinkingPlace] = useState(false)
@@ -50,6 +52,8 @@ function BucketRow({
 
   const kind = bucketKindOf(item.category)
   const subCategory = kind === 'bucket' ? item.category : null
+  const itemCountries = item.countryIds.map((id) => countries.find((c) => c.id === id)).filter((c): c is Country => !!c)
+  const itemCities = item.cityIds.map((id) => cities.find((c) => c.id === id)).filter((c): c is City => !!c)
 
   return (
     <div className="row" style={{ flexWrap: 'wrap' }}>
@@ -60,16 +64,26 @@ function BucketRow({
           <span className="chip purple" style={{ marginLeft: 8 }}>{BUCKET_KIND_LABEL[kind]}</span>
           {subCategory && <span className="chip blue" style={{ marginLeft: 6 }}>{subCategory}</span>}
         </div>
-        <div className="muted">
-          {item.countryName && <>🌍 {item.countryName}{item.cityName && ` · ${item.cityName}`}</>}
-        </div>
-        {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
-        {item.linkedPlaceId ? (
-          <div className="muted" style={{ marginTop: 2 }}>
-            📍 {item.linkedPlaceName}
-            <button className="btn small ghost" style={{ marginLeft: 6 }} onClick={unlinkPlace}>연결 해제</button>
+        {itemCountries.length > 0 && (
+          <div className="muted" style={{ marginTop: 2, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {itemCountries.map((co) => {
+              const citiesHere = itemCities.filter((c) => c.countryId === co.id)
+              return (
+                <span key={co.id}>
+                  {flagEmoji(co.code)} {co.name}{citiesHere.length > 0 ? ` · ${citiesHere.map((c) => c.name).join(', ')}` : ''}
+                </span>
+              )
+            })}
           </div>
-        ) : linkingPlace ? (
+        )}
+        {item.memo && <div className="muted" style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
+        {item.linkedPlaceId && (
+          <div className="muted" style={{ marginTop: 4 }}>📍 {item.linkedPlaceName}</div>
+        )}
+        {item.linkedTripId && (
+          <div className="muted" style={{ marginTop: 4 }}>✈️ {item.linkedTripTitle}에서 완료</div>
+        )}
+        {linkingPlace && (
           <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
             <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
               <option value="">— 장소 선택 —</option>
@@ -78,31 +92,31 @@ function BucketRow({
             <button className="btn small primary" onClick={linkPlace}>연결</button>
             <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
           </div>
-        ) : (
-          <button className="btn small ghost" style={{ marginTop: 2 }} onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
         )}
-        {item.linkedTripId && (
-          <div className="muted" style={{ marginTop: 2 }}>
-            ✈️ {item.linkedTripTitle}에서 완료
-            <button className="btn small ghost" style={{ marginLeft: 6 }} onClick={unlink}>연결 해제</button>
-          </div>
-        )}
-      </div>
-      {!item.linkedTripId && (
-        linking ? (
-          <>
+        {linking && (
+          <div className="row" style={{ marginTop: 6, border: 'none', padding: 0 }}>
             <Select value={tripId} onChange={(e) => setTripId(e.target.value)}>
               <option value="">— 여행 선택 —</option>
               {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
             </Select>
             <button className="btn small primary" onClick={link}>연결</button>
             <button className="btn small" onClick={() => setLinking(false)}>취소</button>
-          </>
-        ) : (
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        {item.linkedPlaceId ? (
+          <button className="btn small ghost" onClick={unlinkPlace}>장소 연결 해제</button>
+        ) : !linkingPlace && (
+          <button className="btn small ghost" onClick={() => setLinkingPlace(true)}>📍 장소 족보와 연결</button>
+        )}
+        {item.linkedTripId ? (
+          <button className="btn small ghost" onClick={unlink}>여행 연결 해제</button>
+        ) : !linking && (
           <button className="btn small" onClick={() => setLinking(true)}>여행에 연결</button>
-        )
-      )}
-      <button className="btn small ghost" onClick={remove}>×</button>
+        )}
+        <button className="btn small ghost" onClick={remove}>×</button>
+      </div>
     </div>
   )
 }
@@ -121,8 +135,8 @@ export default function BucketListScreen() {
   const [memo, setMemo] = useState('')
   const [kind, setKind] = useState<BucketKind>('bucket')
   const [subCategory, setSubCategory] = useState('')
-  const [countryId, setCountryId] = useState('')
-  const [cityId, setCityId] = useState('')
+  const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
+  const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set())
   const [linkPlaceId, setLinkPlaceId] = useState('')
   const [linkTripId, setLinkTripId] = useState('')
   const [showAdd, setShowAdd] = useState(false)
@@ -136,18 +150,38 @@ export default function BucketListScreen() {
   }
   useEffect(refresh, [])
 
-  const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
+  const toggleCountry = (id: string) => {
+    setSelCountryIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+        setSelCityIds((cPrev) => {
+          const cNext = new Set(cPrev)
+          for (const c of cities.filter((c) => c.countryId === id)) cNext.delete(c.id)
+          return cNext
+        })
+      } else next.add(id)
+      return next
+    })
+  }
+  const toggleCity = (id: string) => {
+    setSelCityIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
 
   const add = async () => {
     if (!title.trim()) return
     const category = kind === 'bucket' ? (subCategory.trim() || null) : BUCKET_KIND_CATEGORY[kind]
     await api.bucket.create({
       title: title.trim(), memo: memo.trim() || null,
-      countryId: countryId || null, cityId: cityId || null, category,
+      countryIds: [...selCountryIds], cityIds: [...selCityIds], category,
       linkedPlaceId: linkPlaceId || null, linkedTripId: linkTripId || null,
     })
     setTitle(''); setMemo(''); setKind('bucket'); setSubCategory('')
-    setCountryId(''); setCityId(''); setLinkPlaceId(''); setLinkTripId('')
+    setSelCountryIds(new Set()); setSelCityIds(new Set()); setLinkPlaceId(''); setLinkTripId('')
     setShowAdd(false)
     refresh()
   }
@@ -197,29 +231,34 @@ export default function BucketListScreen() {
             )}
           </div>
           <div className="field" style={{ marginBottom: 18 }}>
-            <label>국가 (선택)</label>
-            <Select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
-              <option value="">— 선택 안함 —</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
-            </Select>
+            <label>국가 (여러 곳 선택 가능)</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+              {countries.map((c) => (
+                <button key={c.id} type="button" className={`pill ${selCountryIds.has(c.id) ? 'active' : ''}`}
+                  onClick={() => toggleCountry(c.id)}>
+                  {flagEmoji(c.code)} {c.name}
+                </button>
+              ))}
+            </div>
           </div>
-          {countryId && (
-            <div className="field" style={{ marginBottom: 18 }}>
-              <label>도시 (선택)</label>
-              {citiesOfCountry.length === 0 ? (
-                <span className="muted">이 국가에 등록된 도시가 없어요.</span>
-              ) : (
+          {[...selCountryIds].map((countryId) => {
+            const country = countries.find((c) => c.id === countryId)
+            const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
+            if (citiesOfCountry.length === 0) return null
+            return (
+              <div key={countryId} className="field" style={{ marginBottom: 18 }}>
+                <label>{flagEmoji(country?.code)} {country?.name} 도시 (여러 곳 선택 가능)</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
                   {citiesOfCountry.map((c) => (
-                    <button key={c.id} type="button" className={`pill ${cityId === c.id ? 'active' : ''}`}
-                      onClick={() => setCityId(cityId === c.id ? '' : c.id)}>
+                    <button key={c.id} type="button" className={`pill ${selCityIds.has(c.id) ? 'active' : ''}`}
+                      onClick={() => toggleCity(c.id)}>
                       {c.name}
                     </button>
                   ))}
                 </div>
-              )}
-            </div>
-          )}
+              </div>
+            )
+          })}
           <div className="form-row">
             <div className="field grow"><label>장소 족보와 연결 (선택)</label>
               <Select value={linkPlaceId} onChange={(e) => setLinkPlaceId(e.target.value)}>
@@ -267,7 +306,9 @@ export default function BucketListScreen() {
         )}
         {filtered.length === 0 ? (
           <div className="empty">항목이 없어요.</div>
-        ) : filtered.map((item) => <BucketRow key={item.id} item={item} trips={trips} places={places} onChanged={refresh} />)}
+        ) : filtered.map((item) => (
+          <BucketRow key={item.id} item={item} trips={trips} places={places} countries={countries} cities={cities} onChanged={refresh} />
+        ))}
       </Window>
     </div>
   )
