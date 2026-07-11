@@ -8,8 +8,10 @@ import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
 
-const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
+const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
+const BABY_MENU_CATEGORIES = ['맛집', '카페', '숙소']
+const RECOMMEND_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소']
 
 function PlaceCard({
   place, countries, cities, linkedBucketItems, onChanged,
@@ -33,10 +35,18 @@ function PlaceCard({
   const [reservationNeeded, setReservationNeeded] = useState(place.reservationNeeded)
   const [recommendedMenu, setRecommendedMenu] = useState(place.recommendedMenu ?? '')
   const [breakTime, setBreakTime] = useState(place.breakTime ?? '')
+  const [valetCompany, setValetCompany] = useState(place.valetCompany ?? '')
+  const [bookingChannel, setBookingChannel] = useState(place.bookingChannel ?? '')
+  const [grade, setGrade] = useState(place.grade ?? '')
+  const [directions, setDirections] = useState(place.directions ?? '')
+  const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
+  const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
 
   const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
+  const isValet = category === '발렛'
+  const isLodging = category === '숙소'
 
   const resolveMapLink = async () => {
     if (!mapUrl.trim()) return
@@ -57,6 +67,9 @@ function PlaceCard({
       countryId: countryId || null, cityId: cityId || null,
       hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
       breakTime: breakTime.trim() || null,
+      valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
+      grade: grade.trim() || null, directions: directions.trim() || null, babyMenu: babyMenu.trim() || null,
+      recommend,
     })
     setEditing(false)
     onChanged()
@@ -104,17 +117,51 @@ function PlaceCard({
                 {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select></div>
           )}
-          <div className="field"><label>🕒 영업시간</label>
-            <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
-          <div className="field"><label>⏸ 브레이크타임</label>
-            <input type="text" value={breakTime} placeholder="예: 15:00~17:00" onChange={(e) => setBreakTime(e.target.value)} /></div>
-          <div className="field" style={{ justifyContent: 'flex-end' }}>
-            <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
-              <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
-            </label>
-          </div>
-          <div className="field grow"><label>🍽 추천 메뉴</label>
-            <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
+          {isValet && (
+            <>
+              <div className="field grow"><label>🚗 발렛사</label>
+                <input type="text" value={valetCompany} placeholder="예: 투루발렛" onChange={(e) => setValetCompany(e.target.value)} /></div>
+              <div className="field grow"><label>📞 예약 채널</label>
+                <input type="text" value={bookingChannel} placeholder="예: 카카오톡 채널, 010-1234-5678"
+                  onChange={(e) => setBookingChannel(e.target.value)} /></div>
+            </>
+          )}
+          {isLodging && (
+            <>
+              <div className="field"><label>⭐ 성급</label>
+                <input type="text" value={grade} placeholder="예: 4성급" onChange={(e) => setGrade(e.target.value)} /></div>
+              <div className="field grow"><label>🚕 가는 법</label>
+                <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
+            </>
+          )}
+          {!isValet && (
+            <>
+              <div className="field"><label>🕒 영업시간</label>
+                <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
+              <div className="field"><label>⏸ 브레이크타임</label>
+                <input type="text" value={breakTime} placeholder="예: 15:00~17:00" onChange={(e) => setBreakTime(e.target.value)} /></div>
+              <div className="field" style={{ justifyContent: 'flex-end' }}>
+                <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
+                  <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
+                </label>
+              </div>
+              <div className="field grow"><label>🍽 추천 메뉴</label>
+                <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
+              {BABY_MENU_CATEGORIES.includes(category) && (
+                <div className="field grow"><label>🍼 영아 픽 메뉴</label>
+                  <input type="text" value={babyMenu} placeholder="예: 아기 죽, 이유식 데움 가능" onChange={(e) => setBabyMenu(e.target.value)} /></div>
+              )}
+            </>
+          )}
+          {RECOMMEND_CATEGORIES.includes(category) && (
+            <div className="field"><label>추천? 비추천?</label>
+              <Select value={recommend === true ? 'yes' : recommend === false ? 'no' : ''}
+                onChange={(e) => setRecommend(e.target.value === 'yes' ? true : e.target.value === 'no' ? false : null)}>
+                <option value="">— 미정 —</option>
+                <option value="yes">👍 추천</option>
+                <option value="no">👎 비추천</option>
+              </Select></div>
+          )}
           <div className="field grow"><label>메모</label>
             <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
           <div className="field grow"><label>👍 장점</label>
@@ -145,6 +192,9 @@ function PlaceCard({
             </span>
           )}
           {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
+          {place.grade && <span className="chip yellow">⭐ {place.grade}</span>}
+          {place.recommend === true && <span className="chip green">👍 추천</span>}
+          {place.recommend === false && <span className="chip pink">👎 비추천</span>}
         </div>
         <div style={{ fontWeight: 800 }}>{place.name}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -159,6 +209,14 @@ function PlaceCard({
           </div>
           {place.hours && <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>}
           {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
+          {place.babyMenu && <div className="muted">🍼 영아 픽: {place.babyMenu}</div>}
+          {place.directions && <div className="muted">🚕 {place.directions}</div>}
+          {(place.valetCompany || place.bookingChannel) && (
+            <div className="muted">
+              {place.valetCompany && <>🚗 {place.valetCompany} </>}
+              {place.bookingChannel && <>· 📞 {place.bookingChannel}</>}
+            </div>
+          )}
           {(place.pros || place.cons) && (
             <div className="muted">
               {place.pros && <>👍 {place.pros} </>}

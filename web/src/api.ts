@@ -1,6 +1,6 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
-  ArchiveItem, DayNote, PlaceDetail, Country, City, FlightDetail, CurrencyRate,
+  ArchiveItem, DayNote, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
 } from '../shared/types'
 
@@ -86,12 +86,16 @@ export const api = {
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
+      valetCompany?: string | null; bookingChannel?: string | null
+      grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
     }) => req<Place>('POST', '/api/places', data),
     update: (id: string, data: {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
+      valetCompany?: string | null; bookingChannel?: string | null
+      grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
     }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),
@@ -104,7 +108,7 @@ export const api = {
 
   events: {
     list: (tripId: string) => req<TimelineEvent[]>('GET', `/api/trips/${tripId}/events`),
-    create: (data: { tripId: string; placeId: string; dayNumber: number }) =>
+    create: (data: { tripId: string; placeId: string; dayNumber: number | null }) =>
       req<{ id: string }>('POST', `/api/trips/${data.tripId}/events`, data),
     update: (id: string, data: {
       rating: number | null; review: string | null; linkUrl: string | null
@@ -112,10 +116,14 @@ export const api = {
     }) => req<void>('PUT', `/api/events/${id}`, data),
     reorder: (data: { tripId: string; dayNumber: number; orderedIds: string[] }) =>
       req<void>('POST', `/api/trips/${data.tripId}/events/reorder`, data),
+    assignDay: (tripId: string, id: string, dayNumber: number) =>
+      req<void>('PUT', `/api/trips/${tripId}/events/${id}/assign-day`, { dayNumber }),
     delete: (id: string) => req<void>('DELETE', `/api/events/${id}`),
     setFlight: (id: string, data: FlightDetail) => req<void>('PUT', `/api/events/${id}/flight`, data),
     uploadFlightLogo: (id: string, file: File) => upload<FlightDetail>(`/api/events/${id}/flight/logo`, [file]),
     deleteFlight: (id: string) => req<void>('DELETE', `/api/events/${id}/flight`),
+    setValet: (id: string, data: ValetDetail) => req<void>('PUT', `/api/events/${id}/valet`, data),
+    setLodging: (id: string, data: LodgingDetail) => req<void>('PUT', `/api/events/${id}/lodging`, data),
   },
 
   transit: {

@@ -23,6 +23,16 @@ export function flagEmoji(code: string | null | undefined): string {
   return String.fromCodePoint(...points)
 }
 
+// 티켓 카드(탑승권/발렛/숙소)에서 공통으로 쓰는 날짜·시간 포맷
+export function fmtDateTime(v: string | null): { time: string; date: string } {
+  if (!v) return { time: '?', date: '' }
+  const d = new Date(v)
+  return {
+    time: d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+    date: d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }),
+  }
+}
+
 // 장소 평점(0~5, 0.5 단위) 색상 — 낮을수록 빨강, 높을수록 초록
 export function ratingColor(n: number): string {
   if (n >= 4.5) return '#0a7d38'

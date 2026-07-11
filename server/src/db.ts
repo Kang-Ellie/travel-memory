@@ -284,5 +284,42 @@ export async function initSchema(): Promise<void> {
       WHERE file_path LIKE 'vouchers/%/%';
     UPDATE archive_items SET file_path = 'archive/' || split_part(file_path, '/', 3)
       WHERE kind = 'image' AND file_path LIKE 'archive/%/%';
+
+    -- 발렛/항공/숙소를 동선에 일차를 배정하기 전에 '미배정 티켓'으로 먼저 저장할 수 있게 함
+    ALTER TABLE timeline_events ALTER COLUMN day_number DROP NOT NULL;
+    ALTER TABLE timeline_events ALTER COLUMN sequence SET DEFAULT 0;
+
+    -- 발렛 상세 (이동 이벤트 1:1) — 공항/터미널마다 발렛사·예약 방법이 다름
+    CREATE TABLE IF NOT EXISTS valet_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      scheduled_at TEXT,
+      location     TEXT,
+      company      TEXT,
+      booked_via   TEXT,
+      booking_ref  TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
+    -- 숙소 상세 (숙소 이벤트 1:1) — 체크인/아웃·예약번호 등 여행별(1회성) 정보
+    CREATE TABLE IF NOT EXISTS lodging_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      check_in_at  TEXT,
+      check_out_at TEXT,
+      booking_ref  TEXT,
+      booked_via   TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
+    -- 장소 족보 보강: 발렛사/예약 채널(발렛), 성급/가는 법(숙소), 영아 픽 메뉴(맛집·카페·숙소), 추천 여부
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS valet_company TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS booking_channel TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS grade TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS directions TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS baby_menu TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS recommend BOOLEAN;
   `)
 }

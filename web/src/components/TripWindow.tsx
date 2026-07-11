@@ -81,10 +81,10 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       onClose={onClose}
       headerActions={<button className="window-icon-btn" onClick={startEdit} title="여행 정보 수정">⚙️</button>}
     >
-      <div className="row" style={{ flexWrap: 'wrap' }}>
+      <div className="row" style={{ flexWrap: 'wrap', border: 'none', padding: 0, background: 'transparent', marginBottom: 12, gap: 12 }}>
         {trip.cities.length > 0 ? (
           [...citiesByCountry.values()].map((c) => (
-            <span key={c.name} className="chip purple" style={{ fontSize: 13, padding: '6px 12px' }}>
+            <span key={c.name} style={{ fontSize: 13, fontWeight: 700 }}>
               {flagEmoji(c.code)} {c.name} · {c.cities.join(', ')}
             </span>
           ))

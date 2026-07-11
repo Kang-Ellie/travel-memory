@@ -50,6 +50,9 @@ const mapPlace = (r: any) => ({
   countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
   breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
+  valetCompany: r.valet_company, bookingChannel: r.booking_channel,
+  grade: r.grade, directions: r.directions, babyMenu: r.baby_menu,
+  recommend: r.recommend == null ? null : !!r.recommend,
 })
 const mapTransit = (r: any) => ({
   id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
@@ -62,12 +65,32 @@ const mapFlightDetail = (r: any) => ({
   bookingRef: r.booking_ref, bookedVia: r.booked_via, departureLocation: r.departure_location,
   confirmed: !!r.confirmed, voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null,
   airline: r.airline, airlineLogoPath: r.airline_logo_path ?? null, flightNo: r.flight_no,
-  destination: r.destination, gate: r.gate, seat: r.seat, flightClass: r.flight_class,
+  destination: r.destination, gate: r.gate, seat: r.seat,
 })
 const FLIGHT_SELECT = `
   SELECT fd.*, v.title AS voucher_title FROM flight_details fd
   LEFT JOIN vouchers v ON v.id = fd.voucher_id
   WHERE fd.event_id = $1
+`
+const mapValetDetail = (r: any) => ({
+  scheduledAt: r.scheduled_at, location: r.location, company: r.company,
+  bookedVia: r.booked_via, bookingRef: r.booking_ref, confirmed: !!r.confirmed,
+  voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null, note: r.note,
+})
+const VALET_SELECT = `
+  SELECT vd.*, v.title AS voucher_title FROM valet_details vd
+  LEFT JOIN vouchers v ON v.id = vd.voucher_id
+  WHERE vd.event_id = $1
+`
+const mapLodgingDetail = (r: any) => ({
+  checkInAt: r.check_in_at, checkOutAt: r.check_out_at,
+  bookingRef: r.booking_ref, bookedVia: r.booked_via, confirmed: !!r.confirmed,
+  voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null, note: r.note,
+})
+const LODGING_SELECT = `
+  SELECT ld.*, v.title AS voucher_title FROM lodging_details ld
+  LEFT JOIN vouchers v ON v.id = ld.voucher_id
+  WHERE ld.event_id = $1
 `
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
@@ -301,21 +324,27 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
+      valetCompany, bookingChannel, grade, directions, babyMenu, recommend,
     } = req.body as {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
+      valetCompany?: string | null; bookingChannel?: string | null
+      grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
     }
     const placeId = id()
     await pool.query(
       `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id,
-         hours, reservation_needed, recommended_menu, break_time)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+         hours, reservation_needed, recommended_menu, break_time,
+         valet_company, booking_channel, grade, directions, baby_menu, recommend)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)`,
       [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
         mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
         countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null,
-        breakTime?.trim() || null])
+        breakTime?.trim() || null,
+        valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null,
+        directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null])
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
   })
@@ -324,18 +353,24 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
+      valetCompany, bookingChannel, grade, directions, babyMenu, recommend,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
+      valetCompany?: string | null; bookingChannel?: string | null
+      grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
     }
     await pool.query(
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
-         country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14 WHERE id=$15`,
+         country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14,
+         valet_company=$15, booking_channel=$16, grade=$17, directions=$18, baby_menu=$19, recommend=$20 WHERE id=$21`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
         pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
         hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, breakTime?.trim() || null,
+        valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null,
+        directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null,
         req.params.id])
     res.json({ ok: true })
   })
@@ -364,9 +399,13 @@ export function registerRoutes(app: ExpressApp): void {
     for (const ev of events.rows) {
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
       const flight = await pool.query(FLIGHT_SELECT, [ev.id])
+      const valet = await pool.query(VALET_SELECT, [ev.id])
+      const lodging = await pool.query(LODGING_SELECT, [ev.id])
       visits.push({
         ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
+        valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
+        lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
       })
     }
 
@@ -550,9 +589,13 @@ export function registerRoutes(app: ExpressApp): void {
       const place = await pool.query('SELECT * FROM places WHERE id = $1', [ev.place_id])
       const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
       const flight = await pool.query(FLIGHT_SELECT, [ev.id])
+      const valet = await pool.query(VALET_SELECT, [ev.id])
+      const lodging = await pool.query(LODGING_SELECT, [ev.id])
       out.push({
         ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
+        valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
+        lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
       })
     }
     return out
@@ -563,15 +606,33 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/trips/:tripId/events', async (req, res) => {
-    const { placeId, dayNumber } = req.body as { placeId: string; dayNumber: number }
+    const { placeId, dayNumber } = req.body as { placeId: string; dayNumber: number | null }
+    const eventId = id()
+    if (dayNumber == null) {
+      await pool.query(
+        'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence) VALUES ($1,$2,$3,NULL,0)',
+        [eventId, req.params.tripId, placeId])
+    } else {
+      const max = await pool.query(
+        'SELECT COALESCE(MAX(sequence), 0) AS m FROM timeline_events WHERE trip_id = $1 AND day_number = $2',
+        [req.params.tripId, dayNumber])
+      await pool.query(
+        'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence) VALUES ($1,$2,$3,$4,$5)',
+        [eventId, req.params.tripId, placeId, dayNumber, Number(max.rows[0].m) + 1])
+    }
+    res.json({ id: eventId })
+  })
+
+  // 미배정 티켓(발렛/항공/숙소)을 특정 일차로 배치
+  app.put('/api/trips/:tripId/events/:id/assign-day', async (req, res) => {
+    const { dayNumber } = req.body as { dayNumber: number }
     const max = await pool.query(
       'SELECT COALESCE(MAX(sequence), 0) AS m FROM timeline_events WHERE trip_id = $1 AND day_number = $2',
       [req.params.tripId, dayNumber])
-    const eventId = id()
     await pool.query(
-      'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence) VALUES ($1,$2,$3,$4,$5)',
-      [eventId, req.params.tripId, placeId, dayNumber, Number(max.rows[0].m) + 1])
-    res.json({ id: eventId })
+      'UPDATE timeline_events SET day_number=$1, sequence=$2 WHERE id=$3 AND trip_id=$4',
+      [dayNumber, Number(max.rows[0].m) + 1, req.params.id, req.params.tripId])
+    res.json({ ok: true })
   })
 
   app.put('/api/events/:id', async (req, res) => {
@@ -613,28 +674,28 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/events/:id/flight', async (req, res) => {
     const {
       departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId,
-      airline, flightNo, destination, gate, seat, flightClass,
+      airline, flightNo, destination, gate, seat,
     } = req.body as {
       departAt: string | null; arriveAt: string | null; durationMinutes: number | null
       bookingRef: string | null; bookedVia: string | null
       departureLocation: string | null; confirmed: boolean; voucherId: string | null
       airline: string | null; flightNo: string | null; destination: string | null
-      gate: string | null; seat: string | null; flightClass: string | null
+      gate: string | null; seat: string | null
     }
     await pool.query(
       `INSERT INTO flight_details
          (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id,
-          airline, flight_no, destination, gate, seat, flight_class)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+          airline, flight_no, destination, gate, seat)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
        ON CONFLICT (event_id) DO UPDATE SET
          depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
          booking_ref = excluded.booking_ref, booked_via = excluded.booked_via,
          departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id,
          airline = excluded.airline, flight_no = excluded.flight_no, destination = excluded.destination,
-         gate = excluded.gate, seat = excluded.seat, flight_class = excluded.flight_class`,
+         gate = excluded.gate, seat = excluded.seat`,
       [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId,
         airline?.trim() || null, flightNo?.trim() || null, destination?.trim() || null,
-        gate?.trim() || null, seat?.trim() || null, flightClass?.trim() || null])
+        gate?.trim() || null, seat?.trim() || null])
     res.json({ ok: true })
   })
 
@@ -658,6 +719,44 @@ export function registerRoutes(app: ExpressApp): void {
     const old = await pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id])
     if (old.rows[0]?.airline_logo_path) safeUnlink(old.rows[0].airline_logo_path)
     await pool.query('DELETE FROM flight_details WHERE event_id = $1', [req.params.id])
+    res.json({ ok: true })
+  })
+
+  // ── 발렛 상세 (발렛 이벤트 1:1) ────────────────────────
+  app.put('/api/events/:id/valet', async (req, res) => {
+    const { scheduledAt, location, company, bookedVia, bookingRef, confirmed, voucherId, note } = req.body as {
+      scheduledAt: string | null; location: string | null; company: string | null
+      bookedVia: string | null; bookingRef: string | null; confirmed: boolean
+      voucherId: string | null; note: string | null
+    }
+    await pool.query(
+      `INSERT INTO valet_details (event_id, scheduled_at, location, company, booked_via, booking_ref, confirmed, voucher_id, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+       ON CONFLICT (event_id) DO UPDATE SET
+         scheduled_at = excluded.scheduled_at, location = excluded.location, company = excluded.company,
+         booked_via = excluded.booked_via, booking_ref = excluded.booking_ref, confirmed = excluded.confirmed,
+         voucher_id = excluded.voucher_id, note = excluded.note`,
+      [req.params.id, scheduledAt, location?.trim() || null, company?.trim() || null,
+        bookedVia?.trim() || null, bookingRef?.trim() || null, !!confirmed, voucherId || null, note?.trim() || null])
+    res.json({ ok: true })
+  })
+
+  // ── 숙소 상세 (숙소 이벤트 1:1) ────────────────────────
+  app.put('/api/events/:id/lodging', async (req, res) => {
+    const { checkInAt, checkOutAt, bookingRef, bookedVia, confirmed, voucherId, note } = req.body as {
+      checkInAt: string | null; checkOutAt: string | null
+      bookingRef: string | null; bookedVia: string | null; confirmed: boolean
+      voucherId: string | null; note: string | null
+    }
+    await pool.query(
+      `INSERT INTO lodging_details (event_id, check_in_at, check_out_at, booking_ref, booked_via, confirmed, voucher_id, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (event_id) DO UPDATE SET
+         check_in_at = excluded.check_in_at, check_out_at = excluded.check_out_at,
+         booking_ref = excluded.booking_ref, booked_via = excluded.booked_via, confirmed = excluded.confirmed,
+         voucher_id = excluded.voucher_id, note = excluded.note`,
+      [req.params.id, checkInAt, checkOutAt, bookingRef?.trim() || null, bookedVia?.trim() || null,
+        !!confirmed, voucherId || null, note?.trim() || null])
     res.json({ ok: true })
   })
 

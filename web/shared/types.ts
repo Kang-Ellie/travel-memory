@@ -69,6 +69,12 @@ export interface Place {
   breakTime: string | null
   coverPhoto: string | null
   createdAt: string
+  valetCompany: string | null
+  bookingChannel: string | null
+  grade: string | null
+  directions: string | null
+  babyMenu: string | null
+  recommend: boolean | null
 }
 
 export interface TransitSegment {
@@ -106,15 +112,37 @@ export interface FlightDetail {
   destination: string | null
   gate: string | null
   seat: string | null
-  flightClass: string | null
+}
+
+export interface ValetDetail {
+  scheduledAt: string | null
+  location: string | null
+  company: string | null
+  bookedVia: string | null
+  bookingRef: string | null
+  confirmed: boolean
+  voucherId: string | null
+  voucherTitle: string | null
+  note: string | null
+}
+
+export interface LodgingDetail {
+  checkInAt: string | null
+  checkOutAt: string | null
+  bookingRef: string | null
+  bookedVia: string | null
+  confirmed: boolean
+  voucherId: string | null
+  voucherTitle: string | null
+  note: string | null
 }
 
 export interface TimelineEvent {
   id: string
   tripId: string
   placeId: string
-  dayNumber: number
-  sequence: number
+  dayNumber: number | null
+  sequence: number | null
   plannedTime: string | null
   rating: number | null
   review: string | null
@@ -125,6 +153,8 @@ export interface TimelineEvent {
   place: Place
   photos: Photo[]
   flight: FlightDetail | null
+  valet: ValetDetail | null
+  lodging: LodgingDetail | null
   bucketItemId: string | null
   bucketItemTitle: string | null
 }

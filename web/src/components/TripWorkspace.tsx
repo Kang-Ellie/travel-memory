@@ -183,7 +183,6 @@ function EventCard({
   const [destination, setDestination] = useState(ev.flight?.destination ?? '')
   const [gate, setGate] = useState(ev.flight?.gate ?? '')
   const [seat, setSeat] = useState(ev.flight?.seat ?? '')
-  const [flightClass, setFlightClass] = useState(ev.flight?.flightClass ?? '')
   const logoInput = useRef<HTMLInputElement>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
@@ -203,7 +202,7 @@ function EventCard({
     setVoucherId(ev.flight?.voucherId ?? '')
     setAirline(ev.flight?.airline ?? ''); setFlightNo(ev.flight?.flightNo ?? '')
     setDestination(ev.flight?.destination ?? ''); setGate(ev.flight?.gate ?? '')
-    setSeat(ev.flight?.seat ?? ''); setFlightClass(ev.flight?.flightClass ?? '')
+    setSeat(ev.flight?.seat ?? '')
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -228,7 +227,7 @@ function EventCard({
         voucherId: voucherId || null, voucherTitle: null,
         airline: airline.trim() || null, airlineLogoPath: ev.flight?.airlineLogoPath ?? null,
         flightNo: flightNo.trim() || null, destination: destination.trim() || null,
-        gate: gate.trim() || null, seat: seat.trim() || null, flightClass: flightClass.trim() || null,
+        gate: gate.trim() || null, seat: seat.trim() || null,
       })
     }
     setEditing(false)
@@ -377,8 +376,6 @@ function EventCard({
                     <input type="text" value={gate} placeholder="83E" onChange={(e) => setGate(e.target.value)} /></div>
                   <div className="field" style={{ maxWidth: 100 }}><label>좌석</label>
                     <input type="text" value={seat} placeholder="04B" onChange={(e) => setSeat(e.target.value)} /></div>
-                  <div className="field"><label>클래스</label>
-                    <input type="text" value={flightClass} placeholder="예: 이코노미" onChange={(e) => setFlightClass(e.target.value)} /></div>
                   <div className="field"><label>예약번호</label>
                     <input type="text" value={bookingRef} placeholder="ABC123" onChange={(e) => setBookingRef(e.target.value)} /></div>
                   <div className="field grow"><label>예약처</label>
@@ -549,6 +546,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
   const [dayNotes, setDayNotes] = useState<DayNote[]>([])
   const [editingDay, setEditingDay] = useState<number | null>(null)
+  const [diaryDay, setDiaryDay] = useState<number | null>(null)
   const [rightPanel, setRightPanel] = useState<'map' | 'archive' | 'planb'>('archive')
   const [selPlace, setSelPlace] = useState('')
   const [newName, setNewName] = useState('')
@@ -577,7 +575,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   }
   useEffect(refresh, [trip.id])
 
-  const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => a.sequence - b.sequence)
+  const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
   const dayTransit = transit.filter((t) => t.dayNumber === day)
   const transitAfter = (eventId: string | null) => dayTransit.filter((t) => t.afterEventId === eventId)
   const expensesByEvent = new Map<string, Expense[]>()
@@ -599,7 +597,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         flags: [...new Set(explicitCities.map((c) => flagEmoji(c.countryCode)))].join(''),
       }
     }
-    const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => a.sequence - b.sequence)
+    const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
     const cities = evs.map((e) => e.place.cityName).filter((c): c is string => !!c)
     if (cities.length === 0) return null
     const first = cities[0]
@@ -610,8 +608,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       flags: codes.map((c) => flagEmoji(c)).join('') || '🌆',
     }
   }
-
-  const todayNote = dayNotes.find((n) => n.dayNumber === day) ?? null
 
   const addEvent = async () => {
     let placeId = selPlace
@@ -746,7 +742,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           const status = dailyBudgetStatus(spend, note?.budget ?? null)
           return (
             <div key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`}
-              style={{ position: 'relative', cursor: 'pointer' }} onClick={() => setDay(d)}>
+              style={{ position: 'relative', cursor: 'pointer' }}
+              onClick={() => { setDay(d); setDiaryDay(d) }}>
               <div className="day-nav-content" style={{ paddingRight: 20 }}>
                 <div>
                   {d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span>
@@ -773,19 +770,24 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
             onSaved={refresh}
           />
         )}
+        {diaryDay != null && (
+          <Modal title={`📔 ${diaryDay}일차 오늘의 일기`} onClose={() => setDiaryDay(null)}>
+            {(dayNotes.find((n) => n.dayNumber === diaryDay)?.diary) ? (
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{dayNotes.find((n) => n.dayNumber === diaryDay)!.diary}</p>
+            ) : (
+              <span className="muted">아직 일기가 없어요 — 왼쪽 일차의 ⋮ 메뉴에서 [✏️ 수정]을 눌러 적어보세요.</span>
+            )}
+            <div style={{ marginTop: 12 }}>
+              <button className="btn small primary" onClick={() => { setEditingDay(diaryDay); setDiaryDay(null) }}>✏️ 수정</button>
+              <button className="btn small" onClick={() => setDiaryDay(null)} style={{ marginLeft: 6 }}>닫기</button>
+            </div>
+          </Modal>
+        )}
       </div>
 
-      {/* 중앙: 오늘 할 일 + 일기 + 타임라인 */}
+      {/* 중앙: 오늘 할 일 + 타임라인 */}
       <div>
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--pink-soft)' }}>
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>📔 오늘의 일기</div>
-          {todayNote?.diary ? (
-            <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{todayNote.diary}</p>
-          ) : (
-            <span className="muted">아직 일기가 없어요 — 왼쪽 일차의 ⋮ 메뉴에서 [✏️ 수정]을 눌러 적어보세요.</span>
-          )}
-        </div>
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', marginTop: 12, background: 'var(--yellow-soft)' }}>
+        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--yellow-soft)' }}>
           <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
         </div>
 

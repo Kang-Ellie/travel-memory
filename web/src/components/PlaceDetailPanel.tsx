@@ -27,7 +27,7 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
         <div key={v.id} className="row" style={{ alignItems: 'flex-start', flexWrap: 'wrap' }}>
           <div className="grow">
             <div style={{ fontWeight: 800 }}>
-              {v.tripTitle} · {v.dayNumber}일차
+              {v.tripTitle} · {v.dayNumber != null ? `${v.dayNumber}일차` : '일차 미배정'}
               {v.rating != null && <span style={{ marginLeft: 6 }}>{'★'.repeat(v.rating)}{'☆'.repeat(5 - v.rating)}</span>}
             </div>
             {v.mustTry && <div className="chip pink" style={{ marginTop: 4 }}>🌟 {v.mustTry}</div>}

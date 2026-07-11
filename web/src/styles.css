@@ -139,6 +139,9 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   line-height: 1;
 }
 .window-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1.5px solid var(--ink);
   border-radius: 6px;
   background: #fff;
@@ -148,6 +151,7 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   cursor: pointer;
   line-height: 1;
   margin-right: 6px;
+  padding: 0;
 }
 .window-icon-btn:hover { background: var(--pink-soft); }
 

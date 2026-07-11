@@ -1,14 +1,6 @@
 import type { FlightDetail } from '../../shared/types'
 import { fileUrl } from '../api'
-
-function fmtDT(v: string | null): { time: string; date: string } {
-  if (!v) return { time: '?', date: '' }
-  const d = new Date(v)
-  return {
-    time: d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
-    date: d.toLocaleDateString('ko-KR', { month: 'numeric', day: 'numeric', weekday: 'short' }),
-  }
-}
+import { fmtDateTime } from '../categories'
 
 function formatDuration(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -17,9 +9,9 @@ function formatDuration(minutes: number): string {
 }
 
 export default function BoardingPassCard({ flight, fromName }: { flight: FlightDetail; fromName: string }) {
-  const dep = fmtDT(flight.departAt)
-  const arr = fmtDT(flight.arriveAt)
-  const hasInfo = flight.durationMinutes != null || flight.bookingRef || flight.flightClass
+  const dep = fmtDateTime(flight.departAt)
+  const arr = fmtDateTime(flight.arriveAt)
+  const hasInfo = flight.durationMinutes != null || flight.bookingRef
     || flight.seat || flight.bookedVia || flight.departureLocation
 
   return (
@@ -55,23 +47,20 @@ export default function BoardingPassCard({ flight, fromName }: { flight: FlightD
         <>
           <div className="boarding-pass-divider" />
           <div className="boarding-pass-info">
+            {flight.departureLocation && (
+              <div><div className="muted" style={{ fontSize: 10 }}>출발장소</div><div style={{ fontWeight: 700 }}>{flight.departureLocation}</div></div>
+            )}
             {flight.durationMinutes != null && (
               <div><div className="muted" style={{ fontSize: 10 }}>소요시간</div><div style={{ fontWeight: 700 }}>{formatDuration(flight.durationMinutes)}</div></div>
             )}
             {flight.bookingRef && (
               <div><div className="muted" style={{ fontSize: 10 }}>예약번호</div><div style={{ fontWeight: 700 }}>{flight.bookingRef}</div></div>
             )}
-            {flight.flightClass && (
-              <div><div className="muted" style={{ fontSize: 10 }}>CLASS</div><div style={{ fontWeight: 700 }}>{flight.flightClass}</div></div>
-            )}
             {flight.seat && (
               <div><div className="muted" style={{ fontSize: 10 }}>SEAT</div><div style={{ fontWeight: 700 }}>{flight.seat}</div></div>
             )}
             {flight.bookedVia && (
               <div><div className="muted" style={{ fontSize: 10 }}>예약처</div><div style={{ fontWeight: 700 }}>{flight.bookedVia}</div></div>
-            )}
-            {flight.departureLocation && (
-              <div><div className="muted" style={{ fontSize: 10 }}>출발장소</div><div style={{ fontWeight: 700 }}>{flight.departureLocation}</div></div>
             )}
           </div>
         </>
