@@ -120,7 +120,8 @@ export interface TimelineEvent {
   bucketItemTitle: string | null
 }
 
-export const EXPENSE_CATEGORIES = ['식비', '숙소', '교통', '쇼핑', '기타'] as const
+export const EXPENSE_CATEGORIES = ['맛집', '카페', '숙소', '교통', '쇼핑', '관광', '면세점', '선물', '기타'] as const
+export const PAYMENT_METHOD_PRESETS = ['현금', '신용카드', '체크카드', '페이(간편결제)', '기타']
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
 export interface Expense {
@@ -181,10 +182,7 @@ export interface DayNote {
   diary: string | null
   weatherEmoji: string | null
   weatherTemp: number | null
-  cityId: string | null
-  cityName: string | null
-  countryName: string | null
-  countryCode: string | null
+  cityIds: string[]
 }
 
 export interface PlaceVisit extends TimelineEvent {

@@ -236,8 +236,9 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS confirmed BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS voucher_id TEXT REFERENCES vouchers(id) ON DELETE SET NULL;
 
-    -- 일차별로 어느 도시에 해당하는지 명시적으로 지정 가능하게(자동 추론 대신/보완)
+    -- 일차별로 어느 도시에 해당하는지 명시적으로 지정 가능하게(자동 추론 대신/보완) — 하루에 여러 도시 가능
     ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS city_id TEXT REFERENCES cities(id) ON DELETE SET NULL;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS city_ids TEXT[] NOT NULL DEFAULT '{}';
 
     -- 체크리스트: 준비물 안에서 필수/선택/당일준비물로 묶고, '여행 전 Todo' 범위 추가
     ALTER TABLE checklist_items ADD COLUMN IF NOT EXISTS category TEXT;

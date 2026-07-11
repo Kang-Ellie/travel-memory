@@ -3,7 +3,6 @@ import type { DayNote, TripCity } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Modal from './Modal'
-import Select from './Select'
 
 const WEATHER_EMOJIS = ['☀️', '🌤', '⛅', '☁️', '🌧', '⛈', '❄️', '🌫', '💨']
 
@@ -16,7 +15,7 @@ export default function DayNoteBox({
   const [diary, setDiary] = useState('')
   const [weatherEmoji, setWeatherEmoji] = useState('')
   const [weatherTemp, setWeatherTemp] = useState('')
-  const [cityId, setCityId] = useState('')
+  const [cityIds, setCityIds] = useState<Set<string>>(new Set())
   const [diaryHidden, setDiaryHidden] = useState(true)
 
   useEffect(() => {
@@ -29,9 +28,17 @@ export default function DayNoteBox({
       setDiary(n?.diary ?? '')
       setWeatherEmoji(n?.weatherEmoji ?? '')
       setWeatherTemp(n?.weatherTemp != null ? String(n.weatherTemp) : '')
-      setCityId(n?.cityId ?? '')
+      setCityIds(new Set(n?.cityIds ?? []))
     })
   }, [tripId, dayNumber])
+
+  const toggleCity = (id: string) => {
+    setCityIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id); else next.add(id)
+      return next
+    })
+  }
 
   const save = async () => {
     const temp = weatherTemp.trim() === '' ? null : Number(weatherTemp)
@@ -40,17 +47,15 @@ export default function DayNoteBox({
       diary: diary.trim() || null,
       weatherEmoji: weatherEmoji || null,
       weatherTemp: temp != null && !Number.isNaN(temp) ? temp : null,
-      cityId: cityId || null,
+      cityIds: [...cityIds],
     }
     await api.dayNotes.set(tripId, dayNumber, data)
-    const city = cities.find((c) => c.id === cityId)
-    setNote({
-      tripId, dayNumber, ...data,
-      cityName: city?.name ?? null, countryName: city?.countryName ?? null, countryCode: city?.countryCode ?? null,
-    })
+    setNote({ tripId, dayNumber, ...data })
     setEditing(false)
     onChanged?.()
   }
+
+  const notedCities = (note?.cityIds ?? []).map((id) => cities.find((c) => c.id === id)).filter((c): c is TripCity => !!c)
 
   if (editing) {
     return (
@@ -58,11 +63,16 @@ export default function DayNoteBox({
         <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-start', border: 'none', padding: 0, margin: 0 }}>
           {cities.length > 0 && (
             <div className="field" style={{ width: '100%' }}>
-              <label>🌆 오늘 있는 도시</label>
-              <Select value={cityId} onChange={(e) => setCityId(e.target.value)}>
-                <option value="">— 자동 (일정에서 추측) —</option>
-                {cities.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.countryCode)} {c.countryName} · {c.name}</option>)}
-              </Select>
+              <label>🌆 오늘 있는 도시 (여러 곳 선택 가능)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                {cities.map((c) => (
+                  <label key={c.id} className={`pill ${cityIds.has(c.id) ? 'active' : ''}`}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={cityIds.has(c.id)} onChange={() => toggleCity(c.id)} style={{ margin: 0 }} />
+                    {flagEmoji(c.countryCode)} {c.countryName} · {c.name}
+                  </label>
+                ))}
+              </div>
             </div>
           )}
           <div className="field" style={{ width: '100%' }}>
@@ -94,7 +104,7 @@ export default function DayNoteBox({
     )
   }
 
-  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && !note?.cityId
+  const empty = !note?.note && !note?.diary && !note?.weatherEmoji && notedCities.length === 0
   return (
     <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: empty ? undefined : 'var(--yellow-soft)' }}>
       <div className="row" style={{ border: 'none', margin: 0, padding: 0, background: 'none' }}>
@@ -103,11 +113,11 @@ export default function DayNoteBox({
             <span className="muted">이 날에 대한 메모가 없어요 — 날씨나 그날의 한 줄을 남겨보세요.</span>
           ) : (
             <>
-              {note?.cityName && (
-                <span className="chip purple" style={{ marginRight: 8 }}>
-                  {flagEmoji(note.countryCode)} {note.countryName} · {note.cityName}
+              {notedCities.map((c) => (
+                <span key={c.id} className="chip purple" style={{ marginRight: 8 }}>
+                  {flagEmoji(c.countryCode)} {c.countryName} · {c.name}
                 </span>
-              )}
+              ))}
               {note?.weatherEmoji && (
                 <span className="chip yellow" style={{ marginRight: 8 }}>
                   {note.weatherEmoji}{note.weatherTemp != null ? ` ${note.weatherTemp}°` : ''}

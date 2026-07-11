@@ -65,7 +65,7 @@ export default function ChecklistPanel({
   )
 
   return (
-    <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <strong className="grow">{title}</strong>
         {SEEDABLE_SCOPES.has(scope) && (
@@ -105,17 +105,19 @@ export default function ChecklistPanel({
       )}
       {showAdd && (
         <Modal title={`${title} — 항목 추가`} onClose={() => setShowAdd(false)}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div className="form-row" style={{ alignItems: 'flex-end', marginBottom: 16 }}>
             {usesCategory && (
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {PACKING_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
+              <div className="field"><label>분류</label>
+                <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {PACKING_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </Select></div>
             )}
-            <input type="text" value={text} placeholder={addPlaceholder} autoFocus
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && add()} />
-            <button className="btn small primary" onClick={add}>추가</button>
+            <div className="field grow"><label>내용</label>
+              <input type="text" value={text} placeholder={addPlaceholder} autoFocus style={{ width: '100%' }}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && add()} /></div>
           </div>
+          <button className="btn primary" onClick={add}>＋ 추가</button>
         </Modal>
       )}
     </div>

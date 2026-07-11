@@ -27,9 +27,13 @@ body {
     repeating-linear-gradient(90deg, transparent 0 27px, rgba(45, 42, 62, 0.05) 27px 28px),
     linear-gradient(160deg, var(--bg1), var(--bg2));
   font-size: 14px;
+  line-height: 1.6;
+  letter-spacing: 0.01em;
   -webkit-user-select: none;
   user-select: none;
 }
+.muted { line-height: 1.6; }
+.info-text { line-height: 1.9; letter-spacing: 0.02em; }
 
 input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 
@@ -139,7 +143,7 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   border: 2px solid var(--ink);
   border-radius: 6px;
   background: var(--yellow-soft);
-  padding: 2px 8px;
+  padding: 3px 10px;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.05em;
@@ -343,7 +347,7 @@ textarea { resize: vertical; min-height: 70px; }
 .muted { color: rgba(45, 42, 62, 0.55); font-size: 12px; }
 
 /* ── 타임라인 ──────────────────────────── */
-.day-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.day-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 
 .event-card {
   border: 2px solid var(--ink);
@@ -353,7 +357,7 @@ textarea { resize: vertical; min-height: 70px; }
   padding: 14px;
   margin-bottom: 14px;
 }
-.event-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.event-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .seq-badge {
   width: 28px; height: 28px;
   border: 2px solid var(--ink);
@@ -374,7 +378,7 @@ textarea { resize: vertical; min-height: 70px; }
 .photo-thumb { position: relative; }
 .photo-thumb img {
   width: 92px; height: 92px; object-fit: cover;
-  border: 2px solid var(--ink); border-radius: 10px; display: block;
+  border-radius: 10px; display: block;
 }
 .photo-del {
   position: absolute; top: -8px; right: -8px;
@@ -385,31 +389,36 @@ textarea { resize: vertical; min-height: 70px; }
 
 /* ── 사진 왼쪽 + 내용 오른쪽 카드 레이아웃 ─── */
 .event-card-body { display: flex; gap: 14px; margin-top: 10px; align-items: flex-start; }
-.event-photo-col {
-  width: 180px; flex-shrink: 0;
-  background: rgba(255,255,255,0.6);
-  border: 1.5px solid rgba(45,42,62,0.15);
-  border-radius: 12px;
-  padding: 8px;
-}
+.event-photo-col { width: 180px; flex-shrink: 0; }
 .event-photo-col .main-photo {
   width: 100%; aspect-ratio: 1; object-fit: cover;
-  border: 2px solid var(--ink); border-radius: 10px; display: block;
-}
-.photo-placeholder {
-  display: flex; align-items: center; justify-content: center;
-  background: var(--purple-soft); color: rgba(45,42,62,0.6);
-  border: 2px dashed rgba(45,42,62,0.35);
-  font-weight: 700; font-size: 13px; cursor: pointer; text-align: center;
+  border-radius: 10px; display: block;
 }
 .event-photo-col .thumb-row { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.event-photo-col .thumb-row .photo-thumb img { width: 48px; height: 48px; }
+.event-photo-col .thumb-row .photo-thumb img { width: 48px; height: 48px; border-radius: 8px; }
 .event-content-col { flex: 1; min-width: 0; }
 @media (max-width: 640px) {
   .event-card-body { flex-direction: column; }
   .event-photo-col { width: 100%; }
   .event-photo-col .main-photo { width: 160px; }
 }
+
+/* ── 일정 카드 ⋮ 메뉴 ──────────────────── */
+.event-menu { position: relative; }
+.event-menu-panel {
+  position: absolute; right: 0; top: 100%; margin-top: 4px;
+  background: #fff; border: 2px solid var(--ink); border-radius: 10px;
+  box-shadow: 4px 4px 0 var(--shadow); z-index: 50;
+  display: flex; flex-direction: column; min-width: 160px; overflow: hidden;
+}
+.event-menu-panel button {
+  all: unset; box-sizing: border-box; cursor: pointer;
+  padding: 10px 14px; font-weight: 700; font-size: 13px; font-family: inherit; color: var(--ink);
+}
+.event-menu-panel button:hover { background: var(--pink-soft); }
+.event-menu-panel button.danger { color: #c0392b; }
+.event-menu-panel button.danger:hover { background: #ffe0e0; }
+.event-menu-panel .menu-divider { height: 1.5px; background: rgba(45,42,62,0.15); margin: 2px 0; }
 
 /* ── 정산 ──────────────────────────────── */
 .settle-box {
@@ -543,8 +552,8 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .checklist-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 0;
+  gap: 10px;
+  padding: 7px 0;
   font-weight: 700;
   cursor: pointer;
 }
@@ -555,11 +564,12 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .right-toggle { display: flex; gap: 6px; margin-bottom: 10px; }
 
 .drop-zone {
-  border: 2px dashed rgba(45,42,62,0.35);
+  border: 2px dashed transparent;
   border-radius: 12px;
-  min-height: 60px;
+  min-height: 0;
   transition: background 0.1s, border-color 0.1s;
 }
+.drop-zone.is-empty { border-color: rgba(45,42,62,0.35); min-height: 60px; }
 .drop-zone.drag-over { background: var(--yellow-soft); border-color: var(--ink); }
 
 .event-card[draggable='true'] { cursor: grab; }
@@ -590,6 +600,8 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   box-shadow: 2px 2px 0 var(--shadow);
 }
 .event-expense-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.event-expense-chip .dot.shared { background: #4a90e2; }
+.event-expense-chip .dot.personal { background: #f5a623; }
 .event-expense-chip .del { border: none; background: none; cursor: pointer; font-weight: 800; padding: 0 0 0 2px; }
 
 /* ── 예산 미터 (BudgetBar) ─────────────── */

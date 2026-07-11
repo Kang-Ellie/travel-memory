@@ -6,6 +6,12 @@ import sharp from 'sharp'
 
 export const UPLOAD_DIR = process.env.UPLOAD_DIR ?? path.join(process.cwd(), 'data', 'uploads')
 
+// multer/busboy는 멀티파트 필드를 기본 latin1로 디코딩하므로, 한글 등 비-ASCII 파일명은
+// originalname이 깨져서 들어온다. 저장·표시 전에 utf8로 다시 디코딩해줘야 한다.
+export function decodeOriginalName(name: string): string {
+  return Buffer.from(name, 'latin1').toString('utf8')
+}
+
 function sanitize(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-80)
 }

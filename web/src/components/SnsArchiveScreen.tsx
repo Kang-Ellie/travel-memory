@@ -101,14 +101,14 @@ function SnsCard({ item, places, onChanged }: { item: ArchiveItem; places: Place
           </a>
         )}
         {item.linkedPlaceId && (
-          <div className="muted" style={{ marginTop: 4, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            📍 연결된 장소: <strong>{item.linkedPlaceName}</strong>
+          <div className="muted" style={{ marginTop: 8, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <span>📍 연결된 장소: <strong>{item.linkedPlaceName}</strong></span>
             {linkedPlace?.countryName && (
               <span className="chip purple">
                 {flagEmoji(linkedPlace.countryCode)} {linkedPlace.countryName}{linkedPlace.cityName ? ` · ${linkedPlace.cityName}` : ''}
               </span>
             )}
-            <button className="btn small ghost" onClick={unlink}>연결 해제</button>
+            <button className="btn small ghost" style={{ marginLeft: 'auto' }} onClick={unlink}>연결 해제</button>
           </div>
         )}
       </div>

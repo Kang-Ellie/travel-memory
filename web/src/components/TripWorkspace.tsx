@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import type {
-  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem, DayNote,
+  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem, DayNote, TripCity,
 } from '../../shared/types'
+import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend } from '../settlement'
-import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
+import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
 import BudgetBar from './BudgetBar'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
@@ -124,9 +125,43 @@ interface QuickExpenseState {
   currency: string
   category: string
   purchaseItems: string
+  paymentMethod: string
   paidBy: string
   splitWith: Set<string>
   isShared: boolean
+}
+
+function EventMenu({
+  onAddPhoto, onAddExpense, onEdit, onDelete,
+}: { onAddPhoto: () => void; onAddExpense: () => void; onEdit: () => void; onDelete: () => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', onDocClick)
+    return () => document.removeEventListener('mousedown', onDocClick)
+  }, [open])
+
+  const pick = (fn: () => void) => () => { fn(); setOpen(false) }
+
+  return (
+    <div className="event-menu" ref={ref}>
+      <button type="button" className="btn small ghost" onClick={() => setOpen((v) => !v)} title="더보기">⋮</button>
+      {open && (
+        <div className="event-menu-panel">
+          <button type="button" onClick={pick(onAddPhoto)}>📷 사진 추가</button>
+          <button type="button" onClick={pick(onAddExpense)}>💰 비용 기록</button>
+          <div className="menu-divider" />
+          <button type="button" onClick={pick(onEdit)}>✏️ 수정</button>
+          <button type="button" className="danger" onClick={pick(onDelete)}>🗑 삭제</button>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function EventCard({
@@ -161,7 +196,7 @@ function EventCard({
   const [confirmed, setConfirmed] = useState(ev.flight?.confirmed ?? false)
   const [voucherId, setVoucherId] = useState(ev.flight?.voucherId ?? '')
   const [qe, setQe] = useState<QuickExpenseState>({
-    amount: '', currency: 'KRW', category: '식비', purchaseItems: '',
+    amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
     paidBy: participants[0]?.id ?? '', splitWith: new Set(participants.map((m) => m.id)), isShared: true,
   })
   const photoInput = useRef<HTMLInputElement>(null)
@@ -219,10 +254,10 @@ function EventCard({
       description: ev.place.name, paidBy: qe.paidBy,
       splitWith: qe.isShared ? [...qe.splitWith] : [qe.paidBy],
       spentAt: new Date().toISOString().slice(0, 10),
-      paymentMethod: null, memo: null, purchaseItems: qe.purchaseItems.trim() || null,
+      paymentMethod: qe.paymentMethod.trim() || null, memo: null, purchaseItems: qe.purchaseItems.trim() || null,
       isShared: qe.isShared, isPrebooked: false,
     })
-    setQe((s) => ({ ...s, amount: '', purchaseItems: '' }))
+    setQe((s) => ({ ...s, amount: '', purchaseItems: '', paymentMethod: '' }))
     setShowExpenseForm(false)
     onChanged()
   }
@@ -250,50 +285,51 @@ function EventCard({
               onClick={() => setRating(n)} title={`${n}점`}>★</button>
           ))}
         </span>
-        <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          {!editing && <button className="btn small" onClick={startEdit}>수정</button>}
-          <button className="btn small" onClick={() => {
-            if (confirm(`'${ev.place.name}' 일정을 삭제할까요?`)) api.events.delete(ev.id).then(onChanged)
-          }}>삭제</button>
+        <span style={{ marginLeft: 'auto' }}>
+          <EventMenu
+            onAddPhoto={() => photoInput.current?.click()}
+            onAddExpense={() => setShowExpenseForm(true)}
+            onEdit={startEdit}
+            onDelete={() => {
+              if (confirm(`'${ev.place.name}' 일정을 삭제할까요?`)) api.events.delete(ev.id).then(onChanged)
+            }}
+          />
         </span>
       </div>
       {(ev.place.address || ev.place.mapUrl) && (
-        <div className="muted" style={{ marginTop: 4 }}>
-          {ev.place.address && <>📍 {ev.place.address} </>}
-          {ev.place.mapUrl && <a href={ev.place.mapUrl} target="_blank" rel="noreferrer">🗺 지도에서 보기</a>}
+        <div className="muted" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {ev.place.address && <span>📍 {ev.place.address}</span>}
+          {ev.place.mapUrl && (
+            <a className="btn small ghost" href={ev.place.mapUrl} target="_blank" rel="noreferrer">🗺 지도에서 보기</a>
+          )}
         </div>
       )}
 
+      <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
       <div className="event-card-body">
-        <div className="event-photo-col">
-          <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
-          {mainPhoto ? (
+        {ev.photos.length > 0 && (
+          <div className="event-photo-col">
             <div className="photo-thumb">
-              <img className="main-photo" src={fileUrl(mainPhoto.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
+              <img className="main-photo" src={fileUrl(mainPhoto!.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
               {ev.photos.length > 1 && (
-                <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(mainPhoto.id).then(onChanged)}>×</button>
+                <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(mainPhoto!.id).then(onChanged)}>×</button>
               )}
             </div>
-          ) : (
-            <div className="main-photo photo-placeholder" onClick={() => photoInput.current?.click()}>📷 사진 추가</div>
-          )}
-          <div className="thumb-row">
-            {restPhotos.map((p, i) => (
-              <div key={p.id} className="photo-thumb">
-                <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightboxIndex(i + 1)} />
-                <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
+            {restPhotos.length > 0 && (
+              <div className="thumb-row">
+                {restPhotos.map((p, i) => (
+                  <div key={p.id} className="photo-thumb">
+                    <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightboxIndex(i + 1)} />
+                    <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+            {lightboxIndex != null && (
+              <Lightbox images={photoUrls} index={lightboxIndex} onClose={() => setLightboxIndex(null)} />
+            )}
           </div>
-          {mainPhoto && (
-            <button className="btn small" style={{ marginTop: 6, width: '100%' }} onClick={() => photoInput.current?.click()}>
-              ＋ 사진 추가
-            </button>
-          )}
-          {lightboxIndex != null && (
-            <Lightbox images={photoUrls} index={lightboxIndex} onClose={() => setLightboxIndex(null)} />
-          )}
-        </div>
+        )}
 
         <div className="event-content-col">
           {editing && (
@@ -405,47 +441,60 @@ function EventCard({
         </div>
       </div>
 
-      <div className="quick-expense-row">
-        {eventExpenses.map((exp) => (
-          <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
-            <span className="dot" style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
-            <span title={exp.isShared ? '공동지출' : '개인지출'}>{exp.isShared ? '👥' : '🙋'}</span>
-            {exp.category} {fmtMoney(exp.amount, exp.currency)}
-            {exp.purchaseItems && <span className="muted"> · {exp.purchaseItems}</span>}
-            <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>
-          </span>
-        ))}
-        <button className="btn small" onClick={() => setShowExpenseForm(true)}>＋ 비용 기록</button>
-      </div>
+      {eventExpenses.length > 0 && (
+        <div className="quick-expense-row">
+          {eventExpenses.map((exp) => (
+            <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
+              <span className="dot" style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
+              <span className={`dot ${exp.isShared ? 'shared' : 'personal'}`} title={exp.isShared ? '공동지출' : '개인지출'} />
+              {exp.category} {fmtMoney(exp.amount, exp.currency)}
+              {exp.purchaseItems && <span className="muted"> · {exp.purchaseItems}</span>}
+              <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {showExpenseForm && (
         <Modal title="비용 기록" onClose={() => setShowExpenseForm(false)}>
-          <div className="row" style={{ flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
-            <input type="number" placeholder="금액" value={qe.amount} style={{ width: 90 }}
-              onChange={(e) => setQe((s) => ({ ...s, amount: e.target.value }))} />
-            <Select value={qe.currency} onChange={(e) => setQe((s) => ({ ...s, currency: e.target.value }))}>
-              {['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND'].map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
-            <Select value={qe.category} onChange={(e) => setQe((s) => ({ ...s, category: e.target.value }))}>
-              {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </Select>
-            <input type="text" placeholder="뭘 먹었는지/샀는지" value={qe.purchaseItems} style={{ width: 140 }}
-              onChange={(e) => setQe((s) => ({ ...s, purchaseItems: e.target.value }))} />
+          <div className="form-row">
+            <div className="field" style={{ maxWidth: 110 }}><label>금액</label>
+              <input type="number" placeholder="금액" value={qe.amount}
+                onChange={(e) => setQe((s) => ({ ...s, amount: e.target.value }))} /></div>
+            <div className="field" style={{ maxWidth: 100 }}><label>통화</label>
+              <Select value={qe.currency} onChange={(e) => setQe((s) => ({ ...s, currency: e.target.value }))}>
+                {['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND'].map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select></div>
+            <div className="field"><label>분류</label>
+              <Select value={qe.category} onChange={(e) => setQe((s) => ({ ...s, category: e.target.value }))}>
+                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </Select></div>
+            <div className="field"><label>결제수단 (선택)</label>
+              <Select value={qe.paymentMethod} onChange={(e) => setQe((s) => ({ ...s, paymentMethod: e.target.value }))}>
+                <option value="">— 선택 안함 —</option>
+                {PAYMENT_METHOD_PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </Select></div>
+          </div>
+          <div className="form-row">
+            <div className="field grow"><label>뭘 먹었는지/샀는지 (선택)</label>
+              <input type="text" placeholder="예: 명란정식, 기념품" value={qe.purchaseItems}
+                onChange={(e) => setQe((s) => ({ ...s, purchaseItems: e.target.value }))} /></div>
             {participants.length > 0 ? (
-              <Select value={qe.paidBy} onChange={(e) => setQe((s) => ({ ...s, paidBy: e.target.value }))}>
-                {participants.map((m) => <option key={m.id} value={m.id}>{m.name} 냄</option>)}
-              </Select>
+              <div className="field"><label>누가 냈나요</label>
+                <Select value={qe.paidBy} onChange={(e) => setQe((s) => ({ ...s, paidBy: e.target.value }))}>
+                  {participants.map((m) => <option key={m.id} value={m.id}>{m.name} 냄</option>)}
+                </Select></div>
             ) : (
               <span className="muted">[🧮 정산] 탭에서 참여자를 먼저 추가하세요.</span>
             )}
-            <label style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center', fontSize: 13 }}>
-              <input type="checkbox" checked={qe.isShared} onChange={(e) => setQe((s) => ({ ...s, isShared: e.target.checked }))} />
-              공동지출
-            </label>
-            <div style={{ marginTop: 12 }}>
-              <button className="btn small primary" onClick={addExpense}>기록</button>
-              <button className="btn small ghost" onClick={() => setShowExpenseForm(false)} style={{ marginLeft: 6 }}>취소</button>
-            </div>
+          </div>
+          <label style={{ fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, marginBottom: 14 }}>
+            <input type="checkbox" checked={qe.isShared} onChange={(e) => setQe((s) => ({ ...s, isShared: e.target.checked }))} />
+            공동지출
+          </label>
+          <div>
+            <button className="btn small primary" onClick={addExpense}>기록</button>
+            <button className="btn small ghost" onClick={() => setShowExpenseForm(false)} style={{ marginLeft: 6 }}>취소</button>
           </div>
         </Modal>
       )}
@@ -504,15 +553,27 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     expensesByEvent.set(exp.eventId, list)
   }
 
-  const dayCityLabel = (d: number): string | null => {
-    const explicit = dayNotes.find((n) => n.dayNumber === d)?.cityName
-    if (explicit) return explicit
+  const dayCityInfo = (d: number): { label: string; flags: string } | null => {
+    const explicitIds = dayNotes.find((n) => n.dayNumber === d)?.cityIds ?? []
+    const explicitCities = explicitIds
+      .map((id) => trip.cities.find((c) => c.id === id))
+      .filter((c): c is TripCity => !!c)
+    if (explicitCities.length > 0) {
+      return {
+        label: explicitCities.map((c) => c.name).join(', '),
+        flags: [...new Set(explicitCities.map((c) => flagEmoji(c.countryCode)))].join(''),
+      }
+    }
     const evs = events.filter((e) => e.dayNumber === d).sort((a, b) => a.sequence - b.sequence)
     const cities = evs.map((e) => e.place.cityName).filter((c): c is string => !!c)
     if (cities.length === 0) return null
     const first = cities[0]
     const last = cities[cities.length - 1]
-    return first === last ? first : `${first} - ${last}`
+    const codes = [...new Set(evs.map((e) => e.place.countryCode).filter((c): c is string => !!c))]
+    return {
+      label: first === last ? first : `${first} - ${last}`,
+      flags: codes.map((c) => flagEmoji(c)).join('') || '🌆',
+    }
   }
 
   const addEvent = async () => {
@@ -642,12 +703,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       {/* 좌측: 일차 내비게이션 */}
       <div className="day-nav-col">
         {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
-          const cityLabel = dayCityLabel(d)
+          const cityInfo = dayCityInfo(d)
           const spend = computeDailySpend(trip, expenses, d, rates).total
           return (
             <button key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`} onClick={() => setDay(d)}>
               <div>{d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span></div>
-              {cityLabel && <div style={{ fontWeight: 400, fontSize: 11 }}>🌆 {cityLabel}</div>}
+              {cityInfo && <div style={{ fontWeight: 400, fontSize: 11 }}>{cityInfo.flags} {cityInfo.label}</div>}
               <div style={{ fontWeight: 400, fontSize: 11 }}>💸 {fmtMoney(spend, 'KRW')}</div>
             </button>
           )
@@ -659,7 +720,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         <BudgetBar trip={trip} expenses={expenses} rates={rates} />
 
           <div
-            className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+            className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
             style={{ marginTop: 12 }}
             onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(ARCHIVE_DRAG_TYPE)) setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}

@@ -124,6 +124,7 @@ export default function BucketListScreen() {
   const [countryId, setCountryId] = useState('')
   const [cityId, setCityId] = useState('')
   const [linkPlaceId, setLinkPlaceId] = useState('')
+  const [linkTripId, setLinkTripId] = useState('')
   const [showAdd, setShowAdd] = useState(false)
 
   const refresh = () => {
@@ -143,9 +144,10 @@ export default function BucketListScreen() {
     await api.bucket.create({
       title: title.trim(), memo: memo.trim() || null,
       countryId: countryId || null, cityId: cityId || null, category,
-      linkedPlaceId: linkPlaceId || null,
+      linkedPlaceId: linkPlaceId || null, linkedTripId: linkTripId || null,
     })
-    setTitle(''); setMemo(''); setKind('bucket'); setSubCategory(''); setCountryId(''); setCityId(''); setLinkPlaceId('')
+    setTitle(''); setMemo(''); setKind('bucket'); setSubCategory('')
+    setCountryId(''); setCityId(''); setLinkPlaceId(''); setLinkTripId('')
     setShowAdd(false)
     refresh()
   }
@@ -194,23 +196,40 @@ export default function BucketListScreen() {
               </div>
             )}
           </div>
+          <div className="field" style={{ marginBottom: 18 }}>
+            <label>국가 (선택)</label>
+            <Select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
+              <option value="">— 선택 안함 —</option>
+              {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
+            </Select>
+          </div>
+          {countryId && (
+            <div className="field" style={{ marginBottom: 18 }}>
+              <label>도시 (선택)</label>
+              {citiesOfCountry.length === 0 ? (
+                <span className="muted">이 국가에 등록된 도시가 없어요.</span>
+              ) : (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                  {citiesOfCountry.map((c) => (
+                    <button key={c.id} type="button" className={`pill ${cityId === c.id ? 'active' : ''}`}
+                      onClick={() => setCityId(cityId === c.id ? '' : c.id)}>
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           <div className="form-row">
-            <div className="field"><label>국가 (선택)</label>
-              <Select value={countryId} onChange={(e) => { setCountryId(e.target.value); setCityId('') }}>
-                <option value="">— 선택 안함 —</option>
-                {countries.map((c) => <option key={c.id} value={c.id}>{flagEmoji(c.code)} {c.name}</option>)}
-              </Select></div>
-            {countryId && (
-              <div className="field"><label>도시 (선택)</label>
-                <Select value={cityId} onChange={(e) => setCityId(e.target.value)}>
-                  <option value="">— 선택 안함 —</option>
-                  {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </Select></div>
-            )}
             <div className="field grow"><label>장소 족보와 연결 (선택)</label>
               <Select value={linkPlaceId} onChange={(e) => setLinkPlaceId(e.target.value)}>
                 <option value="">— 선택 안함 —</option>
                 {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
+              </Select></div>
+            <div className="field grow"><label>여행에 연결 (선택)</label>
+              <Select value={linkTripId} onChange={(e) => setLinkTripId(e.target.value)}>
+                <option value="">— 선택 안함 —</option>
+                {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
               </Select></div>
           </div>
           <div className="field">

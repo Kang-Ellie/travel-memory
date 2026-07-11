@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import type { Express as ExpressApp, Request, Response, NextFunction } from 'express'
 import { pool } from './db.js'
-import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR, compressImageInPlace } from './upload.js'
+import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR, compressImageInPlace, decodeOriginalName } from './upload.js'
 import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSION_COOKIE } from './auth.js'
 
 const id = (): string => crypto.randomUUID()
@@ -743,12 +743,13 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const voucherId = id()
+      const originalName = decodeOriginalName(f.originalname)
       const finalPath = f.mimetype.startsWith('image/') ? await compressImageInPlace(f.path) : f.path
       const rel = relativeFilePath('vouchers', path.basename(finalPath))
-      const fileType = path.extname(f.originalname).replace('.', '').toUpperCase() || 'FILE'
+      const fileType = path.extname(originalName).replace('.', '').toUpperCase() || 'FILE'
       await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path, category) VALUES ($1,$2,$3,$4,$5,$6)',
-        [voucherId, req.params.tripId, f.originalname, fileType, rel, category])
-      added.push({ id: voucherId, tripId: req.params.tripId, title: f.originalname, fileType, filePath: rel, category })
+        [voucherId, req.params.tripId, originalName, fileType, rel, category])
+      added.push({ id: voucherId, tripId: req.params.tripId, title: originalName, fileType, filePath: rel, category })
     }
     res.json(added)
   })
@@ -837,11 +838,12 @@ export function registerRoutes(app: ExpressApp): void {
     const added = []
     for (const f of files) {
       const itemId = id()
+      const originalName = decodeOriginalName(f.originalname)
       const finalPath = await compressImageInPlace(f.path)
       const rel = relativeFilePath('archive', path.basename(finalPath))
       await pool.query('INSERT INTO archive_items (id, trip_id, kind, title, file_path) VALUES ($1,$2,$3,$4,$5)',
-        [itemId, req.params.tripId, 'image', f.originalname, rel])
-      added.push({ id: itemId, tripId: req.params.tripId, kind: 'image', title: f.originalname, body: null, filePath: rel })
+        [itemId, req.params.tripId, 'image', originalName, rel])
+      added.push({ id: itemId, tripId: req.params.tripId, kind: 'image', title: originalName, body: null, filePath: rel })
     }
     res.json(added)
   })
@@ -882,33 +884,26 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 일차 메모(그날의 기록·날씨) ───────────────────────
   app.get('/api/trips/:tripId/day-notes', async (req, res) => {
-    const r = await pool.query(
-      `SELECT dn.*, c.name AS city_name, co.name AS country_name, co.code AS country_code
-       FROM day_notes dn
-       LEFT JOIN cities c ON c.id = dn.city_id
-       LEFT JOIN countries co ON co.id = c.country_id
-       WHERE dn.trip_id = $1`,
-      [req.params.tripId])
+    const r = await pool.query('SELECT * FROM day_notes WHERE trip_id = $1', [req.params.tripId])
     res.json(r.rows.map((row) => ({
       tripId: row.trip_id, dayNumber: row.day_number, note: row.note, diary: row.diary,
       weatherEmoji: row.weather_emoji, weatherTemp: row.weather_temp != null ? Number(row.weather_temp) : null,
-      cityId: row.city_id, cityName: row.city_name ?? null, countryName: row.country_name ?? null,
-      countryCode: row.country_code ?? null,
+      cityIds: row.city_ids ?? [],
     })))
   })
 
   app.put('/api/trips/:tripId/day-notes/:dayNumber', async (req, res) => {
-    const { note, diary, weatherEmoji, weatherTemp, cityId } = req.body as {
+    const { note, diary, weatherEmoji, weatherTemp, cityIds } = req.body as {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
-      cityId: string | null
+      cityIds: string[]
     }
     await pool.query(
-      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp, city_id) VALUES ($1,$2,$3,$4,$5,$6,$7)
+      `INSERT INTO day_notes (trip_id, day_number, note, diary, weather_emoji, weather_temp, city_ids) VALUES ($1,$2,$3,$4,$5,$6,$7)
        ON CONFLICT (trip_id, day_number) DO UPDATE SET
          note = excluded.note, diary = excluded.diary,
          weather_emoji = excluded.weather_emoji, weather_temp = excluded.weather_temp,
-         city_id = excluded.city_id`,
-      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityId])
+         city_ids = excluded.city_ids`,
+      [req.params.tripId, Number(req.params.dayNumber), note, diary, weatherEmoji, weatherTemp, cityIds ?? []])
     res.json({ ok: true })
   })
 
@@ -983,14 +978,14 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/bucket', async (req, res) => {
-    const { title, memo, countryId, cityId, category, linkedPlaceId } = req.body as {
+    const { title, memo, countryId, cityId, category, linkedPlaceId, linkedTripId } = req.body as {
       title: string; memo: string | null; countryId: string | null; cityId: string | null
-      category: string | null; linkedPlaceId?: string | null
+      category: string | null; linkedPlaceId?: string | null; linkedTripId?: string | null
     }
     const itemId = id()
     await pool.query(
-      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category, linked_place_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [itemId, title.trim(), memo, countryId, cityId, category, linkedPlaceId || null])
+      'INSERT INTO bucket_items (id, title, memo, country_id, city_id, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+      [itemId, title.trim(), memo, countryId, cityId, category, linkedPlaceId || null, linkedTripId || null])
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
     res.json(mapBucket(r.rows[0]))
   })

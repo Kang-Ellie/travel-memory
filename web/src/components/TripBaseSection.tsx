@@ -109,8 +109,8 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
     .filter((c): c is City => !!c)
   const countryIds = new Set(tripCityRecords.map((c) => c.countryId))
   const tripCountries = countries.filter((c) => countryIds.has(c.id))
-  const itemsForCountry = bucket.filter((b) => b.countryId && countryIds.has(b.countryId))
-  const byKind = (kind: BucketKind) => itemsForCountry.filter((b) => bucketKindOf(b.category) === kind)
+  const itemsForBase = bucket.filter((b) => (b.countryId && countryIds.has(b.countryId)) || b.linkedTripId === trip.id)
+  const byKind = (kind: BucketKind) => itemsForBase.filter((b) => bucketKindOf(b.category) === kind)
 
   return (
     <Window title="BASE.EXE" color="blue">
@@ -126,7 +126,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               <div key={co.id} className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ fontWeight: 800, marginBottom: 10 }}>{flagEmoji(co.code)} {co.name}</div>
                 <div className="base-split">
-                  <div style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div className="info-text" style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🌍 국가 정보</div>
                     {co.capital && <span>🏛 수도 {co.capital}</span>}
                     {co.currency && <span>💱 통화 {co.currency}</span>}
@@ -137,7 +137,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                     {co.emergencyMedical && <span>🚑 응급 {co.emergencyMedical}</span>}
                     {co.prepDocs && <span style={{ whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</span>}
                   </div>
-                  <div style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div className="info-text" style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🏙 도시 정보</div>
                     {citiesOfCountry.length === 0 ? (
                       <span style={{ opacity: 0.6 }}>등록된 도시 정보가 없어요.</span>

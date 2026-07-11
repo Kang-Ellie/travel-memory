@@ -2,12 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api } from '../api'
 import { computeSettlement, fmtMoney } from '../settlement'
-import { CATEGORY_COLOR, EXPENSE_CATEGORIES } from '../categories'
-import Modal from './Modal'
-import Select from './Select'
-import DatePicker from './DatePicker'
-
-const CURRENCIES = ['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND']
+import { CATEGORY_COLOR } from '../categories'
+import AddExpenseModal from './AddExpenseModal'
 
 export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [participants, setParticipants] = useState<Member[]>([])
@@ -16,37 +12,20 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [rates, setRates] = useState<CurrencyRate[]>([])
   const [editingMembers, setEditingMembers] = useState(false)
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
-
-  const [description, setDescription] = useState('')
-  const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState('KRW')
-  const [category, setCategory] = useState<string>('기타')
-  const [paidBy, setPaidBy] = useState('')
-  const [splitWith, setSplitWith] = useState<Set<string>>(new Set())
-  const [spentAt, setSpentAt] = useState(trip.startDate)
   const [newMemberName, setNewMemberName] = useState('')
-  const [paymentMethod, setPaymentMethod] = useState('')
-  const [memo, setMemo] = useState('')
-  const [purchaseItems, setPurchaseItems] = useState('')
-  const [isShared, setIsShared] = useState(true)
-  const [isPrebooked, setIsPrebooked] = useState(false)
-  const [showMoreFields, setShowMoreFields] = useState(false)
   const [showAddExpense, setShowAddExpense] = useState(false)
 
   const refresh = () => {
-    api.tripMembers.list(trip.id).then((ms) => {
-      setParticipants(ms)
-      setSelMembers(new Set(ms.map((m) => m.id)))
-      if (ms.length > 0) {
-        setPaidBy((prev) => (ms.some((m) => m.id === prev) ? prev : ms[0].id))
-        setSplitWith((prev) => (prev.size > 0 ? prev : new Set(ms.map((m) => m.id))))
-      }
-    })
+    api.tripMembers.list(trip.id).then(setParticipants)
     api.members.list().then(setAllMembers)
     api.expenses.list(trip.id).then(setExpenses)
     api.rates.list(trip.id).then(setRates)
   }
   useEffect(refresh, [trip.id])
+
+  useEffect(() => {
+    setSelMembers(new Set(participants.map((m) => m.id)))
+  }, [participants])
 
   const foreignCurrenciesUsed = [...new Set(expenses.map((e) => e.currency))].filter((c) => c !== 'KRW')
   const rateOf = (c: string) => rates.find((r) => r.currency === c)?.krwPerUnit
@@ -60,7 +39,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const saveParticipants = async () => {
     await api.tripMembers.set(trip.id, [...selMembers])
     setEditingMembers(false)
-    setSplitWith(new Set(selMembers))
     refresh()
   }
 
@@ -71,22 +49,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     if ('error' in res) { alert(res.error); return }
     setSelMembers((prev) => new Set(prev).add(res.id))
     api.members.list().then(setAllMembers)
-  }
-
-  const addExpense = async () => {
-    const amt = parseFloat(amount)
-    if (!description.trim() || !amt || amt <= 0 || !paidBy) return
-    if (isShared && splitWith.size === 0) return
-    await api.expenses.create({
-      tripId: trip.id, eventId: null, amount: amt, currency, category, description,
-      paidBy, splitWith: isShared ? [...splitWith] : [paidBy], spentAt,
-      paymentMethod: paymentMethod.trim() || null, memo: memo.trim() || null,
-      purchaseItems: purchaseItems.trim() || null, isShared, isPrebooked,
-    })
-    setDescription(''); setAmount(''); setPaymentMethod(''); setMemo(''); setPurchaseItems('')
-    setIsShared(true); setIsPrebooked(false)
-    setShowAddExpense(false)
-    refresh()
   }
 
   const settlements = computeSettlement(expenses, allMembers)
@@ -149,89 +111,12 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
       )}
 
       {showAddExpense && (
-        <Modal title="지출 기록" onClose={() => setShowAddExpense(false)}>
-          <div className="row" style={{ alignItems: 'flex-end', flexWrap: 'wrap', border: 'none', padding: 0, margin: 0 }}>
-            <div className="field grow">
-              <label>내용</label>
-              <input type="text" value={description} placeholder="예: 점심 - 멘타이쥬"
-                onChange={(e) => setDescription(e.target.value)} />
-            </div>
-            <div className="field" style={{ minWidth: 110 }}>
-              <label>금액</label>
-              <input type="number" value={amount} min={0} onChange={(e) => setAmount(e.target.value)} />
-            </div>
-            <div className="field" style={{ minWidth: 90 }}>
-              <label>통화</label>
-              <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
-                {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </div>
-            <div className="field" style={{ minWidth: 90 }}>
-              <label>분류</label>
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
-                {EXPENSE_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </Select>
-            </div>
-            <div className="field">
-              <label>낸 사람</label>
-              <Select value={paidBy} onChange={(e) => setPaidBy(e.target.value)}>
-                {participants.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-              </Select>
-            </div>
-            <div className="field">
-              <label>날짜</label>
-              <DatePicker value={spentAt} onChange={(e) => setSpentAt(e.target.value)} />
-            </div>
-            <div className="field">
-              <label>구분</label>
-              <div style={{ display: 'flex', gap: 10, padding: '8px 0' }}>
-                <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                  <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} /> 공동지출
-                </label>
-                <label style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                  <input type="checkbox" checked={isPrebooked} onChange={(e) => setIsPrebooked(e.target.checked)} /> 사전예약
-                </label>
-              </div>
-            </div>
-            {isShared && (
-              <div className="field">
-                <label>정산 대상</label>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '8px 0' }}>
-                  {participants.map((m) => (
-                    <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 3, alignItems: 'center', fontSize: 13 }}>
-                      <input type="checkbox" checked={splitWith.has(m.id)}
-                        onChange={(e) => {
-                          const next = new Set(splitWith)
-                          e.target.checked ? next.add(m.id) : next.delete(m.id)
-                          setSplitWith(next)
-                        }} />
-                      {m.name}
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-            <button className="btn small" type="button" onClick={() => setShowMoreFields((v) => !v)}>
-              {showMoreFields ? '상세 닫기' : '＋ 결제수단·메모·구매목록'}
-            </button>
-            {showMoreFields && (
-              <>
-                <div className="field"><label>결제수단</label>
-                  <input type="text" value={paymentMethod} placeholder="예: 카드"
-                    onChange={(e) => setPaymentMethod(e.target.value)} /></div>
-                <div className="field grow"><label>메모</label>
-                  <input type="text" value={memo} placeholder="자유 메모"
-                    onChange={(e) => setMemo(e.target.value)} /></div>
-                <div className="field grow"><label>구매목록</label>
-                  <input type="text" value={purchaseItems} placeholder="예: 멘타이쥬 2인분, 음료 1개"
-                    onChange={(e) => setPurchaseItems(e.target.value)} /></div>
-              </>
-            )}
-            <div style={{ marginTop: 12 }}>
-              <button className="btn primary" onClick={addExpense}>기록 ✏️</button>
-            </div>
-          </div>
-        </Modal>
+        <AddExpenseModal
+          trip={trip}
+          participants={participants}
+          onClose={() => setShowAddExpense(false)}
+          onAdded={() => { setShowAddExpense(false); refresh() }}
+        />
       )}
 
       {/* 지출 목록 */}
