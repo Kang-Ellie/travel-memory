@@ -10,7 +10,6 @@ import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
 import TicketQuickAdd, { type TicketKind } from './TicketQuickAdd'
-import FolderIcon from './FolderIcon'
 import VouchersTab from './VouchersTab'
 
 type PrepSection = 'tickets' | 'vouchers'
@@ -62,14 +61,12 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      <div className="folder-tabs">
-        <button className={`folder-tab ${section === 'tickets' ? 'active' : ''}`} onClick={() => setSection('tickets')}>
-          <FolderIcon color="blue" />
-          <span>예약 티켓</span>
+      <div className="day-tabs">
+        <button className={`pill ${section === 'tickets' ? 'active' : ''}`} onClick={() => setSection('tickets')}>
+          예약 티켓
         </button>
-        <button className={`folder-tab ${section === 'vouchers' ? 'active' : ''}`} onClick={() => setSection('vouchers')}>
-          <FolderIcon color="yellow" />
-          <span>바우처</span>
+        <button className={`pill ${section === 'vouchers' ? 'active' : ''}`} onClick={() => setSection('vouchers')}>
+          바우처
         </button>
       </div>
       {section === 'vouchers' && <VouchersTab trip={trip} />}

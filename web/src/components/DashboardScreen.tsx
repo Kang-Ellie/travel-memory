@@ -93,15 +93,24 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
             {filteredTrips.length === 0 ? (
               <div className="empty">{activeTab.label}이 없어요.</div>
             ) : (
-              <div className="trip-folder-grid">
+              <div className="grid" style={{ marginTop: 12 }}>
                 {filteredTrips.map((t) => (
-                  <div key={t.id} className="trip-folder-card" onClick={() => onOpenTrip(t)}>
-                    <FolderIcon color={activeTab.color} size={64} />
-                    <div className="title">{t.title}</div>
-                    <div className="meta">{fmtRange(t)}</div>
-                    {t.cities.length > 0 && <div className="meta">{tripCitiesLabel(t)}</div>}
-                    <div className="meta">{dday(t)}</div>
-                  </div>
+                  <Window
+                    key={t.id}
+                    title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
+                    color="pink"
+                    footer={
+                      <div className="card-footer">
+                        <span>🧳 {dday(t)}</span>
+                        <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
+                      </div>
+                    }
+                  >
+                    <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
+                    <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
+                    {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
+                    {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
+                  </Window>
                 ))}
               </div>
             )}
