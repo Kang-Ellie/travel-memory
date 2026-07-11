@@ -9,17 +9,15 @@ import TripCountryCityPicker from './TripCountryCityPicker'
 import TripWorkspace from './TripWorkspace'
 import TripBaseSection from './TripBaseSection'
 import ExpensesTab from './ExpensesTab'
-import VouchersTab from './VouchersTab'
 import TripPrepTab from './TripPrepTab'
 import FolderIcon, { type FolderColor } from './FolderIcon'
 
-type Tab = 'base' | 'workspace' | 'settlement' | 'vouchers' | 'prep'
+type Tab = 'base' | 'workspace' | 'settlement' | 'prep'
 
 const TABS: Array<{ key: Tab; label: string; color: FolderColor }> = [
   { key: 'base', label: 'BASE', color: 'blue' },
   { key: 'workspace', label: '일정 & 지출', color: 'purple' },
   { key: 'settlement', label: '정산', color: 'pink' },
-  { key: 'vouchers', label: '바우처', color: 'yellow' },
   { key: 'prep', label: '여행 준비', color: 'green' },
 ]
 
@@ -149,7 +147,6 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       {tab === 'base' && <TripBaseSection trip={trip} />}
       {tab === 'workspace' && <TripWorkspace trip={trip} />}
       {tab === 'settlement' && <ExpensesTab trip={trip} />}
-      {tab === 'vouchers' && <VouchersTab trip={trip} />}
       {tab === 'prep' && <TripPrepTab trip={trip} />}
     </Window>
   )

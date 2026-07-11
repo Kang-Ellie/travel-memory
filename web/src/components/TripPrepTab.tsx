@@ -10,6 +10,10 @@ import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
 import TicketQuickAdd, { type TicketKind } from './TicketQuickAdd'
+import FolderIcon from './FolderIcon'
+import VouchersTab from './VouchersTab'
+
+type PrepSection = 'tickets' | 'vouchers'
 
 function DayAssignRow({ trip, ev, onAssigned }: { trip: Trip; ev: TimelineEvent; onAssigned: () => void }) {
   const [day, setDay] = useState('1')
@@ -38,6 +42,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [places, setPlaces] = useState<Place[]>([])
   const [showAddPrebooked, setShowAddPrebooked] = useState(false)
   const [ticketKind, setTicketKind] = useState<TicketKind | null>(null)
+  const [section, setSection] = useState<PrepSection>('tickets')
 
   const refresh = () => {
     api.events.list(trip.id).then(setEvents)
@@ -57,7 +62,19 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      <Window title="PREBOOKED.EXE" color="blue">
+      <div className="folder-tabs">
+        <button className={`folder-tab ${section === 'tickets' ? 'active' : ''}`} onClick={() => setSection('tickets')}>
+          <FolderIcon color="blue" />
+          <span>예약 티켓</span>
+        </button>
+        <button className={`folder-tab ${section === 'vouchers' ? 'active' : ''}`} onClick={() => setSection('vouchers')}>
+          <FolderIcon color="yellow" />
+          <span>바우처</span>
+        </button>
+      </div>
+      {section === 'vouchers' && <VouchersTab trip={trip} />}
+      {section === 'tickets' && (
+        <Window title="PREBOOKED.EXE" color="blue">
         <p className="muted" style={{ marginTop: 0 }}>
           발렛·항공·숙소처럼 여행 초반에 미리 예약하는 것들을 한 눈에 모아뒀어요. 일차가 아직 정해지지 않았어도 예약 정보부터
           바로 티켓으로 남겨두고, 나중에 일정에 배치할 수 있어요.
@@ -198,6 +215,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           </>
         )}
       </Window>
+      )}
     </div>
   )
 }

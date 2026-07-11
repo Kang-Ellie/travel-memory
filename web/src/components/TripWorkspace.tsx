@@ -16,6 +16,9 @@ import ChecklistPanel from './ChecklistPanel'
 import DayNoteEditModal from './DayNoteEditModal'
 import DropdownMenu from './DropdownMenu'
 import BoardingPassCard from './BoardingPassCard'
+import ValetPassCard from './ValetPassCard'
+import LodgingPassCard from './LodgingPassCard'
+import DateTimePicker from './DateTimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
@@ -170,6 +173,8 @@ function EventCard({
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [placeDetailOpen, setPlaceDetailOpen] = useState(false)
   const isAirport = ev.place.category === '공항'
+  const isValet = ev.place.category === '발렛'
+  const isLodging = ev.place.category === '숙소'
   const [departAt, setDepartAt] = useState(ev.flight?.departAt ?? '')
   const [arriveAt, setArriveAt] = useState(ev.flight?.arriveAt ?? '')
   const [durationMinutes, setDurationMinutes] = useState(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
@@ -183,6 +188,11 @@ function EventCard({
   const [destination, setDestination] = useState(ev.flight?.destination ?? '')
   const [gate, setGate] = useState(ev.flight?.gate ?? '')
   const [seat, setSeat] = useState(ev.flight?.seat ?? '')
+  const [scheduledAt, setScheduledAt] = useState(ev.valet?.scheduledAt ?? '')
+  const [valetLocation, setValetLocation] = useState(ev.valet?.location ?? '')
+  const [valetCompany, setValetCompany] = useState(ev.valet?.company ?? '')
+  const [checkInAt, setCheckInAt] = useState(ev.lodging?.checkInAt ?? '')
+  const [checkOutAt, setCheckOutAt] = useState(ev.lodging?.checkOutAt ?? '')
   const logoInput = useRef<HTMLInputElement>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
@@ -203,6 +213,11 @@ function EventCard({
     setAirline(ev.flight?.airline ?? ''); setFlightNo(ev.flight?.flightNo ?? '')
     setDestination(ev.flight?.destination ?? ''); setGate(ev.flight?.gate ?? '')
     setSeat(ev.flight?.seat ?? '')
+    setScheduledAt(ev.valet?.scheduledAt ?? ''); setValetLocation(ev.valet?.location ?? '')
+    setValetCompany(ev.valet?.company ?? '')
+    setCheckInAt(ev.lodging?.checkInAt ?? ''); setCheckOutAt(ev.lodging?.checkOutAt ?? '')
+    if (isValet) { setBookingRef(ev.valet?.bookingRef ?? ''); setBookedVia(ev.valet?.bookedVia ?? ''); setConfirmed(ev.valet?.confirmed ?? false); setVoucherId(ev.valet?.voucherId ?? '') }
+    if (isLodging) { setBookingRef(ev.lodging?.bookingRef ?? ''); setBookedVia(ev.lodging?.bookedVia ?? ''); setConfirmed(ev.lodging?.confirmed ?? false); setVoucherId(ev.lodging?.voucherId ?? '') }
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -228,6 +243,21 @@ function EventCard({
         airline: airline.trim() || null, airlineLogoPath: ev.flight?.airlineLogoPath ?? null,
         flightNo: flightNo.trim() || null, destination: destination.trim() || null,
         gate: gate.trim() || null, seat: seat.trim() || null,
+      })
+    }
+    if (isValet) {
+      await api.events.setValet(ev.id, {
+        scheduledAt: scheduledAt.trim() || null, location: valetLocation.trim() || null,
+        company: valetCompany.trim() || null, bookedVia: bookedVia.trim() || null,
+        bookingRef: bookingRef.trim() || null, confirmed, voucherId: voucherId || null,
+        voucherTitle: null, note: null,
+      })
+    }
+    if (isLodging) {
+      await api.events.setLodging(ev.id, {
+        checkInAt: checkInAt.trim() || null, checkOutAt: checkOutAt.trim() || null,
+        bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
+        confirmed, voucherId: voucherId || null, voucherTitle: null, note: null,
       })
     }
     setEditing(false)
@@ -367,9 +397,9 @@ function EventCard({
                     <input type="text" value={departureLocation} placeholder="예: 인천공항 T2"
                       onChange={(e) => setDepartureLocation(e.target.value)} /></div>
                   <div className="field"><label>✈️ 출발시간</label>
-                    <input type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
+                    <DateTimePicker value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
                   <div className="field"><label>🛬 도착시간</label>
-                    <input type="datetime-local" value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
+                    <DateTimePicker value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
                   <div className="field" style={{ maxWidth: 100 }}><label>소요(분)</label>
                     <input type="number" value={durationMinutes} placeholder="75" onChange={(e) => setDurationMinutes(e.target.value)} /></div>
                   <div className="field" style={{ maxWidth: 100 }}><label>게이트</label>
@@ -380,6 +410,51 @@ function EventCard({
                     <input type="text" value={bookingRef} placeholder="ABC123" onChange={(e) => setBookingRef(e.target.value)} /></div>
                   <div className="field grow"><label>예약처</label>
                     <input type="text" value={bookedVia} placeholder="예: 진에어 앱" onChange={(e) => setBookedVia(e.target.value)} /></div>
+                  <div className="field"><label>🎫 바우처 연결</label>
+                    <Select value={voucherId} onChange={(e) => setVoucherId(e.target.value)}>
+                      <option value="">— 선택 안함 —</option>
+                      {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+                    </Select></div>
+                  <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                    ✅ 예약 확정
+                  </label>
+                </div>
+              )}
+              {isValet && (
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
+                  <div className="field"><label>🕐 예정 시간</label>
+                    <DateTimePicker value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></div>
+                  <div className="field grow"><label>위치</label>
+                    <input type="text" value={valetLocation} placeholder="예: 단기주차장 지하1층 A구역"
+                      onChange={(e) => setValetLocation(e.target.value)} /></div>
+                  <div className="field grow"><label>🚗 발렛사</label>
+                    <input type="text" value={valetCompany} placeholder="예: 투루발렛" onChange={(e) => setValetCompany(e.target.value)} /></div>
+                  <div className="field"><label>예약번호</label>
+                    <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
+                  <div className="field grow"><label>예약처</label>
+                    <input type="text" value={bookedVia} onChange={(e) => setBookedVia(e.target.value)} /></div>
+                  <div className="field"><label>🎫 바우처 연결</label>
+                    <Select value={voucherId} onChange={(e) => setVoucherId(e.target.value)}>
+                      <option value="">— 선택 안함 —</option>
+                      {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+                    </Select></div>
+                  <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                    ✅ 예약 확정
+                  </label>
+                </div>
+              )}
+              {isLodging && (
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
+                  <div className="field"><label>체크인</label>
+                    <DateTimePicker value={checkInAt} onChange={(e) => setCheckInAt(e.target.value)} /></div>
+                  <div className="field"><label>체크아웃</label>
+                    <DateTimePicker value={checkOutAt} onChange={(e) => setCheckOutAt(e.target.value)} /></div>
+                  <div className="field"><label>예약번호</label>
+                    <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
+                  <div className="field grow"><label>예약처</label>
+                    <input type="text" value={bookedVia} placeholder="예: 부킹닷컴" onChange={(e) => setBookedVia(e.target.value)} /></div>
                   <div className="field"><label>🎫 바우처 연결</label>
                     <Select value={voucherId} onChange={(e) => setVoucherId(e.target.value)}>
                       <option value="">— 선택 안함 —</option>
@@ -434,6 +509,24 @@ function EventCard({
                     <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>✈️ 탑승권 정보 입력하기</button>
+                  )}
+                </div>
+              )}
+              {isValet && (
+                <div style={{ marginBottom: 8 }}>
+                  {ev.valet && (ev.valet.scheduledAt || ev.valet.bookingRef || ev.valet.bookedVia) ? (
+                    <ValetPassCard valet={ev.valet} placeName={ev.place.name} />
+                  ) : (
+                    <button type="button" className="btn small" onClick={startEdit}>🚗 발렛 티켓 정보 입력하기</button>
+                  )}
+                </div>
+              )}
+              {isLodging && (
+                <div style={{ marginBottom: 8 }}>
+                  {ev.lodging && (ev.lodging.checkInAt || ev.lodging.checkOutAt || ev.lodging.bookingRef) ? (
+                    <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} />
+                  ) : (
+                    <button type="button" className="btn small" onClick={startEdit}>🏨 숙소 티켓 정보 입력하기</button>
                   )}
                 </div>
               )}

@@ -3,6 +3,7 @@ import type { Place } from '../../shared/types'
 import { api } from '../api'
 import Modal from './Modal'
 import Select from './Select'
+import DateTimePicker from './DateTimePicker'
 
 export type TicketKind = '발렛' | '항공' | '숙소'
 
@@ -104,7 +105,7 @@ export default function TicketQuickAdd({
       {kind === '발렛' && (
         <div className="form-row">
           <div className="field"><label>예정 시간</label>
-            <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></div>
+            <DateTimePicker value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} /></div>
           <div className="field grow"><label>위치</label>
             <input type="text" value={location} placeholder="예: 단기주차장 지하1층 A구역" onChange={(e) => setLocation(e.target.value)} /></div>
           <div className="field grow"><label>발렛사</label>
@@ -119,9 +120,9 @@ export default function TicketQuickAdd({
           <div className="field grow"><label>도착지</label>
             <input type="text" value={destination} placeholder="예: 나리타 (NRT)" onChange={(e) => setDestination(e.target.value)} /></div>
           <div className="field"><label>✈️ 출발시간</label>
-            <input type="datetime-local" value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
+            <DateTimePicker value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
           <div className="field"><label>🛬 도착시간</label>
-            <input type="datetime-local" value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
+            <DateTimePicker value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
           <div className="field"><label>항공사</label>
             <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
           <div className="field"><label>편명</label>
@@ -132,9 +133,9 @@ export default function TicketQuickAdd({
       {kind === '숙소' && (
         <div className="form-row">
           <div className="field"><label>체크인</label>
-            <input type="datetime-local" value={checkInAt} onChange={(e) => setCheckInAt(e.target.value)} /></div>
+            <DateTimePicker value={checkInAt} onChange={(e) => setCheckInAt(e.target.value)} /></div>
           <div className="field"><label>체크아웃</label>
-            <input type="datetime-local" value={checkOutAt} onChange={(e) => setCheckOutAt(e.target.value)} /></div>
+            <DateTimePicker value={checkOutAt} onChange={(e) => setCheckOutAt(e.target.value)} /></div>
         </div>
       )}
 
