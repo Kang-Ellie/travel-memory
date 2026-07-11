@@ -100,22 +100,28 @@ function TransitChip({
       <span>{TRANSIT_ICON[segment.mode] ?? '➡️'} {segment.mode}{segment.durationText ? ` · ${segment.durationText}` : ''}</span>
       {segment.note && <span className="muted">· {segment.note}</span>}
       {segment.voucherId ? (
-        <span className="chip green" title={segment.voucherTitle ?? ''} style={{ cursor: 'pointer' }} onClick={unlink}>
-          🎫 예약완료 ({segment.voucherTitle})
+        <span className="chip green" title={`📎 ${segment.voucherTitle ?? ''} — 눌러서 연결 해제`} style={{ cursor: 'pointer' }} onClick={unlink}>
+          📎
         </span>
-      ) : linking ? (
-        vouchers.length === 0 ? (
-          <span className="muted">[📎 바우처] 탭에 먼저 파일을 올려두세요.</span>
-        ) : (
-          <Select value="" onChange={(e) => linkVoucher(e.target.value)} placeholder="바우처 선택">
-            {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
-          </Select>
-        )
       ) : (
         <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
       )}
       <button className="btn small ghost" onClick={() => setEditing(true)}>수정</button>
       <button className="btn small ghost" onClick={remove}>×</button>
+      {linking && (
+        <Modal title="바우처 연결" onClose={() => setLinking(false)}>
+          {vouchers.length === 0 ? (
+            <div className="empty">[📎 바우처] 탭에 먼저 파일을 올려두세요.</div>
+          ) : (
+            <div className="field">
+              <label>바우처 선택</label>
+              <Select value="" onChange={(e) => linkVoucher(e.target.value)} placeholder="바우처 선택">
+                {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+              </Select>
+            </div>
+          )}
+        </Modal>
+      )}
     </div>
   )
 }
@@ -297,10 +303,13 @@ function EventCard({
         </span>
       </div>
       {(ev.place.address || ev.place.mapUrl) && (
-        <div className="muted" style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          {ev.place.address && <span>📍 {ev.place.address}</span>}
-          {ev.place.mapUrl && (
-            <a className="btn small ghost" href={ev.place.mapUrl} target="_blank" rel="noreferrer">🗺 지도에서 보기</a>
+        <div className="muted" style={{ marginTop: 6 }}>
+          {ev.place.mapUrl ? (
+            <a href={ev.place.mapUrl} target="_blank" rel="noreferrer" title="지도에서 보기">
+              📍 {ev.place.address || '지도에서 보기'}
+            </a>
+          ) : (
+            <span>📍 {ev.place.address}</span>
           )}
         </div>
       )}
@@ -334,6 +343,10 @@ function EventCard({
         <div className="event-content-col">
           {editing && (
             <Modal title={`${ev.place.name} 수정`} onClose={() => setEditing(false)}>
+              <p className="muted" style={{ marginTop: 0 }}>
+                여기서는 이 일정(방문 시간·리뷰·메모 등)만 수정해요. 장소 이름·주소·분류·평점처럼 장소 자체의 정보는
+                여러 여행에서 공유되기 때문에 [📍 장소 족보] 탭에서 수정해야 다른 여행에도 함께 반영돼요.
+              </p>
               {isAirport && (
                 <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
                   <div className="field"><label>🛫 출발장소</label>
@@ -445,8 +458,11 @@ function EventCard({
         <div className="quick-expense-row">
           {eventExpenses.map((exp) => (
             <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
-              <span className="dot" style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
-              <span className={`dot ${exp.isShared ? 'shared' : 'personal'}`} title={exp.isShared ? '공동지출' : '개인지출'} />
+              <span
+                className={`dot ${exp.isShared ? 'shared' : 'personal'}`}
+                style={{ background: CATEGORY_COLOR[exp.category as keyof typeof CATEGORY_COLOR] ?? '#999' }}
+                title={exp.isShared ? '공동지출' : '개인지출'}
+              />
               {exp.category} {fmtMoney(exp.amount, exp.currency)}
               {exp.purchaseItems && <span className="muted"> · {exp.purchaseItems}</span>}
               <button className="del" onClick={() => api.expenses.delete(exp.id).then(onChanged)}>×</button>

@@ -142,19 +142,21 @@ function PlaceRow({
         {place.name}
         {place.lat != null && <span title="좌표 있음 — 지도 표시 가능"> 🗺</span>}
       </div>
-      <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
-      {place.hours && <div className="muted">🕒 {place.hours}</div>}
-      {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
-      {(place.pros || place.cons) && (
-        <div className="muted">
-          {place.pros && <>👍 {place.pros} </>}
-          {place.cons && <>👎 {place.cons}</>}
-        </div>
-      )}
-      {linkedBucketItems.length > 0 && (
-        <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
-      )}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 6 }}>
+        <div className="muted">{place.address || '주소 없음'}{place.memo ? ` · 📝 ${place.memo}` : ''}</div>
+        {place.hours && <div className="muted">🕒 {place.hours}</div>}
+        {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
+        {(place.pros || place.cons) && (
+          <div className="muted">
+            {place.pros && <>👍 {place.pros} </>}
+            {place.cons && <>👎 {place.cons}</>}
+          </div>
+        )}
+        {linkedBucketItems.length > 0 && (
+          <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 12 }} onClick={(e) => e.stopPropagation()}>
         <span className="muted" style={{ cursor: 'pointer' }} onClick={onToggle}>{expanded ? '접기 ▲' : '방문 기록 보기 ▼'}</span>
         <span className="grow" />
         {place.mapUrl && (

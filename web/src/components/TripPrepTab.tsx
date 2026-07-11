@@ -130,7 +130,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
       </Window>
 
       <Window title="PREP_LIST.EXE" color="green">
-        <div className="grid">
+        <div className="prep-split">
           <ChecklistPanel tripId={trip.id} scope="predeparture" title="🛫 여행 전 Todo" addPlaceholder="예: 여행자보험 가입" />
           <ChecklistPanel tripId={trip.id} scope="packing" title="🎒 여행 준비물" addPlaceholder="예: 여권, 충전기" />
         </div>

@@ -57,14 +57,19 @@ export default function Select({
     }
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     const close = () => setOpen(false)
+    // 메뉴 내부 스크롤(옵션 목록을 훑어보는 것)까지 닫아버리지 않도록, 메뉴 안에서 난 스크롤은 무시한다.
+    const closeOnOutsideScroll = (e: Event) => {
+      if (e.target instanceof Node && menuRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
     window.addEventListener('mousedown', onDocClick)
     window.addEventListener('keydown', onKey)
-    window.addEventListener('scroll', close, true)
+    window.addEventListener('scroll', closeOnOutsideScroll, true)
     window.addEventListener('resize', close)
     return () => {
       window.removeEventListener('mousedown', onDocClick)
       window.removeEventListener('keydown', onKey)
-      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('scroll', closeOnOutsideScroll, true)
       window.removeEventListener('resize', close)
     }
   }, [open])

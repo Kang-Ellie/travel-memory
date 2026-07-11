@@ -321,6 +321,12 @@ textarea { resize: vertical; min-height: 70px; }
   .base-split > * + * { padding-top: 14px; margin-top: 14px; border-top: 2px dashed rgba(45,42,62,0.35); }
 }
 
+/* ── 여행 준비: 여행 전 Todo(1) : 여행 준비물(2) 분할 ─── */
+.prep-split { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
+@media (max-width: 900px) {
+  .prep-split { grid-template-columns: 1fr; }
+}
+
 .card-footer {
   display: flex;
   justify-content: space-between;
@@ -599,9 +605,12 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   background: #fff;
   box-shadow: 2px 2px 0 var(--shadow);
 }
-.event-expense-chip .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.event-expense-chip .dot.shared { background: #4a90e2; }
-.event-expense-chip .dot.personal { background: #f5a623; }
+.event-expense-chip .dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin: 0 2px;
+  box-shadow: 0 0 0 1.5px #fff, 0 0 0 3px var(--dot-ring, transparent);
+}
+.event-expense-chip .dot.shared { --dot-ring: #4a90e2; }
+.event-expense-chip .dot.personal { --dot-ring: #f5a623; }
 .event-expense-chip .del { border: none; background: none; cursor: pointer; font-weight: 800; padding: 0 0 0 2px; }
 
 /* ── 예산 미터 (BudgetBar) ─────────────── */
