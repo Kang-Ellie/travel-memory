@@ -5,24 +5,20 @@ import Login from './Login'
 import DashboardScreen from './components/DashboardScreen'
 import TripsScreen from './components/TripsScreen'
 import TripWindow from './components/TripWindow'
-import PlacesScreen from './components/PlacesScreen'
+import BookmarksScreen from './components/BookmarksScreen'
 import CountriesScreen from './components/CountriesScreen'
-import BucketListScreen from './components/BucketListScreen'
-import SnsArchiveScreen from './components/SnsArchiveScreen'
 import MembersScreen from './components/MembersScreen'
 import SettingsScreen from './components/SettingsScreen'
 
-type Screen = 'dashboard' | 'trips' | 'places' | 'countries' | 'bucket' | 'sns' | 'members' | 'settings'
+type Screen = 'dashboard' | 'trips' | 'bookmarks' | 'countries' | 'members' | 'settings'
 
-const NAV: Array<{ key: Screen; label: string }> = [
-  { key: 'dashboard', label: '🏠 대시보드' },
-  { key: 'trips', label: '🏝 여행' },
-  { key: 'places', label: '📍 장소 족보' },
-  { key: 'countries', label: '🌍 국가·도시' },
-  { key: 'bucket', label: '✨ 버킷리스트' },
-  { key: 'sns', label: '🔗 SNS 아카이브' },
-  { key: 'members', label: '👥 동행인' },
-  { key: 'settings', label: '⚙️ 설정' },
+const NAV: Array<{ key: Screen; icon: string; label: string; eng: string }> = [
+  { key: 'dashboard', icon: '🏠', label: '대시보드', eng: 'HOME' },
+  { key: 'trips', icon: '🏝', label: '여행', eng: 'TRIPS' },
+  { key: 'bookmarks', icon: '📚', label: '북마크', eng: 'BOOKMARKS' },
+  { key: 'countries', icon: '🌍', label: '국가 도감', eng: 'ATLAS' },
+  { key: 'members', icon: '👥', label: '동행인', eng: 'PEOPLE' },
+  { key: 'settings', icon: '⚙️', label: '설정', eng: 'SETTINGS' },
 ]
 
 function useClock(): string {
@@ -63,7 +59,7 @@ export default function App() {
     const prefill = extractSharePrefill()
     if (prefill) {
       setSharePrefill(prefill)
-      setScreen('sns')
+      setScreen('bookmarks')
       window.history.replaceState(null, '', '/')
     }
   }, [])
@@ -83,15 +79,31 @@ export default function App() {
           {NAV.map((n) => (
             <button
               key={n.key}
-              className={`pill ${screen === n.key && !openTrip ? 'active' : ''}`}
+              className={`sidebar-nav-btn ${screen === n.key && !openTrip ? 'active' : ''}`}
               onClick={() => { setScreen(n.key); setOpenTrip(null) }}
             >
-              {n.label}
+              <span className="sidebar-nav-icon">{n.icon}</span>
+              <span className="sidebar-nav-text">
+                <span className="sidebar-nav-label">{n.label}</span>
+                <span className="sidebar-nav-eng">{n.eng}</span>
+              </span>
             </button>
           ))}
-          {openTrip && <button className="pill active">✈️ {openTrip.title}</button>}
-          <button className="pill logout" onClick={() => auth.logout().then(() => setAuthed(false))}>
-            🚪 로그아웃
+          {openTrip && (
+            <button className="sidebar-nav-btn active">
+              <span className="sidebar-nav-icon">✈️</span>
+              <span className="sidebar-nav-text">
+                <span className="sidebar-nav-label">{openTrip.title}</span>
+                <span className="sidebar-nav-eng">TRIP</span>
+              </span>
+            </button>
+          )}
+          <button className="sidebar-nav-btn logout" onClick={() => auth.logout().then(() => setAuthed(false))}>
+            <span className="sidebar-nav-icon">🚪</span>
+            <span className="sidebar-nav-text">
+              <span className="sidebar-nav-label">로그아웃</span>
+              <span className="sidebar-nav-eng">LOGOUT</span>
+            </span>
           </button>
         </nav>
 
@@ -102,12 +114,10 @@ export default function App() {
             <>
               {screen === 'dashboard' && <DashboardScreen onOpenTrip={setOpenTrip} />}
               {screen === 'trips' && <TripsScreen onOpenTrip={setOpenTrip} />}
-              {screen === 'places' && <PlacesScreen />}
-              {screen === 'countries' && <CountriesScreen />}
-              {screen === 'bucket' && <BucketListScreen />}
-              {screen === 'sns' && (
-                <SnsArchiveScreen prefill={sharePrefill} onConsumedPrefill={() => setSharePrefill(null)} />
+              {screen === 'bookmarks' && (
+                <BookmarksScreen prefill={sharePrefill} onConsumedPrefill={() => setSharePrefill(null)} />
               )}
+              {screen === 'countries' && <CountriesScreen />}
               {screen === 'members' && <MembersScreen />}
               {screen === 'settings' && <SettingsScreen />}
             </>

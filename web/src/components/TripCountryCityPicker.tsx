@@ -3,6 +3,7 @@ import type { Country, City } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
 import { CountryFields, EMPTY_COUNTRY_FORM, type CountryForm } from './CountriesScreen'
+import FolderIcon from './FolderIcon'
 
 // 여행 만들기/수정에서 국가·도시를 고르는 공용 위젯. 여러 국가를 넘나드는 여행도 있을 수 있어서
 // 국가도 여러 개 고를 수 있고, 각 국가 밑에 그 나라 도시를 체크한다.
@@ -56,15 +57,21 @@ export default function TripCountryCityPicker({
 
   return (
     <div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        {countries.map((c) => (
-          <button key={c.id} type="button" className={`pill ${selCountryIds.has(c.id) ? 'active' : ''}`} onClick={() => toggleCountry(c.id)}>
-            {flagEmoji(c.code)} {c.name}
-          </button>
-        ))}
-        <button type="button" className="btn small" onClick={() => setAddingCountry((v) => !v)}>
-          {addingCountry ? '닫기' : '✚ 새 국가 등록'}
-        </button>
+      <p className="muted" style={{ marginTop: 0 }}>여러 나라를 넘나드는 여행이면 국가를 여러 개 골라도 돼요.</p>
+      <div className="country-folder-grid">
+        {countries.map((c) => {
+          const selected = selCountryIds.has(c.id)
+          return (
+            <div key={c.id} className={`country-folder-card ${selected ? 'selected' : ''}`} onClick={() => toggleCountry(c.id)}>
+              <FolderIcon color={selected ? 'purple' : 'blue'} size={56} />
+              <div className="title">{flagEmoji(c.code)} {c.name}</div>
+            </div>
+          )
+        })}
+        <div className="country-folder-card add" onClick={() => setAddingCountry((v) => !v)}>
+          <div style={{ fontSize: 32, lineHeight: 1 }}>{addingCountry ? '×' : '＋'}</div>
+          <div className="title">{addingCountry ? '닫기' : '새 국가'}</div>
+        </div>
       </div>
 
       {addingCountry && (
@@ -78,7 +85,7 @@ export default function TripCountryCityPicker({
         const country = countries.find((c) => c.id === countryId)
         const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
         return (
-          <div key={countryId} style={{ marginTop: 10 }}>
+          <div key={countryId} className="country-cities-panel">
             <div className="muted" style={{ fontWeight: 700, marginBottom: 4 }}>{flagEmoji(country?.code)} {country?.name} 도시</div>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               {citiesOfCountry.length === 0 ? (
