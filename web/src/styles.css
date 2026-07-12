@@ -47,20 +47,25 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   height: 100vh;
 }
 
-/* ── 상단 티커 ─────────────────────────── */
+/* ── 상단 헤더 ─────────────────────────── */
 .ticker {
   background: var(--ink);
   color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  padding: 8px 0;
-  white-space: nowrap;
-  overflow: hidden;
+  padding: 16px 20px;
   flex-shrink: 0;
 }
-.ticker span { margin: 0 22px; }
-.ticker .pink { color: var(--pink); }
+.ticker-sub {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  color: var(--pink);
+  text-transform: uppercase;
+}
+.ticker-title {
+  font-size: 24px;
+  font-weight: 800;
+  margin-top: 4px;
+}
 
 /* ── 내비게이션 (왼쪽 사이드바) ─────────── */
 .app-body { display: flex; flex: 1; min-height: 0; }

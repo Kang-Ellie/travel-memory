@@ -71,19 +71,12 @@ export default function App() {
   if (authed === null) return null
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />
 
-  const tickerItems = (
-    <>
-      <span>♥ TRAVEL ON</span>
-      <span className="pink">✦ 우리끼리 여행 기록</span>
-      <span>♥ ANYWHERE, ANY DEVICE</span>
-      <span className="pink">✦ 동선 · 리뷰 · 정산 · 바우처</span>
-      <span>♥ MADE 4 US</span>
-    </>
-  )
-
   return (
     <div className="app">
-      <div className="ticker">{tickerItems}{tickerItems}</div>
+      <div className="ticker">
+        <div className="ticker-sub">NOW, HERE</div>
+        <div className="ticker-title">나를 채우는, 여백</div>
+      </div>
 
       <div className="app-body">
         <nav className="nav sidebar-nav">
