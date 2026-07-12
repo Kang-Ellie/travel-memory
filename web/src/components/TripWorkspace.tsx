@@ -834,17 +834,15 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           const spend = computeDailySpend(trip, expenses, d, rates).total
           const note = dayNotes.find((n) => n.dayNumber === d) ?? null
           const status = dailyBudgetStatus(spend, note?.budget ?? null)
-          const eventCount = events.filter((e) => e.dayNumber === d).length
           return (
             <div key={d} className={`day-nav-btn ${day === d ? 'active' : ''}`}
               style={{ position: 'relative', cursor: 'pointer' }}
               onClick={() => setDay(d)}>
               <div className="day-nav-content" style={{ paddingRight: 20 }}>
-                <div className="day-nav-head">
-                  <span>📁 {d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span></span>
-                  <span className="day-nav-badge">{eventCount}</span>
+                <div>
+                  {d}일차 <span style={{ fontWeight: 400, fontSize: 11 }}>{dayLabel(trip, d)}</span>
+                  {note?.weatherEmoji && <span style={{ marginLeft: 4 }}>{note.weatherEmoji}</span>}
                 </div>
-                {note?.weatherEmoji && <div style={{ fontWeight: 400, fontSize: 11 }}>{note.weatherEmoji}</div>}
                 {note?.note && <div style={{ fontWeight: 400, fontSize: 11 }}>{note.note}</div>}
                 {cityInfo && <div style={{ fontWeight: 400, fontSize: 11 }}>{cityInfo.flags} {cityInfo.label}</div>}
                 <div style={{ fontWeight: 400, fontSize: 11 }}>💸 {fmtMoney(spend, 'KRW')}</div>

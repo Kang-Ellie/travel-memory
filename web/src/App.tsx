@@ -69,11 +69,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <div className="ticker">
-        <div className="ticker-sub">NOW, HERE</div>
-        <div className="ticker-title">나를 채우는, 여백</div>
-      </div>
-
       <div className="app-body">
         <nav className="nav sidebar-nav">
           {NAV.map((n) => (

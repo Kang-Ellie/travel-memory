@@ -57,6 +57,11 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
 
   return (
     <div>
+      <div className="dash-hero">
+        <div className="dash-hero-sub">NOW, HERE</div>
+        <div className="dash-hero-title">나를 채우는, 여백</div>
+      </div>
+
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 280px' }}>
           <Window title="TRIP_SUMMARY.EXE" color="blue">
