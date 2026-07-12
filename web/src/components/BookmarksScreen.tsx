@@ -4,6 +4,7 @@ import PlacesScreen from './PlacesScreen'
 import BucketListScreen from './BucketListScreen'
 import SnsArchiveScreen from './SnsArchiveScreen'
 import FolderIcon, { type FolderColor } from './FolderIcon'
+import PageHeader from './PageHeader'
 
 type BookmarkSection = 'places' | 'bucket' | 'sns'
 
@@ -22,6 +23,8 @@ export default function BookmarksScreen({
 
   return (
     <div>
+      <PageHeader icon="📚" title="북마크" eng="BOOKMARKS"
+        description="장소·버킷리스트·SNS에서 저장해둔 것들을 한 곳에 모아뒀어요." />
       <div className="folder-tabs">
         {SECTIONS.map((s) => (
           <button key={s.key} className={`folder-tab ${section === s.key ? 'active' : ''}`}

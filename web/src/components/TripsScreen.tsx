@@ -7,6 +7,7 @@ import Window from './Window'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
+import PageHeader from './PageHeader'
 
 export function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
@@ -95,10 +96,9 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
 
   return (
     <div>
-      <div className="hero">
-        <span className="badge">💾 OUR TRIPS · PRIVATE DB</span>
-        <h1>TRAVEL ON</h1>
-        <p style={{ fontWeight: 700 }}>우리끼리 쓰는 여행 기록장 — 동선, 솔직 리뷰, 정산까지 한 곳에.</p>
+      <PageHeader icon="🏝" title="여행" eng="TRIPS"
+        description="우리끼리 쓰는 여행 기록장 — 동선, 솔직 리뷰, 정산까지 한 곳에." />
+      <div className="row" style={{ border: 'none', padding: 0, background: 'transparent', marginBottom: 18 }}>
         <button className="btn primary" onClick={() => setCreating((v) => !v)}>
           {creating ? '닫기' : '＋ 새 여행 만들기'}
         </button>

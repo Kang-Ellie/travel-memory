@@ -4,6 +4,7 @@ import { api } from '../api'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
+import PageHeader from './PageHeader'
 
 export type CountryForm = Omit<Country, 'id' | 'createdAt'>
 
@@ -233,10 +234,9 @@ export default function CountriesScreen() {
 
   return (
     <div>
+      <PageHeader icon="🌍" title="국가 도감" eng="ATLAS"
+        description="국가별 기본 정보를 등록해두면 여행을 만들 때 나라·도시를 골라서 자동으로 연결할 수 있어요." />
       <Window title="COUNTRY_ADD.EXE" color="blue">
-        <p className="muted" style={{ marginTop: 0 }}>
-          국가별 기본 정보를 한 번 등록해두면 여행을 만들 때 나라·도시를 골라서 자동으로 연결할 수 있어요.
-        </p>
         <button className="btn primary" onClick={() => setCreating(true)}>＋ 새 국가 등록</button>
       </Window>
 

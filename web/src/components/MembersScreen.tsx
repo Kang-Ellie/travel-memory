@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Member } from '../../shared/types'
 import { api } from '../api'
 import Window from './Window'
+import PageHeader from './PageHeader'
 
 export default function MembersScreen() {
   const [members, setMembers] = useState<Member[]>([])
@@ -28,10 +29,10 @@ export default function MembersScreen() {
   }
 
   return (
-    <Window title="OUR_CREW.EXE" color="purple">
-      <p style={{ marginTop: 0, fontWeight: 700 }}>
-        여행에 함께 가는 사람들을 등록해두면, 여행 만들 때 선택하고 가계부 정산에 사용돼요. (나 자신도 등록!)
-      </p>
+    <div>
+      <PageHeader icon="👥" title="동행인" eng="PEOPLE"
+        description="여행에 함께 가는 사람들을 등록해두면, 여행 만들 때 선택하고 가계부 정산에 사용돼요. (나 자신도 등록!)" />
+      <Window title="OUR_CREW.EXE" color="purple">
       <div className="form-row" style={{ marginBottom: 16 }}>
         <div className="field grow">
           <label>이름</label>
@@ -52,6 +53,7 @@ export default function MembersScreen() {
           <button className="x-btn" onClick={() => remove(m)}>×</button>
         </div>
       ))}
-    </Window>
+      </Window>
+    </div>
   )
 }

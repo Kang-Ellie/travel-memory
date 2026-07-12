@@ -673,6 +673,12 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
   font-variant-numeric: tabular-nums;
 }
 
+/* ── 페이지 헤더 (왼쪽 정렬 타이틀) ────────── */
+.page-header { margin-bottom: 18px; }
+.page-header-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.page-header-title { font-size: 28px; font-weight: 800; margin: 0; }
+.page-header-desc { margin: 6px 0 0; color: rgba(45, 42, 62, 0.65); font-weight: 600; }
+
 /* ── 기타 ──────────────────────────────── */
 .hero { text-align: center; padding: 28px 10px 10px; }
 .hero h1 {

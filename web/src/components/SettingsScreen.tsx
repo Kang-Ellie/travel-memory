@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, API_BASE } from '../api'
 import Window from './Window'
+import PageHeader from './PageHeader'
 
 export default function SettingsScreen() {
   const [apiKey, setApiKey] = useState('')
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
 
   return (
     <div>
+      <PageHeader icon="⚙️" title="설정" eng="SETTINGS" />
       <Window title="GOOGLE_API.EXE" color="yellow">
         <p style={{ marginTop: 0, fontWeight: 700 }}>
           구글 API 키를 등록하면 <b>장소 검색</b>과 <b>지도 표시</b>가 켜져요.
