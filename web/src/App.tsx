@@ -77,6 +77,7 @@ export default function App() {
     <div className="app">
       <div className="app-body">
         <nav className="nav sidebar-nav">
+          <div className="sidebar-logo">YEOBAEK</div>
           {NAV.map((n) => (
             <button
               key={n.key}
