@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Trip } from '../shared/types'
-import { auth } from './api'
+import { auth, api } from './api'
+import { flagEmoji } from './categories'
 import Login from './Login'
 import DashboardScreen from './components/DashboardScreen'
 import TripsScreen from './components/TripsScreen'
@@ -52,6 +53,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>('dashboard')
   const [openTrip, setOpenTrip] = useState<Trip | null>(null)
   const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null)
+  const [visitedFlags, setVisitedFlags] = useState<string[]>([])
   const clock = useClock()
 
   useEffect(() => {
@@ -62,6 +64,10 @@ export default function App() {
       setScreen('bookmarks')
       window.history.replaceState(null, '', '/')
     }
+    Promise.all([api.countries.list(), api.cities.list()]).then(([countries, cities]) => {
+      const visitedCountryIds = new Set(cities.filter((c) => c.visited).map((c) => c.countryId))
+      setVisitedFlags(countries.filter((c) => visitedCountryIds.has(c.id)).map((c) => flagEmoji(c.code)))
+    })
   }, [])
 
   if (authed === null) return null
@@ -84,6 +90,11 @@ export default function App() {
               </span>
             </button>
           ))}
+          {visitedFlags.length > 0 && (
+            <div className="sidebar-flags-row" title="내가 간 나라">
+              {visitedFlags.map((f, i) => <span key={i}>{f}</span>)}
+            </div>
+          )}
           {openTrip && (
             <button className="sidebar-nav-btn active">
               <span className="sidebar-nav-icon">✈️</span>
