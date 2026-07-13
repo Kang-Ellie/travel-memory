@@ -41,6 +41,7 @@ export interface City {
   name: string
   flightDuration: string | null
   timeDiff: string | null
+  flightAirport: string | null
   createdAt: string
   visited: boolean
 }

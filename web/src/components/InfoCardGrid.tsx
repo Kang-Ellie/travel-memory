@@ -2,6 +2,7 @@ export interface InfoCardItem {
   icon: string
   label: string
   value: string | null | undefined
+  sub?: string | null // 값 아래에 작게 덧붙일 보조 설명 (예: "KIX 기준")
 }
 
 // "여행 기초정보" 카드 그리드 — 국가 도감·여행 BASE 탭에서 공용으로 쓰는 아이콘 카드 목록.
@@ -18,6 +19,7 @@ export default function InfoCardGrid({ items }: { items: InfoCardItem[] }) {
             <span className="info-card-label">{it.label}</span>
           </div>
           <div className="info-card-value">{it.value}</div>
+          {it.sub && <div className="info-card-sub">{it.sub}</div>}
         </div>
       ))}
     </div>

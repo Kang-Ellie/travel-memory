@@ -664,6 +664,7 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .info-card-icon { font-size: 15px; }
 .info-card-value { font-weight: 800; font-size: 15px; }
+.info-card-sub { font-size: 11px; color: rgba(45, 42, 62, 0.5); margin-top: 3px; }
 
 .plain-link { text-decoration: none; color: inherit; }
 .plain-link:hover { text-decoration: underline; }

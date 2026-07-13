@@ -66,10 +66,12 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   const [name, setName] = useState(city.name)
   const [flightDuration, setFlightDuration] = useState(city.flightDuration ?? '')
   const [timeDiff, setTimeDiff] = useState(city.timeDiff ?? '')
+  const [flightAirport, setFlightAirport] = useState(city.flightAirport ?? '')
 
   const save = async () => {
     await api.cities.update(city.id, {
       name: name.trim(), flightDuration: flightDuration.trim() || null, timeDiff: timeDiff.trim() || null,
+      flightAirport: flightAirport.trim() || null,
     })
     setEditing(false)
     onChanged()
@@ -88,6 +90,8 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="field"><label>항공 소요시간</label>
             <input type="text" value={flightDuration} placeholder="1시간 15분" onChange={(e) => setFlightDuration(e.target.value)} /></div>
+          <div className="field"><label>기준 공항 (선택)</label>
+            <input type="text" value={flightAirport} placeholder="예: KIX" onChange={(e) => setFlightAirport(e.target.value)} /></div>
           <div className="field"><label>시차</label>
             <input type="text" value={timeDiff} placeholder="차이없음" onChange={(e) => setTimeDiff(e.target.value)} /></div>
           <div style={{ marginTop: 12 }}>
@@ -104,13 +108,15 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <span className={`chip ${city.visited ? 'green' : 'yellow'}`}>{city.visited ? '✅ 방문완료' : '⏳ 미방문'}</span>
         <div className="grow" style={{ fontWeight: 800 }}>{city.name}</div>
+      </div>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 4 }}>
         <button className="btn small" onClick={() => setEditing(true)}>수정</button>
         <button className="x-btn" onClick={remove}>×</button>
       </div>
       {city.flightDuration || city.timeDiff ? (
         <div style={{ marginTop: 8 }}>
           <InfoCardGrid items={[
-            { icon: '✈️', label: '항공', value: city.flightDuration },
+            { icon: '✈️', label: '항공', value: city.flightDuration, sub: city.flightAirport ? `${city.flightAirport} 기준` : null },
             { icon: '🕐', label: '시차', value: city.timeDiff },
           ]} />
         </div>
@@ -167,19 +173,25 @@ function CountryCard({
           <strong style={{ fontSize: 13 }}>🧭 여행 기초정보</strong>
           <div style={{ marginTop: 10 }}>
             <InfoCardGrid items={[
+              { icon: '🏛', label: '수도', value: country.capital },
               { icon: '🛂', label: '비자', value: country.visa },
-              { icon: '💱', label: '환율', value: country.exchangeRate },
-              { icon: '🔌', label: '전압', value: country.voltage },
-              { icon: '⛅', label: '날씨', value: country.weather },
               { icon: '🗣', label: '언어', value: country.language },
+              { icon: '💴', label: '통화', value: country.currency },
+              { icon: '☎️', label: '국가번호', value: country.phoneCode },
+              { icon: '🔌', label: '전압', value: country.voltage },
+              { icon: '💱', label: '환율', value: country.exchangeRate },
+              { icon: '⛅', label: '날씨', value: country.weather },
               { icon: '💰', label: '팁', value: country.tip },
               { icon: '📈', label: '물가', value: country.priceLevel },
             ]} />
           </div>
 
-          <div className="muted section-gap" style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
-            <div><strong>수도</strong> {country.capital || '—'} · <strong>국가번호</strong> {country.phoneCode || '—'} · <strong>통화</strong> {country.currency || '—'}</div>
-            {country.prepDocs && <div>📋 준비서류: {country.prepDocs}</div>}
+          <div className="section-gap" style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ink)' }}>
+            {country.prepDocs && (
+              <div style={{ fontWeight: 800, background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
+                📋 준비서류: {country.prepDocs}
+              </div>
+            )}
             <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
           </div>
           <div style={{ marginTop: 10 }}>

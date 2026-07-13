@@ -165,17 +165,24 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               <div key={co.id} className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ fontWeight: 800, marginBottom: 10 }}>{flagEmoji(co.code)} {co.name}</div>
                 <InfoCardGrid items={[
+                  { icon: '🏛', label: '수도', value: co.capital },
                   { icon: '🛂', label: '비자', value: co.visa },
-                  { icon: '💱', label: '환율', value: co.exchangeRate },
-                  { icon: '🔌', label: '전압', value: co.voltage },
-                  { icon: '⛅', label: '날씨', value: co.weather },
                   { icon: '🗣', label: '언어', value: co.language },
+                  { icon: '💴', label: '통화', value: co.currency },
+                  { icon: '☎️', label: '국가번호', value: co.phoneCode },
+                  { icon: '🔌', label: '전압', value: co.voltage },
+                  { icon: '💱', label: '환율', value: co.exchangeRate },
+                  { icon: '⛅', label: '날씨', value: co.weather },
                   { icon: '💰', label: '팁', value: co.tip },
                   { icon: '📈', label: '물가', value: co.priceLevel },
                 ]} />
-                <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
-                  🏛 수도 {co.capital || '—'} · 🚓 경찰 {co.emergencyPolice || '—'} · 🚑 응급 {co.emergencyMedical || '—'}
-                  {co.prepDocs && <> · 📋 {co.prepDocs}</>}
+                <div style={{ fontSize: 12, marginTop: 8, color: 'var(--ink)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {co.prepDocs && (
+                    <div style={{ fontWeight: 800, background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
+                      📋 준비서류: {co.prepDocs}
+                    </div>
+                  )}
+                  <div>🚓 경찰 {co.emergencyPolice || '—'} · 🚑 응급 {co.emergencyMedical || '—'}</div>
                 </div>
 
                 {citiesOfCountry.length === 0 ? (
@@ -185,7 +192,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                     <div key={c.id} style={{ marginTop: 10 }}>
                       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🏙 {c.name}</div>
                       <InfoCardGrid items={[
-                        { icon: '✈️', label: '항공', value: c.flightDuration },
+                        { icon: '✈️', label: '항공', value: c.flightDuration, sub: c.flightAirport ? `${c.flightAirport} 기준` : null },
                         { icon: '🕐', label: '시차', value: c.timeDiff },
                       ]} />
                     </div>

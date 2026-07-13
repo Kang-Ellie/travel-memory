@@ -339,5 +339,8 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS tip TEXT;
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS price_level TEXT;
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS exchange_rate TEXT;
+
+    -- 도시별 항공 소요시간이 어느 공항 기준인지(예: 인천 도시는 공항이 여러 개일 수 있음)
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_airport TEXT;
   `)
 }

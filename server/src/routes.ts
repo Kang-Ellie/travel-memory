@@ -123,7 +123,7 @@ const mapCountry = (r: any) => ({
 })
 const mapCity = (r: any) => ({
   id: r.id, countryId: r.country_id, name: r.name, flightDuration: r.flight_duration,
-  timeDiff: r.time_diff, createdAt: r.created_at, visited: !!r.visited,
+  timeDiff: r.time_diff, flightAirport: r.flight_airport, createdAt: r.created_at, visited: !!r.visited,
 })
 const mapChecklist = (r: any) => ({
   id: r.id, tripId: r.trip_id, scope: r.scope, dayNumber: r.day_number, text: r.text,
@@ -572,20 +572,24 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/cities', async (req, res) => {
-    const { countryId, name, flightDuration, timeDiff } = req.body as {
+    const { countryId, name, flightDuration, timeDiff, flightAirport } = req.body as {
       countryId: string; name: string; flightDuration: string | null; timeDiff: string | null
+      flightAirport?: string | null
     }
     const cityId = id()
-    await pool.query('INSERT INTO cities (id, country_id, name, flight_duration, time_diff) VALUES ($1,$2,$3,$4,$5)',
-      [cityId, countryId, name.trim(), flightDuration, timeDiff])
+    await pool.query(
+      'INSERT INTO cities (id, country_id, name, flight_duration, time_diff, flight_airport) VALUES ($1,$2,$3,$4,$5,$6)',
+      [cityId, countryId, name.trim(), flightDuration, timeDiff, flightAirport ?? null])
     const r = await pool.query(`${CITY_SELECT} WHERE c.id = $1`, [cityId])
     res.json(mapCity(r.rows[0]))
   })
 
   app.put('/api/cities/:id', async (req, res) => {
-    const { name, flightDuration, timeDiff } = req.body as { name: string; flightDuration: string | null; timeDiff: string | null }
-    await pool.query('UPDATE cities SET name=$1, flight_duration=$2, time_diff=$3 WHERE id=$4',
-      [name.trim(), flightDuration, timeDiff, req.params.id])
+    const { name, flightDuration, timeDiff, flightAirport } = req.body as {
+      name: string; flightDuration: string | null; timeDiff: string | null; flightAirport?: string | null
+    }
+    await pool.query('UPDATE cities SET name=$1, flight_duration=$2, time_diff=$3, flight_airport=$4 WHERE id=$5',
+      [name.trim(), flightDuration, timeDiff, flightAirport ?? null, req.params.id])
     res.json({ ok: true })
   })
 
