@@ -361,39 +361,28 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   )}
                 </div>
 
-                {citiesWithInfo.length > 0 && (
-                  <>
+                {citiesWithInfo.map((c) => (
+                  <div key={c.id}>
                     <div className="boarding-pass-divider" />
-                    <div style={{ padding: "14px 16px" }}>
-                      {citiesWithInfo.map((c) => (
-                        <div key={c.id} style={{ marginBottom: 12 }}>
-                          <div
-                            style={{
-                              fontWeight: 700,
-                              fontSize: 13,
-                              marginBottom: 6,
-                            }}
-                          >
-                            🏙 {c.name}
-                          </div>
-                          <InfoCardGrid
-                            items={[
-                              {
-                                icon: "✈️",
-                                label: "항공",
-                                value: c.flightDuration,
-                                sub: c.flightAirport
-                                  ? `${c.flightAirport} 기준`
-                                  : null,
-                              },
-                              { icon: "🕐", label: "시차", value: c.timeDiff },
-                            ]}
-                          />
-                        </div>
-                      ))}
+                    <div className="boarding-pass-route">
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: 18 }}>한국</div>
+                        <div className="muted">출발</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontSize: 18 }}>✈️</div>
+                        {c.flightDuration && <div className="muted" style={{ fontSize: 11 }}>{c.flightDuration}</div>}
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontWeight: 800, fontSize: 18 }}>{c.name}</div>
+                        <div className="muted">{c.flightAirport ? `${c.flightAirport} 기준` : "도착"}</div>
+                      </div>
                     </div>
-                  </>
-                )}
+                    {c.timeDiff && (
+                      <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>🕐 시차 {c.timeDiff}</div>
+                    )}
+                  </div>
+                ))}
               </div>
             );
           })}
