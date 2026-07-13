@@ -42,7 +42,7 @@ const mapTrip = (r: any) => ({
   budget: Number(r.budget), createdAt: r.created_at,
   cities: (r.cities ?? []) as Array<{ id: string; name: string; countryName: string; countryCode: string | null }>,
 })
-const mapMember = (r: any) => ({ id: r.id, name: r.name })
+const mapMember = (r: any) => ({ id: r.id, name: r.name, emoji: r.emoji ?? null })
 const mapPlace = (r: any) => ({
   id: r.id, name: r.name, address: r.address, category: r.category,
   lat: r.lat != null ? Number(r.lat) : null, lng: r.lng != null ? Number(r.lng) : null,
@@ -271,10 +271,16 @@ export function registerRoutes(app: ExpressApp): void {
     try {
       const memberId = id()
       await pool.query('INSERT INTO members (id, name) VALUES ($1,$2)', [memberId, name])
-      res.json({ id: memberId, name })
+      res.json({ id: memberId, name, emoji: null })
     } catch {
       res.json({ error: '이미 같은 이름의 동행인이 있어요.' })
     }
+  })
+
+  app.put('/api/members/:id', async (req, res) => {
+    const emoji = (req.body?.emoji ?? null) as string | null
+    await pool.query('UPDATE members SET emoji = $1 WHERE id = $2', [emoji, req.params.id])
+    res.json({ ok: true })
   })
 
   app.delete('/api/members/:id', async (req, res) => {

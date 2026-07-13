@@ -72,6 +72,7 @@ export const api = {
   members: {
     list: () => req<Member[]>('GET', '/api/members'),
     create: (name: string) => req<Member | { error: string }>('POST', '/api/members', { name }),
+    update: (id: string, emoji: string | null) => req<void>('PUT', `/api/members/${id}`, { emoji }),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/members/${id}`),
   },
 

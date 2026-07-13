@@ -330,5 +330,8 @@ export async function initSchema(): Promise<void> {
       file_path  TEXT NOT NULL,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+
+    -- 동행인 카드에 표시할 이모지(수정 가능)
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS emoji TEXT;
   `)
 }

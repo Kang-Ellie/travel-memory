@@ -44,6 +44,7 @@ export interface City {
 export interface Member {
   id: string
   name: string
+  emoji: string | null
 }
 
 export interface Place {

@@ -4,10 +4,13 @@ import { api } from '../api'
 import Window from './Window'
 import PageHeader from './PageHeader'
 
+const MEMBER_EMOJIS = ['🧑', '👩', '👨', '👵', '👴', '👧', '👦', '🐶', '🐱']
+
 export default function MembersScreen() {
   const [members, setMembers] = useState<Member[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
+  const [editingEmojiFor, setEditingEmojiFor] = useState<string | null>(null)
 
   const refresh = () => { api.members.list().then(setMembers) }
   useEffect(refresh, [])
@@ -28,6 +31,14 @@ export default function MembersScreen() {
     refresh()
   }
 
+  const setEmoji = async (m: Member, emoji: string) => {
+    await api.members.update(m.id, m.emoji === emoji ? null : emoji)
+    setEditingEmojiFor(null)
+    refresh()
+  }
+
+  const editingMember = members.find((m) => m.id === editingEmojiFor) ?? null
+
   return (
     <div>
       <PageHeader icon="👥" title="동행인" eng="PEOPLE"
@@ -46,13 +57,32 @@ export default function MembersScreen() {
 
       {members.length === 0 ? (
         <div className="empty">아직 등록된 동행인이 없어요.</div>
-      ) : members.map((m) => (
-        <div key={m.id} className="row">
-          <span style={{ fontSize: 20 }}>🧑‍🤝‍🧑</span>
-          <div className="grow" style={{ fontWeight: 800 }}>{m.name}</div>
-          <button className="x-btn" onClick={() => remove(m)}>×</button>
+      ) : (
+        <div className="member-grid">
+          {members.map((m) => (
+            <div key={m.id} className="member-card">
+              <button className="x-btn" onClick={() => remove(m)}>×</button>
+              <button type="button" className="member-card-emoji" title="이모지 변경"
+                onClick={() => setEditingEmojiFor(editingEmojiFor === m.id ? null : m.id)}>
+                {m.emoji || '🧑'}
+              </button>
+              <div className="member-card-name">{m.name}</div>
+            </div>
+          ))}
         </div>
-      ))}
+      )}
+      {editingMember && (
+        <div className="row" style={{ marginTop: 12, flexWrap: 'wrap' }}>
+          <span className="grow" style={{ fontWeight: 800 }}>{editingMember.name}의 이모지</span>
+          <div className="emoji-pick-row">
+            {MEMBER_EMOJIS.map((e) => (
+              <button key={e} type="button" className={`emoji-pick ${editingMember.emoji === e ? 'active' : ''}`}
+                onClick={() => setEmoji(editingMember, e)}>{e}</button>
+            ))}
+          </div>
+          <button className="btn small" onClick={() => setEditingEmojiFor(null)}>닫기</button>
+        </div>
+      )}
       </Window>
     </div>
   )
