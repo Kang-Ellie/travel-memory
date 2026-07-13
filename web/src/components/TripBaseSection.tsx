@@ -283,6 +283,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
       </div>
       {!collapsed && (
         <>
+          <div className="trip-ticket-grid">
           {tripCountries.map((co) => {
             const citiesOfCountry = tripCityRecords.filter(
               (c) => c.countryId === co.id,
@@ -294,7 +295,6 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               <div
                 key={co.id}
                 className="boarding-pass"
-                style={{ marginBottom: 14 }}
               >
                 <div className="boarding-pass-head">
                   <div
@@ -397,6 +397,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               </div>
             );
           })}
+          </div>
 
           <div
             style={{

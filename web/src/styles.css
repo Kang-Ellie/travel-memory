@@ -486,6 +486,13 @@ textarea { resize: vertical; min-height: 70px; }
 .boarding-pass-divider { border-top: 2px dashed rgba(45,42,62,0.35); margin: 0 16px; }
 .boarding-pass-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px 16px; padding: 14px 16px; }
 
+/* ── 여행 BASE: 나라별 티켓을 나란히 배치 ───── */
+.trip-ticket-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 14px; align-items: start; margin-bottom: 14px;
+}
+.trip-ticket-grid .boarding-pass { margin-bottom: 0; }
+
 /* ── 여행 준비: 여행 전 Todo(1) : 여행 준비물(2) 분할 ─── */
 .prep-split { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
 @media (max-width: 900px) {
