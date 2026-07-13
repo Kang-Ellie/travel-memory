@@ -5,12 +5,14 @@ import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import PageHeader from './PageHeader'
+import InfoCardGrid from './InfoCardGrid'
 
 export type CountryForm = Omit<Country, 'id' | 'createdAt'>
 
 export const EMPTY_COUNTRY_FORM: CountryForm = {
   name: '', code: '', capital: '', phoneCode: '', currency: '', voltage: '',
   language: '', visa: '', prepDocs: '', emergencyPolice: '', emergencyMedical: '',
+  weather: '', tip: '', priceLevel: '', exchangeRate: '',
 }
 
 export function CountryFields({ form, onChange }: { form: CountryForm; onChange: (f: CountryForm) => void }) {
@@ -36,6 +38,16 @@ export function CountryFields({ form, onChange }: { form: CountryForm; onChange:
           <input type="text" value={form.language ?? ''} placeholder="일본어" onChange={set('language')} /></div>
         <div className="field grow"><label>비자</label>
           <input type="text" value={form.visa ?? ''} placeholder="90일 무비자" onChange={set('visa')} /></div>
+      </div>
+      <div className="form-row">
+        <div className="field"><label>환율</label>
+          <input type="text" value={form.exchangeRate ?? ''} placeholder="100엔 = 922원" onChange={set('exchangeRate')} /></div>
+        <div className="field"><label>날씨</label>
+          <input type="text" value={form.weather ?? ''} placeholder="7월 24~32°" onChange={set('weather')} /></div>
+        <div className="field"><label>팁 문화</label>
+          <input type="text" value={form.tip ?? ''} placeholder="없음" onChange={set('tip')} /></div>
+        <div className="field"><label>물가</label>
+          <input type="text" value={form.priceLevel ?? ''} placeholder="한국 대비 비슷함" onChange={set('priceLevel')} /></div>
       </div>
       <div className="form-row">
         <div className="field grow"><label>미리 준비할 서류</label>
@@ -95,11 +107,16 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         <button className="btn small" onClick={() => setEditing(true)}>수정</button>
         <button className="x-btn" onClick={remove}>×</button>
       </div>
-      <div className="muted" style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-        {city.flightDuration && <span>✈️ {city.flightDuration}</span>}
-        {city.timeDiff && <span>🕒 시차 {city.timeDiff}</span>}
-        {!city.flightDuration && !city.timeDiff && <span>항공 소요시간·시차 미입력</span>}
-      </div>
+      {city.flightDuration || city.timeDiff ? (
+        <div style={{ marginTop: 8 }}>
+          <InfoCardGrid items={[
+            { icon: '✈️', label: '항공', value: city.flightDuration },
+            { icon: '🕐', label: '시차', value: city.timeDiff },
+          ]} />
+        </div>
+      ) : (
+        <div className="muted" style={{ marginTop: 6 }}>항공 소요시간·시차 미입력</div>
+      )}
     </div>
   )
 }
@@ -147,16 +164,24 @@ function CountryCard({
 
       {detailOpen && (
         <Modal title={`${flagEmoji(country.code)} ${country.name}`} onClose={() => setDetailOpen(false)}>
-          <div className="form-row" style={{ fontSize: 13 }}>
-            <div><strong>수도</strong> {country.capital || '—'}</div>
-            <div><strong>국가번호</strong> {country.phoneCode || '—'}</div>
-            <div><strong>통화</strong> {country.currency || '—'}</div>
-            <div><strong>전압</strong> {country.voltage || '—'}</div>
-            <div><strong>언어</strong> {country.language || '—'}</div>
-            <div><strong>비자</strong> {country.visa || '—'}</div>
+          <strong style={{ fontSize: 13 }}>🧭 여행 기초정보</strong>
+          <div style={{ marginTop: 10 }}>
+            <InfoCardGrid items={[
+              { icon: '🛂', label: '비자', value: country.visa },
+              { icon: '💱', label: '환율', value: country.exchangeRate },
+              { icon: '🔌', label: '전압', value: country.voltage },
+              { icon: '⛅', label: '날씨', value: country.weather },
+              { icon: '🗣', label: '언어', value: country.language },
+              { icon: '💰', label: '팁', value: country.tip },
+              { icon: '📈', label: '물가', value: country.priceLevel },
+            ]} />
           </div>
-          {country.prepDocs && <div>📋 준비서류: {country.prepDocs}</div>}
-          <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
+
+          <div className="muted section-gap" style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div><strong>수도</strong> {country.capital || '—'} · <strong>국가번호</strong> {country.phoneCode || '—'} · <strong>통화</strong> {country.currency || '—'}</div>
+            {country.prepDocs && <div>📋 준비서류: {country.prepDocs}</div>}
+            <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
+          </div>
           <div style={{ marginTop: 10 }}>
             <button className="btn small" onClick={() => { setForm(country); setEditing(true) }}>✏️ 국가 정보 수정</button>
           </div>

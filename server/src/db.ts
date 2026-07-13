@@ -333,5 +333,11 @@ export async function initSchema(): Promise<void> {
 
     -- 동행인 카드에 표시할 이모지(수정 가능)
     ALTER TABLE members ADD COLUMN IF NOT EXISTS emoji TEXT;
+
+    -- 여행 기초정보 카드에 보여줄 국가 정보 보강
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS weather TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS tip TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS price_level TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS exchange_rate TEXT;
   `)
 }

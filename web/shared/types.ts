@@ -28,6 +28,10 @@ export interface Country {
   prepDocs: string | null
   emergencyPolice: string | null
   emergencyMedical: string | null
+  weather: string | null
+  tip: string | null
+  priceLevel: string | null
+  exchangeRate: string | null
   createdAt: string
 }
 

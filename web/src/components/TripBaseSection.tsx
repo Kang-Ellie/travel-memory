@@ -8,6 +8,7 @@ import Modal from './Modal'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
 import DropdownMenu from './DropdownMenu'
+import InfoCardGrid from './InfoCardGrid'
 
 const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: '해보고 싶은 것', food: '먹어보고 싶은 것 (예: 멘타이코 정식)', wish: '사고 싶은 것 (예: 캐리어)',
@@ -163,32 +164,33 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
             return (
               <div key={co.id} className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ fontWeight: 800, marginBottom: 10 }}>{flagEmoji(co.code)} {co.name}</div>
-                <div className="base-split">
-                  <div className="info-text" style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🌍 국가 정보</div>
-                    {co.capital && <span>🏛 수도 {co.capital}</span>}
-                    {co.currency && <span>💱 통화 {co.currency}</span>}
-                    {co.voltage && <span>🔌 전압 {co.voltage}</span>}
-                    {co.language && <span>🗣 언어 {co.language}</span>}
-                    {co.visa && <span>🛂 비자 {co.visa}</span>}
-                    {co.emergencyPolice && <span>🚓 경찰 {co.emergencyPolice}</span>}
-                    {co.emergencyMedical && <span>🚑 응급 {co.emergencyMedical}</span>}
-                    {co.prepDocs && <span style={{ whiteSpace: 'pre-wrap' }}>📋 준비서류: {co.prepDocs}</span>}
-                  </div>
-                  <div className="info-text" style={{ color: 'var(--ink)', fontSize: 13, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ fontWeight: 800, opacity: 0.55, fontSize: 11, letterSpacing: '0.04em' }}>🏙 도시 정보</div>
-                    {citiesOfCountry.length === 0 ? (
-                      <span style={{ opacity: 0.6 }}>등록된 도시 정보가 없어요.</span>
-                    ) : citiesOfCountry.map((c) => (
-                      <div key={c.id}>
-                        <div style={{ fontWeight: 700 }}>{c.name}</div>
-                        {c.flightDuration && <div>✈️ {c.flightDuration}</div>}
-                        {c.timeDiff && <div>🕐 시차 {c.timeDiff}</div>}
-                        {!c.flightDuration && !c.timeDiff && <div style={{ opacity: 0.6 }}>항공 소요시간·시차 미입력</div>}
-                      </div>
-                    ))}
-                  </div>
+                <InfoCardGrid items={[
+                  { icon: '🛂', label: '비자', value: co.visa },
+                  { icon: '💱', label: '환율', value: co.exchangeRate },
+                  { icon: '🔌', label: '전압', value: co.voltage },
+                  { icon: '⛅', label: '날씨', value: co.weather },
+                  { icon: '🗣', label: '언어', value: co.language },
+                  { icon: '💰', label: '팁', value: co.tip },
+                  { icon: '📈', label: '물가', value: co.priceLevel },
+                ]} />
+                <div className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+                  🏛 수도 {co.capital || '—'} · 🚓 경찰 {co.emergencyPolice || '—'} · 🚑 응급 {co.emergencyMedical || '—'}
+                  {co.prepDocs && <> · 📋 {co.prepDocs}</>}
                 </div>
+
+                {citiesOfCountry.length === 0 ? (
+                  <span className="muted" style={{ marginTop: 10 }}>등록된 도시 정보가 없어요.</span>
+                ) : citiesOfCountry.map((c) => (
+                  (c.flightDuration || c.timeDiff) && (
+                    <div key={c.id} style={{ marginTop: 10 }}>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🏙 {c.name}</div>
+                      <InfoCardGrid items={[
+                        { icon: '✈️', label: '항공', value: c.flightDuration },
+                        { icon: '🕐', label: '시차', value: c.timeDiff },
+                      ]} />
+                    </div>
+                  )
+                ))}
               </div>
             )
           })}

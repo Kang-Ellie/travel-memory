@@ -118,6 +118,7 @@ const mapCountry = (r: any) => ({
   id: r.id, name: r.name, code: r.code, capital: r.capital, phoneCode: r.phone_code,
   currency: r.currency, voltage: r.voltage, language: r.language, visa: r.visa,
   prepDocs: r.prep_docs, emergencyPolice: r.emergency_police, emergencyMedical: r.emergency_medical,
+  weather: r.weather, tip: r.tip, priceLevel: r.price_level, exchangeRate: r.exchange_rate,
   createdAt: r.created_at,
 })
 const mapCity = (r: any) => ({
@@ -515,16 +516,20 @@ export function registerRoutes(app: ExpressApp): void {
   app.post('/api/countries', async (req, res) => {
     const {
       name, code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical,
+      weather, tip, priceLevel, exchangeRate,
     } = req.body as {
       name: string; code: string | null; capital: string | null; phoneCode: string | null; currency: string | null
       voltage: string | null; language: string | null; visa: string | null; prepDocs: string | null
       emergencyPolice: string | null; emergencyMedical: string | null
+      weather: string | null; tip: string | null; priceLevel: string | null; exchangeRate: string | null
     }
     const countryId = id()
     await pool.query(
-      `INSERT INTO countries (id, name, code, capital, phone_code, currency, voltage, language, visa, prep_docs, emergency_police, emergency_medical)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-      [countryId, name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical])
+      `INSERT INTO countries (id, name, code, capital, phone_code, currency, voltage, language, visa, prep_docs,
+         emergency_police, emergency_medical, weather, tip, price_level, exchange_rate)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+      [countryId, name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs,
+        emergencyPolice, emergencyMedical, weather, tip, priceLevel, exchangeRate])
     const r = await pool.query('SELECT * FROM countries WHERE id = $1', [countryId])
     res.json(mapCountry(r.rows[0]))
   })
@@ -532,15 +537,19 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/countries/:id', async (req, res) => {
     const {
       name, code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical,
+      weather, tip, priceLevel, exchangeRate,
     } = req.body as {
       name: string; code: string | null; capital: string | null; phoneCode: string | null; currency: string | null
       voltage: string | null; language: string | null; visa: string | null; prepDocs: string | null
       emergencyPolice: string | null; emergencyMedical: string | null
+      weather: string | null; tip: string | null; priceLevel: string | null; exchangeRate: string | null
     }
     await pool.query(
       `UPDATE countries SET name=$1, code=$2, capital=$3, phone_code=$4, currency=$5, voltage=$6, language=$7,
-         visa=$8, prep_docs=$9, emergency_police=$10, emergency_medical=$11 WHERE id=$12`,
-      [name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical, req.params.id])
+         visa=$8, prep_docs=$9, emergency_police=$10, emergency_medical=$11,
+         weather=$12, tip=$13, price_level=$14, exchange_rate=$15 WHERE id=$16`,
+      [name.trim(), code, capital, phoneCode, currency, voltage, language, visa, prepDocs, emergencyPolice, emergencyMedical,
+        weather, tip, priceLevel, exchangeRate, req.params.id])
     res.json({ ok: true })
   })
 
