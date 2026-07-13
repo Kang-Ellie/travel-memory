@@ -106,7 +106,10 @@ export default function App() {
     <div className="app">
       <div className="app-body">
         <nav className="nav sidebar-nav">
-          <div className="sidebar-logo">Y E O B A E K</div>
+          <div className="sidebar-logo">
+            Y E O B A E K
+            <span className="sidebar-logo-sub">나를 채우는, 여백</span>
+          </div>
           {NAV.map((n) => (
             <button
               key={n.key}
