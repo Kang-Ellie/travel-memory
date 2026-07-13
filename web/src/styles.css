@@ -24,7 +24,7 @@
 html, body, #root { height: 100%; margin: 0; }
 
 body {
-  font-family: 'Apple SD Gothic Neo', -apple-system, 'Malgun Gothic', sans-serif;
+  font-family: 'Nanum Barun Gothic', 'Apple SD Gothic Neo', -apple-system, 'Malgun Gothic', sans-serif;
   color: var(--ink);
   background:
     linear-gradient(rgba(255, 255, 255, 0.35), rgba(255, 255, 255, 0.35)),
@@ -95,7 +95,7 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   gap: 3px;
 }
 .sidebar-logo-sub {
-  font-family: 'Apple SD Gothic Neo', -apple-system, 'Malgun Gothic', sans-serif;
+  font-family: 'Nanum Barun Gothic', 'Apple SD Gothic Neo', -apple-system, 'Malgun Gothic', sans-serif;
   font-weight: 700;
   font-size: 12px;
   letter-spacing: normal;
