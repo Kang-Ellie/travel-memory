@@ -159,63 +159,64 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
       </div>
       {!collapsed && (
         <>
-          <div className="boarding-pass" style={{ marginBottom: 14 }}>
-            {tripCountries.map((co, idx) => {
-              const citiesOfCountry = tripCityRecords.filter((c) => c.countryId === co.id)
-              return (
-                <div key={co.id}>
-                  {idx > 0 && <div className="boarding-pass-divider" />}
-                  <div className="boarding-pass-head">
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 20 }}>{flagEmoji(co.code)}</span>
-                      <span style={{ fontWeight: 800 }}>{co.name}</span>
-                    </div>
-                    {citiesOfCountry.length > 0 && (
-                      <div style={{ textAlign: 'right' }}>
-                        <div className="muted" style={{ fontSize: 10, letterSpacing: '0.06em' }}>CITIES</div>
-                        <div style={{ fontWeight: 800 }}>{citiesOfCountry.map((c) => c.name).join(', ')}</div>
-                      </div>
-                    )}
+          {tripCountries.map((co) => {
+            const citiesOfCountry = tripCityRecords.filter((c) => c.countryId === co.id)
+            const citiesWithInfo = citiesOfCountry.filter((c) => c.flightDuration || c.timeDiff)
+            return (
+              <div key={co.id} className="boarding-pass" style={{ marginBottom: 14 }}>
+                <div className="boarding-pass-head">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>{flagEmoji(co.code)}</span>
+                    <span style={{ fontWeight: 800 }}>{co.name}</span>
                   </div>
-                  <div style={{ padding: '14px 16px' }}>
-                    <InfoCardGrid items={[
-                      { icon: '🏛', label: '수도', value: co.capital },
-                      { icon: '🛂', label: '비자', value: co.visa },
-                      { icon: '🗣', label: '언어', value: co.language },
-                      { icon: '💴', label: '통화', value: co.currency },
-                      { icon: '☎️', label: '국가번호', value: co.phoneCode },
-                      { icon: '🔌', label: '전압', value: co.voltage },
-                      { icon: '💱', label: '환율', value: co.exchangeRate },
-                      { icon: '⛅', label: '날씨', value: co.weather },
-                      { icon: '💰', label: '팁', value: co.tip },
-                      { icon: '📈', label: '물가', value: co.priceLevel },
-                      { icon: '🚓', label: '경찰', value: co.emergencyPolice },
-                      { icon: '🚑', label: '응급', value: co.emergencyMedical },
-                    ]} />
-                    {co.prepDocs && (
-                      <div style={{ fontSize: 12, marginTop: 12, fontWeight: 800, color: 'var(--ink)', background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
-                        📋 준비서류: {co.prepDocs}
-                      </div>
-                    )}
+                  {citiesOfCountry.length > 0 && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div className="muted" style={{ fontSize: 10, letterSpacing: '0.06em' }}>CITIES</div>
+                      <div style={{ fontWeight: 800 }}>{citiesOfCountry.map((c) => c.name).join(', ')}</div>
+                    </div>
+                  )}
+                </div>
+                <div style={{ padding: '14px 16px' }}>
+                  <InfoCardGrid items={[
+                    { icon: '🏛', label: '수도', value: co.capital },
+                    { icon: '🛂', label: '비자', value: co.visa },
+                    { icon: '🗣', label: '언어', value: co.language },
+                    { icon: '💴', label: '통화', value: co.currency },
+                    { icon: '☎️', label: '국가번호', value: co.phoneCode },
+                    { icon: '🔌', label: '전압', value: co.voltage },
+                    { icon: '💱', label: '환율', value: co.exchangeRate },
+                    { icon: '⛅', label: '날씨', value: co.weather },
+                    { icon: '💰', label: '팁', value: co.tip },
+                    { icon: '📈', label: '물가', value: co.priceLevel },
+                    { icon: '🚓', label: '경찰', value: co.emergencyPolice },
+                    { icon: '🚑', label: '응급', value: co.emergencyMedical },
+                  ]} />
+                  {co.prepDocs && (
+                    <div style={{ fontSize: 12, marginTop: 12, fontWeight: 800, color: 'var(--ink)', background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
+                      📋 준비서류: {co.prepDocs}
+                    </div>
+                  )}
+                </div>
 
-                    {citiesOfCountry.length === 0 ? (
-                      <span className="muted" style={{ marginTop: 10, display: 'block' }}>등록된 도시 정보가 없어요.</span>
-                    ) : citiesOfCountry.map((c) => (
-                      (c.flightDuration || c.timeDiff) && (
-                        <div key={c.id} style={{ marginTop: 12 }}>
+                {citiesWithInfo.length > 0 && (
+                  <>
+                    <div className="boarding-pass-divider" />
+                    <div style={{ padding: '14px 16px' }}>
+                      {citiesWithInfo.map((c) => (
+                        <div key={c.id} style={{ marginBottom: 12 }}>
                           <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🏙 {c.name}</div>
                           <InfoCardGrid items={[
                             { icon: '✈️', label: '항공', value: c.flightDuration, sub: c.flightAirport ? `${c.flightAirport} 기준` : null },
                             { icon: '🕐', label: '시차', value: c.timeDiff },
                           ]} />
                         </div>
-                      )
-                    ))}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )
+          })}
 
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1.5px solid rgba(45,42,62,0.15)' }}>
             <div className="prep-split">
