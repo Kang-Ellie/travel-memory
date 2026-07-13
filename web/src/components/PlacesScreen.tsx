@@ -181,20 +181,28 @@ function PlaceCard({
     <div className="place-card" onClick={() => setDetailOpen(true)}>
       {place.coverPhoto && <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />}
       <div className="place-card-body">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <span className="chip blue">{place.category}</span>
-          {place.countryName && (
-            <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
-          )}
-          {place.rating != null && (
-            <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
-              ★ {place.rating.toFixed(1)}
-            </span>
-          )}
-          {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
-          {place.grade && <span className="chip yellow">⭐ {place.grade}</span>}
-          {place.recommend === true && <span className="chip green">👍 추천</span>}
-          {place.recommend === false && <span className="chip pink">👎 비추천</span>}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
+            <span className="chip blue">{place.category}</span>
+            {place.countryName && (
+              <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
+            )}
+            {place.rating != null && (
+              <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
+                ★ {place.rating.toFixed(1)}
+              </span>
+            )}
+            {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
+            {place.grade && <span className="chip yellow">⭐ {place.grade}</span>}
+            {place.recommend === true && <span className="chip green">👍 추천</span>}
+            {place.recommend === false && <span className="chip pink">👎 비추천</span>}
+          </div>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu actions={[
+              { label: '✏️ 수정', onClick: () => setEditing(true) },
+              { label: '🗑 삭제', danger: true, onClick: remove },
+            ]} />
+          </div>
         </div>
         <div style={{ fontWeight: 800 }}>{place.name}</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -226,12 +234,6 @@ function PlaceCard({
           {linkedBucketItems.length > 0 && (
             <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
           )}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }} onClick={(e) => e.stopPropagation()}>
-          <DropdownMenu actions={[
-            { label: '✏️ 수정', onClick: () => setEditing(true) },
-            { label: '🗑 삭제', danger: true, onClick: remove },
-          ]} />
         </div>
       </div>
       {detailOpen && (
@@ -353,15 +355,11 @@ export default function PlacesScreen() {
         })}
       </Window>
 
-      <Window title="OUR_PLACES.EXE" color="purple">
+      <Window title="BOOKMARK_ADD.EXE" color="blue">
         <p className="muted" style={{ marginTop: 0 }}>
-          한 번 저장해두면 여러 여행에서 재사용할 수 있는 우리만의 장소 DB예요. 카드를 누르면 이 장소를 방문했던
-          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 사진은 이 장소에서 찍어둔 사진이
-          있으면 자동으로 카드에 표시돼요. 평점·장단점·국가/도시·구글 지도 링크는 등록 후 [수정]에서 채울 수 있어요.
+          구글 검색에 안 나오는 곳이거나 주소를 직접 알고 있으면 여기서 바로 등록하세요.
         </p>
-        <div className="row" style={{ marginBottom: 14 }}>
-          <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 직접 등록</button>
-        </div>
+        <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 직접 등록</button>
 
         {showAddPlace && (
           <Modal title="장소 직접 등록" onClose={() => setShowAddPlace(false)}>
@@ -413,7 +411,14 @@ export default function PlacesScreen() {
             <button className="btn primary" onClick={addManual}>＋ 등록</button>
           </Modal>
         )}
+      </Window>
 
+      <Window title="OUR_PLACES.EXE" color="purple">
+        <p className="muted" style={{ marginTop: 0 }}>
+          한 번 저장해두면 여러 여행에서 재사용할 수 있는 우리만의 장소 DB예요. 카드를 누르면 이 장소를 방문했던
+          모든 여행의 리뷰·사진·꼭 해봐야 하는 것·누적 지출을 한 번에 모아 볼 수 있어요. 사진은 이 장소에서 찍어둔 사진이
+          있으면 자동으로 카드에 표시돼요. 평점·장단점·국가/도시·구글 지도 링크는 등록 후 [수정]에서 채울 수 있어요.
+        </p>
         <div className="day-tabs">
           {CATEGORIES.map((c) => (
             <button key={c} className={`pill ${filter === c ? 'active' : ''}`} onClick={() => setFilter(c)}>{c}</button>

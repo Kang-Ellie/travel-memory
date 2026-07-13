@@ -104,9 +104,10 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   )
 }
 
-function CountryRow({
-  country, cities, expanded, onToggle, onChanged,
-}: { country: Country; cities: City[]; expanded: boolean; onToggle: () => void; onChanged: () => void }) {
+function CountryCard({
+  country, cities, onChanged,
+}: { country: Country; cities: City[]; onChanged: () => void }) {
+  const [detailOpen, setDetailOpen] = useState(false)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<CountryForm>(country)
   const [showAddCity, setShowAddCity] = useState(false)
@@ -136,17 +137,43 @@ function CountryRow({
   }
 
   return (
-    <div>
-      <div className="row" style={{ cursor: 'pointer' }} onClick={onToggle}>
-        <span style={{ fontSize: 22 }}>{flagEmoji(country.code)}</span>
-        <div className="grow">
-          <div style={{ fontWeight: 800 }}>{country.name}</div>
-          <div className="muted">{cities.length}개 도시 등록됨</div>
-        </div>
-        <span className="muted">{expanded ? '접기 ▲' : '상세 보기 ▼'}</span>
-        <button className="btn small" onClick={(e) => { e.stopPropagation(); setForm(country); setEditing(true) }}>수정</button>
+    <>
+      <div className="mini-card" onClick={() => setDetailOpen(true)}>
         <button className="x-btn" onClick={(e) => { e.stopPropagation(); remove() }}>×</button>
+        <span style={{ fontSize: 26, lineHeight: 1 }}>{flagEmoji(country.code)}</span>
+        <div className="mini-card-name">{country.name}</div>
+        <div className="mini-card-meta">{cities.length}개 도시</div>
       </div>
+
+      {detailOpen && (
+        <Modal title={`${flagEmoji(country.code)} ${country.name}`} onClose={() => setDetailOpen(false)}>
+          <div className="form-row" style={{ fontSize: 13 }}>
+            <div><strong>수도</strong> {country.capital || '—'}</div>
+            <div><strong>국가번호</strong> {country.phoneCode || '—'}</div>
+            <div><strong>통화</strong> {country.currency || '—'}</div>
+            <div><strong>전압</strong> {country.voltage || '—'}</div>
+            <div><strong>언어</strong> {country.language || '—'}</div>
+            <div><strong>비자</strong> {country.visa || '—'}</div>
+          </div>
+          {country.prepDocs && <div>📋 준비서류: {country.prepDocs}</div>}
+          <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
+          <div style={{ marginTop: 10 }}>
+            <button className="btn small" onClick={() => { setForm(country); setEditing(true) }}>✏️ 국가 정보 수정</button>
+          </div>
+
+          <div className="section-gap" style={{ marginTop: 16 }}>
+            <strong>도시</strong>
+            {cities.length === 0 ? (
+              <div className="muted" style={{ marginTop: 6 }}>아직 등록된 도시가 없어요.</div>
+            ) : (
+              <div className="city-grid" style={{ marginTop: 8 }}>
+                {cities.map((c) => <CityRow key={c.id} city={c} onChanged={onChanged} />)}
+              </div>
+            )}
+            <button className="btn small" style={{ marginTop: 8 }} onClick={() => setShowAddCity(true)}>＋ 도시 추가</button>
+          </div>
+        </Modal>
+      )}
 
       {editing && (
         <Modal title={`${country.name} 수정`} onClose={() => setEditing(false)}>
@@ -158,56 +185,28 @@ function CountryRow({
         </Modal>
       )}
 
-      {expanded && (
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-          <div className="form-row" style={{ fontSize: 13 }}>
-            <div><strong>수도</strong> {country.capital || '—'}</div>
-            <div><strong>국가번호</strong> {country.phoneCode || '—'}</div>
-            <div><strong>통화</strong> {country.currency || '—'}</div>
-            <div><strong>전압</strong> {country.voltage || '—'}</div>
-            <div><strong>언어</strong> {country.language || '—'}</div>
-            <div><strong>비자</strong> {country.visa || '—'}</div>
+      {showAddCity && (
+        <Modal title={`${country.name} — 도시 추가`} onClose={() => setShowAddCity(false)}>
+          <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+            <div className="field"><label>도시명</label>
+              <input type="text" value={cityName} placeholder="예: 후쿠오카" onChange={(e) => setCityName(e.target.value)} /></div>
+            <div className="field"><label>항공 소요시간</label>
+              <input type="text" value={cityFlight} placeholder="1시간 15분" onChange={(e) => setCityFlight(e.target.value)} /></div>
+            <div className="field"><label>시차</label>
+              <input type="text" value={cityDiff} placeholder="차이없음" onChange={(e) => setCityDiff(e.target.value)} /></div>
+            <div style={{ marginTop: 12 }}>
+              <button className="btn small primary" onClick={addCity}>＋ 도시 추가</button>
+            </div>
           </div>
-          {country.prepDocs && <div>📋 준비서류: {country.prepDocs}</div>}
-          <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
-
-          <div className="section-gap" style={{ marginTop: 12 }}>
-            <strong>도시</strong>
-            {cities.length === 0 ? (
-              <div className="muted" style={{ marginTop: 6 }}>아직 등록된 도시가 없어요.</div>
-            ) : (
-              <div className="city-grid" style={{ marginTop: 8 }}>
-                {cities.map((c) => <CityRow key={c.id} city={c} onChanged={onChanged} />)}
-              </div>
-            )}
-            <button className="btn small" style={{ marginTop: 8 }} onClick={() => setShowAddCity(true)}>＋ 도시 추가</button>
-          </div>
-
-          {showAddCity && (
-            <Modal title={`${country.name} — 도시 추가`} onClose={() => setShowAddCity(false)}>
-              <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
-                <div className="field"><label>도시명</label>
-                  <input type="text" value={cityName} placeholder="예: 후쿠오카" onChange={(e) => setCityName(e.target.value)} /></div>
-                <div className="field"><label>항공 소요시간</label>
-                  <input type="text" value={cityFlight} placeholder="1시간 15분" onChange={(e) => setCityFlight(e.target.value)} /></div>
-                <div className="field"><label>시차</label>
-                  <input type="text" value={cityDiff} placeholder="차이없음" onChange={(e) => setCityDiff(e.target.value)} /></div>
-                <div style={{ marginTop: 12 }}>
-                  <button className="btn small primary" onClick={addCity}>＋ 도시 추가</button>
-                </div>
-              </div>
-            </Modal>
-          )}
-        </div>
+        </Modal>
       )}
-    </div>
+    </>
   )
 }
 
 export default function CountriesScreen() {
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState<CountryForm>(EMPTY_COUNTRY_FORM)
 
@@ -253,16 +252,18 @@ export default function CountriesScreen() {
       <Window title="COUNTRIES.EXE" color="green">
         {countries.length === 0 ? (
           <div className="empty">아직 등록된 국가가 없어요. 위에서 첫 국가를 등록해보세요! 🌍</div>
-        ) : countries.map((c) => (
-          <CountryRow
-            key={c.id}
-            country={c}
-            cities={citiesByCountry.get(c.id) ?? []}
-            expanded={expandedId === c.id}
-            onToggle={() => setExpandedId((cur) => (cur === c.id ? null : c.id))}
-            onChanged={refresh}
-          />
-        ))}
+        ) : (
+          <div className="mini-card-grid">
+            {countries.map((c) => (
+              <CountryCard
+                key={c.id}
+                country={c}
+                cities={citiesByCountry.get(c.id) ?? []}
+                onChanged={refresh}
+              />
+            ))}
+          </div>
+        )}
       </Window>
     </div>
   )
