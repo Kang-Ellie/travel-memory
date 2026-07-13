@@ -26,6 +26,7 @@ export interface Country {
   language: string | null
   visa: string | null
   prepDocs: string | null
+  prepDocsUrl: string | null
   emergencyPolice: string | null
   emergencyMedical: string | null
   weather: string | null
