@@ -54,6 +54,34 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const galleryUrls = gallery.map((g) => fileUrl(g.filePath))
   const activeTab = STATUS_TABS.find((s) => s.key === statusFilter)!
   const filteredTrips = trips.filter((t) => tripStatus(t) === statusFilter)
+  const pastByYear = statusFilter === 'past'
+    ? Object.entries(
+        filteredTrips.reduce<Record<string, Trip[]>>((acc, t) => {
+          const year = t.startDate.slice(0, 4)
+          ;(acc[year] ??= []).push(t)
+          return acc
+        }, {}),
+      ).sort(([a], [b]) => Number(b) - Number(a))
+    : null
+
+  const renderTripCard = (t: Trip) => (
+    <Window
+      key={t.id}
+      title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
+      color="pink"
+      footer={
+        <div className="card-footer">
+          <span>🧳 {dday(t)}</span>
+          <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
+        </div>
+      }
+    >
+      <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
+      <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
+      {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
+      {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
+    </Window>
+  )
 
   return (
     <div>
@@ -97,26 +125,18 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
             </div>
             {filteredTrips.length === 0 ? (
               <div className="empty">{activeTab.label}이 없어요.</div>
+            ) : pastByYear ? (
+              pastByYear.map(([year, yearTrips]) => (
+                <div key={year} className="section-gap">
+                  <strong>{year}년 ({yearTrips.length})</strong>
+                  <div className="grid" style={{ marginTop: 12 }}>
+                    {yearTrips.map(renderTripCard)}
+                  </div>
+                </div>
+              ))
             ) : (
               <div className="grid" style={{ marginTop: 12 }}>
-                {filteredTrips.map((t) => (
-                  <Window
-                    key={t.id}
-                    title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
-                    color="pink"
-                    footer={
-                      <div className="card-footer">
-                        <span>🧳 {dday(t)}</span>
-                        <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
-                      </div>
-                    }
-                  >
-                    <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
-                    <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
-                    {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
-                    {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
-                  </Window>
-                ))}
+                {filteredTrips.map(renderTripCard)}
               </div>
             )}
           </Window>
