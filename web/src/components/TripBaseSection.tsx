@@ -175,15 +175,14 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   { icon: '⛅', label: '날씨', value: co.weather },
                   { icon: '💰', label: '팁', value: co.tip },
                   { icon: '📈', label: '물가', value: co.priceLevel },
+                  { icon: '🚓', label: '경찰', value: co.emergencyPolice },
+                  { icon: '🚑', label: '응급', value: co.emergencyMedical },
                 ]} />
-                <div style={{ fontSize: 12, marginTop: 8, color: 'var(--ink)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {co.prepDocs && (
-                    <div style={{ fontWeight: 800, background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
-                      📋 준비서류: {co.prepDocs}
-                    </div>
-                  )}
-                  <div>🚓 경찰 {co.emergencyPolice || '—'} · 🚑 응급 {co.emergencyMedical || '—'}</div>
-                </div>
+                {co.prepDocs && (
+                  <div style={{ fontSize: 12, marginTop: 8, fontWeight: 800, color: 'var(--ink)', background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
+                    📋 준비서류: {co.prepDocs}
+                  </div>
+                )}
 
                 {citiesOfCountry.length === 0 ? (
                   <span className="muted" style={{ marginTop: 10 }}>등록된 도시 정보가 없어요.</span>

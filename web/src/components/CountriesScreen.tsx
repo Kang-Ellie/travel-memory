@@ -183,17 +183,16 @@ function CountryCard({
               { icon: '⛅', label: '날씨', value: country.weather },
               { icon: '💰', label: '팁', value: country.tip },
               { icon: '📈', label: '물가', value: country.priceLevel },
+              { icon: '🚓', label: '경찰', value: country.emergencyPolice },
+              { icon: '🚑', label: '응급', value: country.emergencyMedical },
             ]} />
           </div>
 
-          <div className="section-gap" style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 8, color: 'var(--ink)' }}>
-            {country.prepDocs && (
-              <div style={{ fontWeight: 800, background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
-                📋 준비서류: {country.prepDocs}
-              </div>
-            )}
-            <div>🚨 경찰 {country.emergencyPolice || '—'} · 구급 {country.emergencyMedical || '—'}</div>
-          </div>
+          {country.prepDocs && (
+            <div className="section-gap" style={{ fontSize: 13, fontWeight: 800, color: 'var(--ink)', background: 'var(--yellow-soft)', border: '1.5px solid var(--ink)', borderRadius: 10, padding: '8px 10px' }}>
+              📋 준비서류: {country.prepDocs}
+            </div>
+          )}
           <div style={{ marginTop: 10 }}>
             <button className="btn small" onClick={() => { setForm(country); setEditing(true) }}>✏️ 국가 정보 수정</button>
           </div>
