@@ -463,6 +463,7 @@ function mapCategory(googleCategory: string): string {
   if (/식당|음식|레스토랑|restaurant|food/.test(c)) return '맛집'
   if (/카페|커피|cafe|coffee|베이커리|bakery/.test(c)) return '카페'
   if (/공항|airport/.test(c)) return '공항'
+  if (/주차|발렛|파킹|parking|valet/.test(c)) return '발렛'
   if (/호텔|숙소|hotel|료칸|게스트/.test(c)) return '숙소'
   if (/쇼핑|상점|시장|store|mall|market|백화점/.test(c)) return '쇼핑'
   if (/관광|명소|공원|신사|사원|박물관|attraction|park|museum|temple/.test(c)) return '명소'

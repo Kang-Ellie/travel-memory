@@ -352,6 +352,10 @@ export async function initSchema(): Promise<void> {
     -- 같은 항공 이벤트라도 가족이 각자 따로 티켓을 샀을 수 있어서, 이 항공권에 탄 사람이 누군지 표시
     ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS passenger_ids TEXT[] NOT NULL DEFAULT '{}';
 
+    -- 숙소 예약의 조식 포함 여부·룸 타입
+    ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS breakfast_included BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS room_type TEXT;
+
     -- 추천 여행 시기·주의사항은 같은 나라라도 도시마다 달라서(예: 이탈리아, 중국)
     -- 국가가 아니라 도시 단위로 관리한다.
     ALTER TABLE cities ADD COLUMN IF NOT EXISTS best_season TEXT;

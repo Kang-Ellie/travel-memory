@@ -106,6 +106,7 @@ const mapLodgingDetail = (r: any) => ({
   checkInAt: r.check_in_at, checkOutAt: r.check_out_at,
   bookingRef: r.booking_ref, bookedVia: r.booked_via, confirmed: !!r.confirmed,
   voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null, note: r.note,
+  breakfastIncluded: !!r.breakfast_included, roomType: r.room_type,
 })
 const LODGING_SELECT = `
   SELECT ld.*, v.title AS voucher_title FROM lodging_details ld
@@ -799,20 +800,23 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 숙소 상세 (숙소 이벤트 1:1) ────────────────────────
   app.put('/api/events/:id/lodging', async (req, res) => {
-    const { checkInAt, checkOutAt, bookingRef, bookedVia, confirmed, voucherId, note } = req.body as {
+    const { checkInAt, checkOutAt, bookingRef, bookedVia, confirmed, voucherId, note, breakfastIncluded, roomType } = req.body as {
       checkInAt: string | null; checkOutAt: string | null
       bookingRef: string | null; bookedVia: string | null; confirmed: boolean
       voucherId: string | null; note: string | null
+      breakfastIncluded?: boolean; roomType?: string | null
     }
     await pool.query(
-      `INSERT INTO lodging_details (event_id, check_in_at, check_out_at, booking_ref, booked_via, confirmed, voucher_id, note)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO lodging_details
+         (event_id, check_in_at, check_out_at, booking_ref, booked_via, confirmed, voucher_id, note, breakfast_included, room_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (event_id) DO UPDATE SET
          check_in_at = excluded.check_in_at, check_out_at = excluded.check_out_at,
          booking_ref = excluded.booking_ref, booked_via = excluded.booked_via, confirmed = excluded.confirmed,
-         voucher_id = excluded.voucher_id, note = excluded.note`,
+         voucher_id = excluded.voucher_id, note = excluded.note,
+         breakfast_included = excluded.breakfast_included, room_type = excluded.room_type`,
       [req.params.id, checkInAt, checkOutAt, bookingRef?.trim() || null, bookedVia?.trim() || null,
-        !!confirmed, voucherId || null, note?.trim() || null])
+        !!confirmed, voucherId || null, note?.trim() || null, !!breakfastIncluded, roomType?.trim() || null])
     res.json({ ok: true })
   })
 

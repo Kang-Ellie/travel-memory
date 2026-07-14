@@ -200,6 +200,8 @@ function EventCard({
   const [valetCompany, setValetCompany] = useState(ev.valet?.company ?? '')
   const [checkInAt, setCheckInAt] = useState(ev.lodging?.checkInAt ?? '')
   const [checkOutAt, setCheckOutAt] = useState(ev.lodging?.checkOutAt ?? '')
+  const [breakfastIncluded, setBreakfastIncluded] = useState(ev.lodging?.breakfastIncluded ?? false)
+  const [roomType, setRoomType] = useState(ev.lodging?.roomType ?? '')
   const logoInput = useRef<HTMLInputElement>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
@@ -224,6 +226,7 @@ function EventCard({
     setScheduledAt(ev.valet?.scheduledAt ?? ''); setValetLocation(ev.valet?.location ?? '')
     setValetCompany(ev.valet?.company ?? '')
     setCheckInAt(ev.lodging?.checkInAt ?? ''); setCheckOutAt(ev.lodging?.checkOutAt ?? '')
+    setBreakfastIncluded(ev.lodging?.breakfastIncluded ?? false); setRoomType(ev.lodging?.roomType ?? '')
     if (isValet) { setBookingRef(ev.valet?.bookingRef ?? ''); setBookedVia(ev.valet?.bookedVia ?? ''); setConfirmed(ev.valet?.confirmed ?? false); setVoucherId(ev.valet?.voucherId ?? '') }
     if (isLodging) { setBookingRef(ev.lodging?.bookingRef ?? ''); setBookedVia(ev.lodging?.bookedVia ?? ''); setConfirmed(ev.lodging?.confirmed ?? false); setVoucherId(ev.lodging?.voucherId ?? '') }
     setEditing(true)
@@ -267,6 +270,7 @@ function EventCard({
         checkInAt: checkInAt.trim() || null, checkOutAt: checkOutAt.trim() || null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
         confirmed, voucherId: voucherId || null, voucherTitle: null, note: null,
+        breakfastIncluded, roomType: roomType.trim() || null,
       })
     }
     setEditing(false)
@@ -479,6 +483,8 @@ function EventCard({
                     <DateTimePicker value={checkInAt} onChange={(e) => setCheckInAt(e.target.value)} /></div>
                   <div className="field"><label>체크아웃</label>
                     <DateTimePicker value={checkOutAt} onChange={(e) => setCheckOutAt(e.target.value)} /></div>
+                  <div className="field grow"><label>🛏 룸 타입</label>
+                    <input type="text" value={roomType} placeholder="예: 디럭스 더블룸" onChange={(e) => setRoomType(e.target.value)} /></div>
                   <div className="field"><label>예약번호</label>
                     <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
                   <div className="field grow"><label>예약처</label>
@@ -491,6 +497,10 @@ function EventCard({
                   <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
                     <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
                     ✅ 예약 확정
+                  </label>
+                  <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+                    <input type="checkbox" checked={breakfastIncluded} onChange={(e) => setBreakfastIncluded(e.target.checked)} />
+                    🍳 조식 포함
                   </label>
                 </div>
               )}

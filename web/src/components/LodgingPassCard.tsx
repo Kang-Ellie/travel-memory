@@ -4,7 +4,7 @@ import { fmtDateTime } from '../categories'
 export default function LodgingPassCard({ lodging, placeName }: { lodging: LodgingDetail; placeName: string }) {
   const inAt = fmtDateTime(lodging.checkInAt)
   const outAt = fmtDateTime(lodging.checkOutAt)
-  const hasInfo = lodging.bookingRef || lodging.bookedVia
+  const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType
 
   return (
     <div className="boarding-pass">
@@ -26,6 +26,9 @@ export default function LodgingPassCard({ lodging, placeName }: { lodging: Lodgi
         <>
           <div className="boarding-pass-divider" />
           <div className="boarding-pass-info">
+            {lodging.roomType && (
+              <div><div className="muted" style={{ fontSize: 10 }}>룸 타입</div><div style={{ fontWeight: 700 }}>{lodging.roomType}</div></div>
+            )}
             {lodging.bookingRef && (
               <div><div className="muted" style={{ fontSize: 10 }}>예약번호</div><div style={{ fontWeight: 700 }}>{lodging.bookingRef}</div></div>
             )}
@@ -35,9 +38,10 @@ export default function LodgingPassCard({ lodging, placeName }: { lodging: Lodgi
           </div>
         </>
       )}
-      {(lodging.confirmed || lodging.voucherId) && (
+      {(lodging.confirmed || lodging.voucherId || lodging.breakfastIncluded) && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 14px' }}>
           {lodging.confirmed && <span className="chip green">✅ 예약 확정</span>}
+          {lodging.breakfastIncluded && <span className="chip yellow">🍳 조식 포함</span>}
           {lodging.voucherId && <span className="chip green" title={lodging.voucherTitle ?? ''}>🎫 {lodging.voucherTitle}</span>}
         </div>
       )}

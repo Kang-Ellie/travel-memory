@@ -147,6 +147,8 @@ export interface LodgingDetail {
   voucherId: string | null
   voucherTitle: string | null
   note: string | null
+  breakfastIncluded: boolean
+  roomType: string | null
 }
 
 export interface TimelineEvent {
