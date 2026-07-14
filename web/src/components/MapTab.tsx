@@ -94,8 +94,11 @@ export default function MapTab({ trip }: { trip: Trip }) {
       <div className="map-holder" ref={holder}
         style={{ display: status === 'ready' || status === 'loading' ? 'block' : 'none' }} />
       {noCoordPlaces.length > 0 && (
-        <div className="muted" style={{ marginTop: 10 }}>
-          🧭 좌표가 없어 지도에 못 그린 장소: {noCoordPlaces.map((p) => p.name).join(', ')}
+        <div style={{ marginTop: 10 }}>
+          <div className="muted" style={{ marginBottom: 6 }}>🧭 좌표가 없어 지도에 못 그린 장소</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {noCoordPlaces.map((p) => <span key={p.id} className="chip yellow">{p.name}</span>)}
+          </div>
         </div>
       )}
     </div>

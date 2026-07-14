@@ -30,6 +30,16 @@ export const EMPTY_COUNTRY_FORM: CountryForm = {
   exchangeRate: "",
 };
 
+// 이미 채워진 부가정보가 있으면(=기존 국가 수정) 처음부터 펼쳐서 보여주고,
+// 빈 폼(=새 국가 등록)이면 접어서 이름/코드/통화만 먼저 받는다.
+function hasSecondaryDetail(form: CountryForm): boolean {
+  return !!(
+    form.capital || form.phoneCode || form.voltage || form.language ||
+    form.visa || form.tip || form.priceLevel || form.prepDocs || form.prepDocsUrl ||
+    form.emergencyPolice || form.emergencyMedical
+  );
+}
+
 export function CountryFields({
   form,
   onChange,
@@ -37,6 +47,7 @@ export function CountryFields({
   form: CountryForm;
   onChange: (f: CountryForm) => void;
 }) {
+  const [showDetail, setShowDetail] = useState(() => hasSecondaryDetail(form));
   const set =
     (k: keyof CountryForm) => (e: React.ChangeEvent<HTMLInputElement>) =>
       onChange({ ...form, [k]: e.target.value });
@@ -63,26 +74,6 @@ export function CountryFields({
           />
         </div>
         <div className="field">
-          <label>수도</label>
-          <input
-            type="text"
-            value={form.capital ?? ""}
-            placeholder="도쿄"
-            onChange={set("capital")}
-          />
-        </div>
-        <div className="field">
-          <label>국가번호</label>
-          <input
-            type="text"
-            value={form.phoneCode ?? ""}
-            placeholder="+81"
-            onChange={set("phoneCode")}
-          />
-        </div>
-      </div>
-      <div className="form-row">
-        <div className="field">
           <label>통화</label>
           <input
             type="text"
@@ -91,94 +82,128 @@ export function CountryFields({
             onChange={set("currency")}
           />
         </div>
-        <div className="field">
-          <label>전압</label>
-          <input
-            type="text"
-            value={form.voltage ?? ""}
-            placeholder="110V"
-            onChange={set("voltage")}
-          />
-        </div>
-        <div className="field">
-          <label>여행 언어</label>
-          <input
-            type="text"
-            value={form.language ?? ""}
-            placeholder="일본어"
-            onChange={set("language")}
-          />
-        </div>
-        <div className="field grow">
-          <label>비자</label>
-          <input
-            type="text"
-            value={form.visa ?? ""}
-            placeholder="90일 무비자"
-            onChange={set("visa")}
-          />
-        </div>
       </div>
-      <div className="form-row">
-        <div className="field">
-          <label>팁 문화</label>
-          <input
-            type="text"
-            value={form.tip ?? ""}
-            placeholder="없음"
-            onChange={set("tip")}
-          />
-        </div>
-        <div className="field">
-          <label>물가</label>
-          <input
-            type="text"
-            value={form.priceLevel ?? ""}
-            placeholder="한국 대비 비슷함"
-            onChange={set("priceLevel")}
-          />
-        </div>
-      </div>
-      <div className="form-row">
-        <div className="field grow">
-          <label>미리 준비할 서류</label>
-          <input
-            type="text"
-            value={form.prepDocs ?? ""}
-            placeholder="Visit Japan Web 필수"
-            onChange={set("prepDocs")}
-          />
-        </div>
-        <div className="field grow">
-          <label>온라인 신청 URL (선택)</label>
-          <input
-            type="text"
-            value={form.prepDocsUrl ?? ""}
-            placeholder="https://www.vjw.digital.go.jp/..."
-            onChange={set("prepDocsUrl")}
-          />
-        </div>
-      </div>
-      <div className="form-row">
-        <div className="field">
-          <label>비상연락 · 경찰</label>
-          <input
-            type="text"
-            value={form.emergencyPolice ?? ""}
-            placeholder="110"
-            onChange={set("emergencyPolice")}
-          />
-        </div>
-        <div className="field">
-          <label>비상연락 · 구급</label>
-          <input
-            type="text"
-            value={form.emergencyMedical ?? ""}
-            placeholder="119"
-            onChange={set("emergencyMedical")}
-          />
-        </div>
-      </div>
+
+      <button
+        type="button"
+        className="btn small ghost"
+        onClick={() => setShowDetail((v) => !v)}
+      >
+        {showDetail ? "▲ 간단히" : "▼ 자세히 (수도·비자·비상연락처 등)"}
+      </button>
+
+      {showDetail && (
+        <>
+          <div className="ticket-stub-divider" />
+          <div className="form-row">
+            <div className="field">
+              <label>수도</label>
+              <input
+                type="text"
+                value={form.capital ?? ""}
+                placeholder="도쿄"
+                onChange={set("capital")}
+              />
+            </div>
+            <div className="field">
+              <label>국가번호</label>
+              <input
+                type="text"
+                value={form.phoneCode ?? ""}
+                placeholder="+81"
+                onChange={set("phoneCode")}
+              />
+            </div>
+            <div className="field">
+              <label>전압</label>
+              <input
+                type="text"
+                value={form.voltage ?? ""}
+                placeholder="110V"
+                onChange={set("voltage")}
+              />
+            </div>
+            <div className="field">
+              <label>여행 언어</label>
+              <input
+                type="text"
+                value={form.language ?? ""}
+                placeholder="일본어"
+                onChange={set("language")}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="field grow">
+              <label>비자</label>
+              <input
+                type="text"
+                value={form.visa ?? ""}
+                placeholder="90일 무비자"
+                onChange={set("visa")}
+              />
+            </div>
+            <div className="field">
+              <label>팁 문화</label>
+              <input
+                type="text"
+                value={form.tip ?? ""}
+                placeholder="없음"
+                onChange={set("tip")}
+              />
+            </div>
+            <div className="field">
+              <label>물가</label>
+              <input
+                type="text"
+                value={form.priceLevel ?? ""}
+                placeholder="한국 대비 비슷함"
+                onChange={set("priceLevel")}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="field grow">
+              <label>미리 준비할 서류</label>
+              <input
+                type="text"
+                value={form.prepDocs ?? ""}
+                placeholder="Visit Japan Web 필수"
+                onChange={set("prepDocs")}
+              />
+            </div>
+            <div className="field grow">
+              <label>온라인 신청 URL (선택)</label>
+              <input
+                type="text"
+                value={form.prepDocsUrl ?? ""}
+                placeholder="https://www.vjw.digital.go.jp/..."
+                onChange={set("prepDocsUrl")}
+              />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="field">
+              <label>비상연락 · 경찰</label>
+              <input
+                type="text"
+                value={form.emergencyPolice ?? ""}
+                placeholder="110"
+                onChange={set("emergencyPolice")}
+              />
+            </div>
+            <div className="field">
+              <label>비상연락 · 구급</label>
+              <input
+                type="text"
+                value={form.emergencyMedical ?? ""}
+                placeholder="119"
+                onChange={set("emergencyMedical")}
+              />
+            </div>
+          </div>
+        </>
+      )}
     </>
   );
 }
@@ -412,7 +437,7 @@ function CountryCard({
 
   return (
     <>
-      <div className="mini-card" onClick={() => setDetailOpen(true)}>
+      <div className="card mini-card" onClick={() => setDetailOpen(true)}>
         <span style={{ fontSize: 26, lineHeight: 1 }}>
           {flagEmoji(country.code)}
         </span>

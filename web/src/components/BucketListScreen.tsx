@@ -72,7 +72,7 @@ function BucketCard({
   const itemCities = item.cityIds.map((id) => cities.find((c) => c.id === id)).filter((c): c is City => !!c)
 
   return (
-    <div className="place-card" style={{ cursor: 'default' }}>
+    <div className="card place-card" style={{ cursor: 'default' }}>
       {coverPhoto && <img className="place-card-photo" src={fileUrl(coverPhoto)} alt="" />}
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="place-card-body">

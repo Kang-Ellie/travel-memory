@@ -27,6 +27,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const [galleryLightbox, setGalleryLightbox] = useState<number | null>(null)
   const [calendarLightbox, setCalendarLightbox] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(GALLERY_PAGE)
+  const [bottomView, setBottomView] = useState<'calendar' | 'gallery'>('calendar')
 
   useEffect(() => {
     api.trips.list().then(setTrips)
@@ -143,36 +144,47 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
         </div>
       </div>
 
-      <Window title="TRIP_CALENDAR.EXE" color="green">
-        <div className="row" style={{ justifyContent: 'center', gap: 16, marginBottom: 12 }}>
-          <button type="button" className="btn small" onClick={() => shiftMonth(-1)}>‹</button>
-          <strong>{viewYear}.{pad(viewMonth + 1)}</strong>
-          <button type="button" className="btn small" onClick={() => shiftMonth(1)}>›</button>
+      <Window title={bottomView === 'calendar' ? 'TRIP_CALENDAR.EXE' : 'TRIP_GALLERY.EXE'} color={bottomView === 'calendar' ? 'green' : 'yellow'}>
+        <div className="folder-tabs">
+          <button className={`folder-tab ${bottomView === 'calendar' ? 'active' : ''}`} onClick={() => setBottomView('calendar')}>
+            <FolderIcon color="green" />
+            <span>📅 캘린더</span>
+          </button>
+          <button className={`folder-tab ${bottomView === 'gallery' ? 'active' : ''}`} onClick={() => setBottomView('gallery')}>
+            <FolderIcon color="yellow" />
+            <span>🖼 갤러리{gallery.length > 0 ? ` (${gallery.length})` : ''}</span>
+          </button>
         </div>
-        <div className="dash-calendar-grid">
-          {WEEKDAYS.map((w) => <span key={w} className="dash-calendar-weekday">{w}</span>)}
-          {cells.map((day, i) => {
-            const iso = day != null ? `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}` : null
-            const photo = iso ? photoByDate.get(iso) : null
-            return (
-              <div
-                key={i}
-                className={`dash-calendar-cell ${photo ? 'has-photo' : ''}`}
-                onClick={() => photo && setCalendarLightbox(photo)}
-              >
-                {photo && <img src={fileUrl(photo)} alt="" />}
-                {day != null && <span className="dash-calendar-daynum">{day}</span>}
-              </div>
-            )
-          })}
-        </div>
-        {calendarLightbox && (
-          <Lightbox images={[fileUrl(calendarLightbox)]} index={0} onClose={() => setCalendarLightbox(null)} />
-        )}
-      </Window>
 
-      <Window title="TRIP_GALLERY.EXE" color="yellow">
-        {gallery.length === 0 ? (
+        {bottomView === 'calendar' ? (
+          <>
+            <div className="row" style={{ justifyContent: 'center', gap: 16, marginBottom: 12 }}>
+              <button type="button" className="btn small" onClick={() => shiftMonth(-1)}>‹</button>
+              <strong>{viewYear}.{pad(viewMonth + 1)}</strong>
+              <button type="button" className="btn small" onClick={() => shiftMonth(1)}>›</button>
+            </div>
+            <div className="dash-calendar-grid">
+              {WEEKDAYS.map((w) => <span key={w} className="dash-calendar-weekday">{w}</span>)}
+              {cells.map((day, i) => {
+                const iso = day != null ? `${viewYear}-${pad(viewMonth + 1)}-${pad(day)}` : null
+                const photo = iso ? photoByDate.get(iso) : null
+                return (
+                  <div
+                    key={i}
+                    className={`dash-calendar-cell ${photo ? 'has-photo' : ''}`}
+                    onClick={() => photo && setCalendarLightbox(photo)}
+                  >
+                    {photo && <img src={fileUrl(photo)} alt="" />}
+                    {day != null && <span className="dash-calendar-daynum">{day}</span>}
+                  </div>
+                )
+              })}
+            </div>
+            {calendarLightbox && (
+              <Lightbox images={[fileUrl(calendarLightbox)]} index={0} onClose={() => setCalendarLightbox(null)} />
+            )}
+          </>
+        ) : gallery.length === 0 ? (
           <div className="empty">아직 사진이 없어요.</div>
         ) : (
           <>
@@ -191,10 +203,10 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                 </button>
               </div>
             )}
+            {galleryLightbox != null && (
+              <Lightbox images={galleryUrls} index={galleryLightbox} onClose={() => setGalleryLightbox(null)} />
+            )}
           </>
-        )}
-        {galleryLightbox != null && (
-          <Lightbox images={galleryUrls} index={galleryLightbox} onClose={() => setGalleryLightbox(null)} />
         )}
       </Window>
     </div>

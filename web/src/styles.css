@@ -457,12 +457,17 @@ textarea { resize: vertical; min-height: 70px; }
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 
-/* ── 사진 갤러리 카드 (장소·버킷리스트) ───── */
-.place-card {
+/* ── 카드 공통 베이스: 장소·일정·동행인·아카이브 카드가 전부 이 테두리·배경·그림자·라운드를
+   공유한다. 각 카드는 이 클래스를 같이 붙이고, 자기만 다른 값(그림자 크기·라운드·패딩 등)만 덮어쓴다. ── */
+.card {
   border: 2px solid var(--ink);
   border-radius: 12px;
   background: #fff;
   box-shadow: 4px 4px 0 var(--shadow);
+}
+
+/* ── 사진 갤러리 카드 (장소·버킷리스트) ───── */
+.place-card {
   overflow: hidden;
   cursor: pointer;
   display: flex;
@@ -550,10 +555,6 @@ textarea { resize: vertical; min-height: 70px; }
 .day-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 
 .event-card {
-  border: 2px solid var(--ink);
-  border-radius: 12px;
-  background: #fff;
-  box-shadow: 4px 4px 0 var(--shadow);
   padding: 14px;
   margin-bottom: 14px;
 }
@@ -652,9 +653,8 @@ textarea { resize: vertical; min-height: 70px; }
 .mini-card {
   position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 4px;
-  border: 2px solid var(--ink); border-radius: 12px; background: #fff;
   padding: 12px 8px 10px;
-  box-shadow: 2px 2px 0 var(--shadow);
+  box-shadow: 2px 2px 0 var(--shadow); /* .card보다 작은 그림자로 덮어씀 */
   cursor: pointer;
 }
 .mini-card .x-btn { position: absolute; top: 0; right: 2px; padding: 2px 6px; font-size: 13px; }
@@ -913,11 +913,9 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 /* ── 보관함 (Archive Board) ────────────── */
 .archive-board { display: flex; flex-direction: column; gap: 10px; }
 .archive-card {
-  border: 2px solid var(--ink);
-  border-radius: 10px;
-  background: #fff;
+  border-radius: 10px; /* .card보다 살짝 작은 라운드로 덮어씀 */
   padding: 10px;
-  box-shadow: 2px 2px 0 var(--shadow);
+  box-shadow: 2px 2px 0 var(--shadow); /* .card보다 작은 그림자로 덮어씀 */
   cursor: grab;
 }
 .archive-card.dragging { opacity: 0.4; }

@@ -48,6 +48,7 @@ function PlaceCard({
   const [tip, setTip] = useState(place.tip ?? '')
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
+  const [showDetail, setShowDetail] = useState(false)
 
   const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
   const isValet = category === '발렛'
@@ -99,10 +100,6 @@ function PlaceCard({
             <Select value={category} onChange={(e) => setCategory(e.target.value)}>
               {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select></div>
-          {needsReview && (
-            <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
-              <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
-          )}
           <div className="field grow"><label>구글 지도 링크</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." style={{ flex: 1 }}
@@ -125,74 +122,91 @@ function PlaceCard({
                 {citiesOfCountry.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select></div>
           )}
-          {isValet && (
-            <>
-              <div className="field grow"><label>🚗 발렛사</label>
-                <input type="text" value={valetCompany} placeholder="예: 투루발렛" onChange={(e) => setValetCompany(e.target.value)} /></div>
-              <div className="field grow"><label>📞 예약 채널</label>
-                <input type="text" value={bookingChannel} placeholder="예: 카카오톡 채널, 010-1234-5678"
-                  onChange={(e) => setBookingChannel(e.target.value)} /></div>
-            </>
-          )}
-          {isLodging && (
-            <>
-              <div className="field"><label>⭐ 성급</label>
-                <input type="text" value={grade} placeholder="예: 4성급" onChange={(e) => setGrade(e.target.value)} /></div>
-              <div className="field grow"><label>🚕 가는 법</label>
-                <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
-            </>
-          )}
-          {needsReview && (
-            <>
-              <div className="field"><label>🕒 영업시간</label>
-                <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
-              <div className="field"><label>⏸ 브레이크타임</label>
-                <input type="text" value={breakTime} placeholder="예: 15:00~17:00" onChange={(e) => setBreakTime(e.target.value)} /></div>
-              <div className="field" style={{ justifyContent: 'flex-end' }}>
-                <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
-                  <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
-                </label>
-              </div>
-              <div className="field grow"><label>🍽 추천 메뉴</label>
-                <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
-              {BABY_MENU_CATEGORIES.includes(category) && (
-                <div className="field grow"><label>🍼 영아 픽 메뉴</label>
-                  <input type="text" value={babyMenu} placeholder="예: 아기 죽, 이유식 데움 가능" onChange={(e) => setBabyMenu(e.target.value)} /></div>
+        </div>
+
+        <button type="button" className="btn small ghost" style={{ marginTop: 12 }} onClick={() => setShowDetail((v) => !v)}>
+          {showDetail ? '▲ 간단히' : '▼ 자세히 (평점·운영정보·메모·팁 등)'}
+        </button>
+
+        {showDetail && (
+          <>
+            <div className="ticket-stub-divider" />
+            <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
+              {needsReview && (
+                <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
+                  <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
               )}
-            </>
-          )}
-          {RECOMMEND_CATEGORIES.includes(category) && (
-            <div className="field"><label>추천? 비추천?</label>
-              <Select value={recommend === true ? 'yes' : recommend === false ? 'no' : ''}
-                onChange={(e) => setRecommend(e.target.value === 'yes' ? true : e.target.value === 'no' ? false : null)}>
-                <option value="">— 미정 —</option>
-                <option value="yes">👍 추천</option>
-                <option value="no">👎 비추천</option>
-              </Select></div>
-          )}
-          <div className="field grow"><label>메모</label>
-            <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
-          <div className="field grow"><label>💡 알아두면 좋은 팁</label>
-            <input type="text" value={tip} placeholder="예: 현금 결제만 가능, 2터미널 이용" onChange={(e) => setTip(e.target.value)} /></div>
-          {needsReview && (
-            <>
-              <div className="field grow"><label>👍 장점</label>
-                <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
-              <div className="field grow"><label>👎 단점</label>
-                <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
-            </>
-          )}
-          <div style={{ marginTop: 12 }}>
-            <button className="btn small primary" onClick={save}>저장</button>
-            <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
-          </div>
+              {isValet && (
+                <>
+                  <div className="field grow"><label>🚗 발렛사</label>
+                    <input type="text" value={valetCompany} placeholder="예: 투루발렛" onChange={(e) => setValetCompany(e.target.value)} /></div>
+                  <div className="field grow"><label>📞 예약 채널</label>
+                    <input type="text" value={bookingChannel} placeholder="예: 카카오톡 채널, 010-1234-5678"
+                      onChange={(e) => setBookingChannel(e.target.value)} /></div>
+                </>
+              )}
+              {isLodging && (
+                <>
+                  <div className="field"><label>⭐ 성급</label>
+                    <input type="text" value={grade} placeholder="예: 4성급" onChange={(e) => setGrade(e.target.value)} /></div>
+                  <div className="field grow"><label>🚕 가는 법</label>
+                    <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
+                </>
+              )}
+              {needsReview && (
+                <>
+                  <div className="field"><label>🕒 영업시간</label>
+                    <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
+                  <div className="field"><label>⏸ 브레이크타임</label>
+                    <input type="text" value={breakTime} placeholder="예: 15:00~17:00" onChange={(e) => setBreakTime(e.target.value)} /></div>
+                  <div className="field" style={{ justifyContent: 'flex-end' }}>
+                    <label style={{ display: 'flex', gap: 4, alignItems: 'center', fontWeight: 700 }}>
+                      <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
+                    </label>
+                  </div>
+                  <div className="field grow"><label>🍽 추천 메뉴</label>
+                    <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
+                  {BABY_MENU_CATEGORIES.includes(category) && (
+                    <div className="field grow"><label>🍼 영아 픽 메뉴</label>
+                      <input type="text" value={babyMenu} placeholder="예: 아기 죽, 이유식 데움 가능" onChange={(e) => setBabyMenu(e.target.value)} /></div>
+                  )}
+                </>
+              )}
+              {RECOMMEND_CATEGORIES.includes(category) && (
+                <div className="field"><label>추천? 비추천?</label>
+                  <Select value={recommend === true ? 'yes' : recommend === false ? 'no' : ''}
+                    onChange={(e) => setRecommend(e.target.value === 'yes' ? true : e.target.value === 'no' ? false : null)}>
+                    <option value="">— 미정 —</option>
+                    <option value="yes">👍 추천</option>
+                    <option value="no">👎 비추천</option>
+                  </Select></div>
+              )}
+              <div className="field grow"><label>메모</label>
+                <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
+              <div className="field grow"><label>💡 알아두면 좋은 팁</label>
+                <input type="text" value={tip} placeholder="예: 현금 결제만 가능, 2터미널 이용" onChange={(e) => setTip(e.target.value)} /></div>
+              {needsReview && (
+                <>
+                  <div className="field grow"><label>👍 장점</label>
+                    <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
+                  <div className="field grow"><label>👎 단점</label>
+                    <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
+                </>
+              )}
+            </div>
+          </>
+        )}
+
+        <div style={{ marginTop: 12 }}>
+          <button className="btn small primary" onClick={save}>저장</button>
+          <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
         </div>
       </Modal>
     )
   }
 
   return (
-    <div className="place-card" onClick={() => setDetailOpen(true)}>
+    <div className="card place-card" onClick={() => setDetailOpen(true)}>
       {place.coverPhoto && <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />}
       <div className="place-card-body">
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>

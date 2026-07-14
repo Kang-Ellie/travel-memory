@@ -94,7 +94,7 @@ function BaseListCard({
 
   return (
     <>
-      <div className="place-card" onClick={() => setOpen(true)}>
+      <div className="card place-card" onClick={() => setOpen(true)}>
         {coverPhoto && (
           <img
             className="place-card-photo"

@@ -313,7 +313,7 @@ function EventCard({
 
   return (
     <div
-      className="event-card"
+      className="card event-card"
       draggable
       onDragStart={() => onDragStart(dragIndex)}
       onDragOver={(e) => e.preventDefault()}

@@ -65,20 +65,13 @@ export default function VouchersTab({ trip }: { trip: Trip }) {
       {vouchers.length === 0 ? (
         <div className="empty">저장된 바우처가 없어요. 항공권 PDF나 예약 확인증을 넣어두면 여행 중에도 바로 열 수 있어요. 🎫</div>
       ) : (
-        <>
-          <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
-            {(['항공권', '숙소'] as const).map((cat) => {
-              const items = vouchers.filter((v) => v.category === cat)
-              if (items.length === 0) return null
-              return <VoucherGroup key={cat} cat={cat} items={items} onRemove={remove} />
-            })}
-          </div>
-          {(['티켓', '기타'] as const).map((cat) => {
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}>
+          {VOUCHER_CATEGORIES.map((cat) => {
             const items = vouchers.filter((v) => v.category === cat)
             if (items.length === 0) return null
-            return <div key={cat} className="section-gap"><VoucherGroup cat={cat} items={items} onRemove={remove} /></div>
+            return <VoucherGroup key={cat} cat={cat} items={items} onRemove={remove} />
           })}
-        </>
+        </div>
       )}
     </div>
   )

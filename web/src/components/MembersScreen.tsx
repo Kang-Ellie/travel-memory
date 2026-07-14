@@ -60,7 +60,7 @@ export default function MembersScreen() {
       ) : (
         <div className="mini-card-grid">
           {members.map((m) => (
-            <div key={m.id} className="mini-card" style={{ cursor: 'default' }}>
+            <div key={m.id} className="card mini-card" style={{ cursor: 'default' }}>
               <button className="x-btn" onClick={() => remove(m)}>×</button>
               <button type="button" className="mini-card-emoji" title="이모지 변경"
                 onClick={() => setEditingEmojiFor(editingEmojiFor === m.id ? null : m.id)}>

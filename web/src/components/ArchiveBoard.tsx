@@ -13,7 +13,7 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
   const [lightbox, setLightbox] = useState(false)
   return (
     <div
-      className="archive-card"
+      className="card archive-card"
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData(ARCHIVE_DRAG_TYPE, item.id)
@@ -34,7 +34,6 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
         <div className="archive-card-body">🔗 {item.body}</div>
       )}
       {item.kind === 'memo' && item.body && <div className="archive-card-body">{item.body}</div>}
-      <div className="muted" style={{ marginTop: 6 }}>👉 왼쪽 동선의 날짜 칸으로 끌어다 놓으면 일정으로 편입돼요.</div>
       {lightbox && item.filePath && (
         <Lightbox images={[fileUrl(item.filePath)]} index={0} onClose={() => setLightbox(false)} />
       )}
@@ -110,7 +109,12 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
       <div className="section-gap">
         {items.length === 0 ? (
           <div className="empty">아직 보관된 정보가 없어요. 여행 전 찾아본 맛집·블로그·사진을 여기 모아두세요.</div>
-        ) : items.map((it) => <ArchiveCard key={it.id} item={it} onChanged={refresh} />)}
+        ) : (
+          <>
+            <div className="muted" style={{ marginBottom: 8 }}>👉 왼쪽 동선의 날짜 칸으로 끌어다 놓으면 일정으로 편입돼요.</div>
+            {items.map((it) => <ArchiveCard key={it.id} item={it} onChanged={refresh} />)}
+          </>
+        )}
       </div>
     </div>
   )
