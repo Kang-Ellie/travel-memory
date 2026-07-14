@@ -52,6 +52,7 @@ export default function TicketQuickAdd({
   const [saving, setSaving] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const voucherInput = useRef<HTMLInputElement>(null)
+  const [showDetail, setShowDetail] = useState(false)
 
   // 가족이 같은 비행기를 따로 예약했을 때: 이미 등록된 항공편에서 시간·출발지·도착지·항공사 정보를 그대로 가져오고,
   // 탑승자는 그 항공편에 이미 들어간 사람을 뺀 나머지로 기본 선택해준다(따로 산 사람들이니까).
@@ -112,6 +113,34 @@ export default function TicketQuickAdd({
     onCreated()
     onClose()
   }
+
+  const bookingFields = (
+    <>
+      <div className="form-row">
+        <div className="field"><label>예약번호</label>
+          <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
+        <div className="field grow"><label>예약처</label>
+          <input type="text" value={bookedVia} placeholder="예: 부킹닷컴" onChange={(e) => setBookedVia(e.target.value)} /></div>
+        <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+          ✅ 예약 확정
+        </label>
+      </div>
+      <div className="field grow" style={{ marginBottom: 12 }}>
+        <label>🎫 바우처 파일 (선택 · PDF·이미지)</label>
+        <input ref={voucherInput} type="file" accept=".pdf,image/*" hidden
+          onChange={(e) => setVoucherFile(e.target.files?.[0] ?? null)} />
+        <button type="button" className="btn small" onClick={() => voucherInput.current?.click()}>
+          {voucherFile ? `📎 ${voucherFile.name}` : '📎 파일 선택'}
+        </button>
+        {voucherFile && (
+          <button type="button" className="btn small ghost" style={{ marginLeft: 6 }} onClick={() => setVoucherFile(null)}>
+            취소
+          </button>
+        )}
+      </div>
+    </>
+  )
 
   return (
     <Modal title={`${TICKET_ICON[kind]} ${kind} 티켓 추가`} onClose={onClose}>
@@ -177,10 +206,6 @@ export default function TicketQuickAdd({
             <DateTimePicker value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
           <div className="field"><label>🛬 도착시간</label>
             <DateTimePicker value={arriveAt} onChange={(e) => setArriveAt(e.target.value)} /></div>
-          <div className="field"><label>항공사</label>
-            <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
-          <div className="field"><label>편명</label>
-            <input type="text" value={flightNo} placeholder="예: LJ203" onChange={(e) => setFlightNo(e.target.value)} /></div>
           {participants.length > 0 && (
             <div className="field grow">
               <label>🧑‍🤝‍🧑 탑승자 (가족이 따로 티켓을 샀으면 체크 해제)</label>
@@ -202,6 +227,26 @@ export default function TicketQuickAdd({
         </div>
       )}
 
+      {kind === '항공' && (
+        <>
+          <button type="button" className="btn small ghost" onClick={() => setShowDetail((v) => !v)}>
+            {showDetail ? '▲ 간단히' : '▼ 자세히 (항공사·편명·예약정보·바우처)'}
+          </button>
+          {showDetail && (
+            <>
+              <div className="ticket-stub-divider" />
+              <div className="form-row">
+                <div className="field"><label>항공사</label>
+                  <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
+                <div className="field"><label>편명</label>
+                  <input type="text" value={flightNo} placeholder="예: LJ203" onChange={(e) => setFlightNo(e.target.value)} /></div>
+              </div>
+              {bookingFields}
+            </>
+          )}
+        </>
+      )}
+
       {kind === '숙소' && (
         <div className="form-row">
           <div className="field"><label>체크인</label>
@@ -217,29 +262,7 @@ export default function TicketQuickAdd({
         </div>
       )}
 
-      <div className="form-row">
-        <div className="field"><label>예약번호</label>
-          <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
-        <div className="field grow"><label>예약처</label>
-          <input type="text" value={bookedVia} placeholder="예: 부킹닷컴" onChange={(e) => setBookedVia(e.target.value)} /></div>
-        <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
-          <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-          ✅ 예약 확정
-        </label>
-      </div>
-      <div className="field grow" style={{ marginBottom: 12 }}>
-        <label>🎫 바우처 파일 (선택 · PDF·이미지)</label>
-        <input ref={voucherInput} type="file" accept=".pdf,image/*" hidden
-          onChange={(e) => setVoucherFile(e.target.files?.[0] ?? null)} />
-        <button type="button" className="btn small" onClick={() => voucherInput.current?.click()}>
-          {voucherFile ? `📎 ${voucherFile.name}` : '📎 파일 선택'}
-        </button>
-        {voucherFile && (
-          <button type="button" className="btn small ghost" style={{ marginLeft: 6 }} onClick={() => setVoucherFile(null)}>
-            취소
-          </button>
-        )}
-      </div>
+      {kind !== '항공' && bookingFields}
 
       <div style={{ marginTop: 12 }}>
         <button className="btn primary" onClick={submit} disabled={saving}>

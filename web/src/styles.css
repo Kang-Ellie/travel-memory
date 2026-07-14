@@ -488,6 +488,15 @@ textarea { resize: vertical; min-height: 70px; }
 .boarding-pass-divider { border-top: 2px dashed rgba(45,42,62,0.35); margin: 0 16px; }
 .boarding-pass-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px 16px; padding: 14px 16px; }
 
+/* ── 티켓 반쪽 절취선(폼 안에서 "자세히" 펼칠 때, 진짜 티켓 뜯는 느낌) ── */
+.ticket-stub-divider { position: relative; border-top: 2px dashed rgba(45,42,62,0.35); margin: 18px 2px 22px; }
+.ticket-stub-divider::before, .ticket-stub-divider::after {
+  content: ''; position: absolute; top: -9px; width: 18px; height: 18px;
+  border-radius: 50%; background: var(--card); border: 2px solid var(--ink);
+}
+.ticket-stub-divider::before { left: -11px; }
+.ticket-stub-divider::after { right: -11px; }
+
 /* ── 여행 BASE: 나라별 티켓을 나란히 배치 ───── */
 .trip-ticket-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
