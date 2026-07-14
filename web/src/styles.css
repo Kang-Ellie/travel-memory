@@ -665,6 +665,7 @@ textarea { resize: vertical; min-height: 70px; }
   border-radius: 12px;
   background: #fff;
   padding: 12px;
+  min-height: 80px;
 }
 .info-card-head {
   display: flex; align-items: center; gap: 6px;
