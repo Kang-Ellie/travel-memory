@@ -119,20 +119,11 @@ export function CountryFields({
       </div>
       <div className="form-row">
         <div className="field">
-          <label>환율</label>
-          <input
-            type="text"
-            value={form.exchangeRate ?? ""}
-            placeholder="100엔 = 922원"
-            onChange={set("exchangeRate")}
-          />
-        </div>
-        <div className="field">
-          <label>날씨</label>
+          <label>추천 여행 시기</label>
           <input
             type="text"
             value={form.weather ?? ""}
-            placeholder="7월 24~32°"
+            placeholder="3~5월, 9~11월 추천 (우기 7~8월 비추)"
             onChange={set("weather")}
           />
         </div>
@@ -414,8 +405,7 @@ function CountryCard({
                 { icon: "💴", label: "통화", value: country.currency },
                 { icon: "☎️", label: "국가번호", value: country.phoneCode },
                 { icon: "🔌", label: "전압", value: country.voltage },
-                { icon: "💱", label: "환율", value: country.exchangeRate },
-                { icon: "⛅", label: "날씨", value: country.weather },
+                { icon: "🗓", label: "추천 시기", value: country.weather },
                 { icon: "💰", label: "팁", value: country.tip },
                 { icon: "📈", label: "물가", value: country.priceLevel },
                 { icon: "🚓", label: "경찰", value: country.emergencyPolice },
