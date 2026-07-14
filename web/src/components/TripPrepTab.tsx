@@ -11,8 +11,13 @@ import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
 import TicketQuickAdd, { type TicketKind } from './TicketQuickAdd'
 import VouchersTab from './VouchersTab'
+import FolderIcon, { type FolderColor } from './FolderIcon'
 
 type PrepSection = 'tickets' | 'vouchers'
+const PREP_SECTIONS: Array<{ key: PrepSection; label: string; color: FolderColor }> = [
+  { key: 'tickets', label: '예약 티켓', color: 'blue' },
+  { key: 'vouchers', label: '바우처', color: 'green' },
+]
 
 function DayAssignRow({ trip, ev, onAssigned }: { trip: Trip; ev: TimelineEvent; onAssigned: () => void }) {
   const [day, setDay] = useState('1')
@@ -61,13 +66,13 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      <div className="day-tabs">
-        <button className={`pill ${section === 'tickets' ? 'active' : ''}`} onClick={() => setSection('tickets')}>
-          예약 티켓
-        </button>
-        <button className={`pill ${section === 'vouchers' ? 'active' : ''}`} onClick={() => setSection('vouchers')}>
-          바우처
-        </button>
+      <div className="folder-tabs">
+        {PREP_SECTIONS.map((s) => (
+          <button key={s.key} className={`folder-tab ${section === s.key ? 'active' : ''}`} onClick={() => setSection(s.key)}>
+            <FolderIcon color={s.color} />
+            <span>{s.label}</span>
+          </button>
+        ))}
       </div>
       {section === 'vouchers' && <VouchersTab trip={trip} />}
       {section === 'tickets' && (

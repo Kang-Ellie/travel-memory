@@ -474,8 +474,8 @@ function CountryCard({
                 { icon: "🔌", label: "전압", value: country.voltage },
                 { icon: "💰", label: "팁", value: country.tip },
                 { icon: "📈", label: "물가", value: country.priceLevel },
-                { icon: "🚓", label: "경찰", value: country.emergencyPolice },
-                { icon: "🚑", label: "응급", value: country.emergencyMedical },
+                { icon: "🚓", label: "경찰", value: country.emergencyPolice, emphasis: true },
+                { icon: "🚑", label: "응급", value: country.emergencyMedical, emphasis: true },
               ]}
             />
           </div>

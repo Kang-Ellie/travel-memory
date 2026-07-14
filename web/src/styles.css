@@ -681,6 +681,13 @@ textarea { resize: vertical; min-height: 70px; }
   padding: 12px;
   min-height: 80px;
 }
+/* 경찰·응급 같은 안전 정보 — 급할 때 다른 항목들 사이에서 바로 눈에 띄어야 하니
+   포인트 컬러(핑크)와는 별개로 시맨틱 레드를 쓴다. */
+.info-card-emphasis {
+  border: 1.5px solid #e0a0a0;
+  background: #fdeeee;
+}
+.info-card-emphasis .info-card-label, .info-card-emphasis .info-card-value { color: #b0392b; }
 .info-card-head {
   display: flex; align-items: center; gap: 6px;
   font-size: 12px; font-weight: 700; color: rgba(45, 42, 62, 0.6);

@@ -348,8 +348,8 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                       { icon: "🔌", label: "전압", value: co.voltage },
                       { icon: "💰", label: "팁", value: co.tip },
                       { icon: "📈", label: "물가", value: co.priceLevel },
-                      { icon: "🚓", label: "경찰", value: co.emergencyPolice },
-                      { icon: "🚑", label: "응급", value: co.emergencyMedical },
+                      { icon: "🚓", label: "경찰", value: co.emergencyPolice, emphasis: true },
+                      { icon: "🚑", label: "응급", value: co.emergencyMedical, emphasis: true },
                     ]}
                   />
                   {(co.prepDocs || co.prepDocsUrl) && (

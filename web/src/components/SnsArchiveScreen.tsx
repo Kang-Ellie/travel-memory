@@ -9,6 +9,7 @@ import Select from './Select'
 function LinkPlaceModal({
   item, places, onClose, onLinked,
 }: { item: ArchiveItem; places: Place[]; onClose: () => void; onLinked: () => void }) {
+  const [mode, setMode] = useState<'existing' | 'search'>(places.length > 0 ? 'existing' : 'search')
   const [existingId, setExistingId] = useState('')
   const [query, setQuery] = useState(item.title)
   const [searching, setSearching] = useState(false)
@@ -41,37 +42,48 @@ function LinkPlaceModal({
 
   return (
     <Modal title="장소로 만들기" onClose={onClose}>
-      <p className="muted" style={{ marginTop: 0 }}>
-        이미 족보에 있는 장소를 고르거나, 구글에서 검색해서 새로 등록하고 이 링크와 연결하세요.
-      </p>
-      {places.length > 0 && (
-        <div className="row" style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+      <div className="day-tabs" style={{ marginBottom: 16 }}>
+        {places.length > 0 && (
+          <button className={`pill ${mode === 'existing' ? 'active' : ''}`} onClick={() => setMode('existing')}>
+            📍 이미 있는 장소예요
+          </button>
+        )}
+        <button className={`pill ${mode === 'search' ? 'active' : ''}`} onClick={() => setMode('search')}>
+          🔍 새로 찾을게요
+        </button>
+      </div>
+
+      {mode === 'existing' ? (
+        <div className="row" style={{ border: 'none', padding: 0, margin: 0 }}>
           <Select value={existingId} onChange={(e) => setExistingId(e.target.value)}>
             <option value="">— 기존 장소에서 선택 —</option>
             {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
           </Select>
           <button className="btn small primary" onClick={linkExisting} disabled={!existingId}>연결</button>
         </div>
-      )}
-      <div className="form-row">
-        <div className="field grow">
-          <label>구글에서 장소 검색</label>
-          <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && search()} placeholder="장소명" />
-        </div>
-        <button className="btn primary" onClick={search} disabled={searching}>{searching ? '검색 중…' : '🔍 검색'}</button>
-      </div>
-      {searchError && <div className="error-text">{searchError}</div>}
-      {results.map((r, i) => (
-        <div key={i} className="row">
-          <span className="chip green">{r.category}</span>
-          <div className="grow">
-            <div style={{ fontWeight: 800 }}>{r.name}</div>
-            <div className="muted">{r.address}</div>
+      ) : (
+        <>
+          <div className="form-row">
+            <div className="field grow">
+              <label>구글에서 장소 검색</label>
+              <input type="text" value={query} onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && search()} placeholder="장소명" />
+            </div>
+            <button className="btn primary" onClick={search} disabled={searching}>{searching ? '검색 중…' : '🔍 검색'}</button>
           </div>
-          <button className="btn small primary" onClick={() => saveAndLink(r)}>저장하고 연결</button>
-        </div>
-      ))}
+          {searchError && <div className="error-text">{searchError}</div>}
+          {results.map((r, i) => (
+            <div key={i} className="row">
+              <span className="chip green">{r.category}</span>
+              <div className="grow">
+                <div style={{ fontWeight: 800 }}>{r.name}</div>
+                <div className="muted">{r.address}</div>
+              </div>
+              <button className="btn small primary" onClick={() => saveAndLink(r)}>저장하고 연결</button>
+            </div>
+          ))}
+        </>
+      )}
     </Modal>
   )
 }
