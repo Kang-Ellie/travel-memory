@@ -94,6 +94,7 @@ export const api = {
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
+      tip?: string | null
     }) => req<Place>('POST', '/api/places', data),
     update: (id: string, data: {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
@@ -102,6 +103,7 @@ export const api = {
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; directions?: string | null; babyMenu?: string | null; recommend?: boolean | null
+      tip?: string | null
     }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),

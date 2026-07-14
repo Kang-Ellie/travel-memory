@@ -7,11 +7,15 @@ import Modal from './Modal'
 import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
+import PlaceMeta from './PlaceMeta'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 const BABY_MENU_CATEGORIES = ['맛집', '카페', '숙소']
 const RECOMMEND_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소']
+// 공항·발렛은 들르는 곳이지 "리뷰"할 대상이 아니라서, 평점·추천메뉴·장단점 같은
+// 리뷰성 필드는 이 두 분류에서만 통째로 숨긴다.
+const NO_REVIEW_CATEGORIES = ['공항', '발렛']
 
 function PlaceCard({
   place, countries, cities, linkedBucketItems, onChanged,
@@ -41,12 +45,14 @@ function PlaceCard({
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
+  const [tip, setTip] = useState(place.tip ?? '')
   const [resolving, setResolving] = useState(false)
   const [resolveError, setResolveError] = useState('')
 
   const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
   const isValet = category === '발렛'
   const isLodging = category === '숙소'
+  const needsReview = !NO_REVIEW_CATEGORIES.includes(category)
 
   const resolveMapLink = async () => {
     if (!mapUrl.trim()) return
@@ -69,7 +75,7 @@ function PlaceCard({
       breakTime: breakTime.trim() || null,
       valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
       grade: grade.trim() || null, directions: directions.trim() || null, babyMenu: babyMenu.trim() || null,
-      recommend,
+      recommend, tip: tip.trim() || null,
     })
     setEditing(false)
     onChanged()
@@ -93,8 +99,10 @@ function PlaceCard({
             <Select value={category} onChange={(e) => setCategory(e.target.value)}>
               {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select></div>
-          <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
-            <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
+          {needsReview && (
+            <div className="field" style={{ maxWidth: 110 }}><label>평점 (0~5, .5 단위)</label>
+              <input type="number" value={rating} min={0} max={5} step={0.5} placeholder="4.5" onChange={(e) => setRating(e.target.value)} /></div>
+          )}
           <div className="field grow"><label>구글 지도 링크</label>
             <div style={{ display: 'flex', gap: 6 }}>
               <input type="text" value={mapUrl} placeholder="https://maps.app.goo.gl/..." style={{ flex: 1 }}
@@ -134,7 +142,7 @@ function PlaceCard({
                 <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
             </>
           )}
-          {!isValet && (
+          {needsReview && (
             <>
               <div className="field"><label>🕒 영업시간</label>
                 <input type="text" value={hours} placeholder="예: 매일 10:30~20:00" onChange={(e) => setHours(e.target.value)} /></div>
@@ -164,10 +172,16 @@ function PlaceCard({
           )}
           <div className="field grow"><label>메모</label>
             <input type="text" value={memo} placeholder="우리끼리 메모" onChange={(e) => setMemo(e.target.value)} /></div>
-          <div className="field grow"><label>👍 장점</label>
-            <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
-          <div className="field grow"><label>👎 단점</label>
-            <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
+          <div className="field grow"><label>💡 알아두면 좋은 팁</label>
+            <input type="text" value={tip} placeholder="예: 현금 결제만 가능, 2터미널 이용" onChange={(e) => setTip(e.target.value)} /></div>
+          {needsReview && (
+            <>
+              <div className="field grow"><label>👍 장점</label>
+                <input type="text" value={pros} placeholder="예: 조식 맛있음, 역에서 가까움" onChange={(e) => setPros(e.target.value)} /></div>
+              <div className="field grow"><label>👎 단점</label>
+                <input type="text" value={cons} placeholder="예: 방음이 약함" onChange={(e) => setCons(e.target.value)} /></div>
+            </>
+          )}
           <div style={{ marginTop: 12 }}>
             <button className="btn small primary" onClick={save}>저장</button>
             <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
@@ -215,22 +229,7 @@ function PlaceCard({
             ) : (place.address || '주소 없음')}
             {place.memo ? ` · 📝 ${place.memo}` : ''}
           </div>
-          {place.hours && <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>}
-          {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
-          {place.babyMenu && <div className="muted">🍼 영아 픽: {place.babyMenu}</div>}
-          {place.directions && <div className="muted">🚕 {place.directions}</div>}
-          {(place.valetCompany || place.bookingChannel) && (
-            <div className="muted">
-              {place.valetCompany && <>🚗 {place.valetCompany} </>}
-              {place.bookingChannel && <>· 📞 {place.bookingChannel}</>}
-            </div>
-          )}
-          {(place.pros || place.cons) && (
-            <div className="muted">
-              {place.pros && <>👍 {place.pros} </>}
-              {place.cons && <>👎 {place.cons}</>}
-            </div>
-          )}
+          <PlaceMeta place={place} />
           {linkedBucketItems.length > 0 && (
             <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
           )}
@@ -323,6 +322,7 @@ export default function PlacesScreen() {
 
   return (
     <div>
+      <div className="grid">
       <Window title="PLACE_SEARCH.EXE" color="green">
         <div className="form-row">
           <div className="field grow">
@@ -412,6 +412,7 @@ export default function PlacesScreen() {
           </Modal>
         )}
       </Window>
+      </div>
 
       <Window title="OUR_PLACES.EXE" color="purple">
         <p className="muted" style={{ marginTop: 0 }}>

@@ -322,6 +322,9 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE places ADD COLUMN IF NOT EXISTS baby_menu TEXT;
     ALTER TABLE places ADD COLUMN IF NOT EXISTS recommend BOOLEAN;
 
+    -- 구글 지도의 "알아두면 좋은 정보" 같은, 방문 전 알아두면 좋은 팁(직접 작성)
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS tip TEXT;
+
     -- 오늘의 일기 전용 사진첩 (특정 장소 방문과 무관하게 그날 하루를 남기는 사진)
     CREATE TABLE IF NOT EXISTS day_note_photos (
       id         TEXT PRIMARY KEY,

@@ -7,6 +7,7 @@ import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import DropdownMenu from './DropdownMenu'
+import PlaceMeta from './PlaceMeta'
 
 const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
@@ -112,6 +113,7 @@ function BucketCard({
         )}
         {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
         {item.linkedPlaceId && <div className="muted">📍 {item.linkedPlaceName}</div>}
+        {linkedPlace && <PlaceMeta place={linkedPlace} />}
         {item.linkedTripId && <div className="muted">✈️ {item.linkedTripTitle}에서 완료</div>}
         {linkingPlace && (
           <div className="row" style={{ border: 'none', padding: 0 }}>

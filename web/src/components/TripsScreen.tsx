@@ -79,10 +79,18 @@ export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => v
   }
 
   const addMember = async () => {
-    if (!newMemberName.trim()) return
-    const res = await api.members.create(newMemberName.trim())
+    const trimmed = newMemberName.trim()
+    if (!trimmed) return
+    const res = await api.members.create(trimmed)
     setNewMemberName('')
-    if ('error' in res) { alert(res.error); return }
+    if ('error' in res) {
+      // 이미 같은 이름의 동행인이 있으면 새로 만드는 대신 그 사람을 그냥 선택해준다.
+      const existing = members.find((m) => m.name === trimmed)
+      if (!existing) { alert(res.error); return }
+      setSelMembers((prev) => new Set(prev).add(existing.id))
+      setShowAddMember(false)
+      return
+    }
     setSelMembers((prev) => new Set(prev).add(res.id))
     setShowAddMember(false)
     api.members.list().then(setMembers)

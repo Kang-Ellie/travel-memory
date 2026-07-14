@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Trip, Place, TimelineEvent } from '../../shared/types'
 import { api } from '../api'
 import { ratingColor } from '../categories'
+import PlaceMeta from './PlaceMeta'
 
 const CATEGORY_ORDER = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 
@@ -49,6 +50,7 @@ export default function PlanBPanel({
                     )}
                   </div>
                   {p.address && <div className="muted">📍 {p.address}</div>}
+                  <PlaceMeta place={p} />
                 </div>
                 <button className="btn small primary" disabled={adding === p.id} onClick={() => addToDay(p.id)}>
                   {adding === p.id ? '추가 중…' : `＋ ${day}일차에 추가`}

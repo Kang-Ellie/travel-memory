@@ -83,6 +83,7 @@ export interface Place {
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null
+  tip: string | null
 }
 
 export interface TransitSegment {

@@ -16,6 +16,7 @@ import ChecklistPanel from './ChecklistPanel'
 import DayNoteEditModal from './DayNoteEditModal'
 import DayDiaryModal from './DayDiaryModal'
 import DropdownMenu from './DropdownMenu'
+import PlaceMeta from './PlaceMeta'
 import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
@@ -349,6 +350,7 @@ function EventCard({
           )}
         </div>
       )}
+      <div style={{ marginTop: 6 }}><PlaceMeta place={ev.place} /></div>
 
       <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
       <div className="event-card-body">
