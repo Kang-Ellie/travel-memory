@@ -346,6 +346,15 @@ export async function initSchema(): Promise<void> {
     -- 도시별 항공편이 직항인지 경유인지
     ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_type TEXT;
 
+    -- 구글 API(장소 검색·역지오코딩) 하루 호출 횟수 집계. 콘솔 할당량이 무제한(체험판 계정
+    -- 등)이어도 여기서 하루 상한을 걸어서 요금 폭탄을 코드 레벨에서 막는다.
+    CREATE TABLE IF NOT EXISTS api_usage (
+      usage_date TEXT NOT NULL,
+      kind       TEXT NOT NULL,
+      count      INT  NOT NULL DEFAULT 0,
+      PRIMARY KEY (usage_date, kind)
+    );
+
     -- 준비서류를 온라인으로 신청할 수 있는 사이트 URL
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS prep_docs_url TEXT;
   `)

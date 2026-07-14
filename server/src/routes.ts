@@ -7,6 +7,25 @@ import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSI
 
 const id = (): string => crypto.randomUUID()
 
+// 구글 API 하루 호출 상한. 콘솔 할당량과 별개로, 여기서 넘으면 구글에 요청 자체를 안 보낸다.
+const DAILY_API_LIMITS: Record<'places' | 'geocode', number> = { places: 300, geocode: 300 }
+
+async function incrementDailyUsage(kind: keyof typeof DAILY_API_LIMITS): Promise<number> {
+  const today = new Date().toISOString().slice(0, 10)
+  const r = await pool.query(
+    `INSERT INTO api_usage (usage_date, kind, count) VALUES ($1, $2, 1)
+     ON CONFLICT (usage_date, kind) DO UPDATE SET count = api_usage.count + 1
+     RETURNING count`,
+    [today, kind],
+  )
+  return Number(r.rows[0].count)
+}
+
+async function overDailyLimit(kind: keyof typeof DAILY_API_LIMITS): Promise<boolean> {
+  const count = await incrementDailyUsage(kind)
+  return count > DAILY_API_LIMITS[kind]
+}
+
 // async 라우트 핸들러에서 던진(reject된) 에러를 자동으로 next(err)로 넘겨서
 // unhandled rejection으로 인한 프로세스 크래시(Node 22 기본 동작)를 막는다.
 // app.get/post/put/delete를 몽키패치해서 개별 핸들러마다 try/catch를 붙이지 않아도 되게 함.
@@ -436,6 +455,10 @@ export function registerRoutes(app: ExpressApp): void {
     const keyRow = await pool.query("SELECT value FROM settings WHERE key = 'googleApiKey'")
     const key = keyRow.rows[0]?.value?.trim()
     if (!key) { res.json({ error: '설정에서 구글 API 키를 먼저 등록해주세요.' }); return }
+    if (await overDailyLimit('places')) {
+      res.json({ error: '오늘 장소 검색 호출 한도를 넘었어요. 내일 다시 시도해주세요.' })
+      return
+    }
     try {
       const gr = await fetch('https://places.googleapis.com/v1/places:searchText', {
         method: 'POST',
@@ -490,7 +513,7 @@ export function registerRoutes(app: ExpressApp): void {
       if (lat != null && lng != null) {
         const keyRow = await pool.query("SELECT value FROM settings WHERE key = 'googleApiKey'")
         const key = keyRow.rows[0]?.value?.trim()
-        if (key) {
+        if (key && !(await overDailyLimit('geocode'))) {
           const gr = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${key}&language=ko`)
           if (gr.ok) {
             const json = (await gr.json()) as { results?: Array<{ formatted_address?: string }> }
