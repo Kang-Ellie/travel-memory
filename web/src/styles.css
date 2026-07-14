@@ -610,7 +610,7 @@ textarea { resize: vertical; min-height: 70px; }
 .event-menu-panel {
   position: absolute; right: 0; top: 100%; margin-top: 4px;
   background: #fff; border: 2px solid var(--ink); border-radius: 10px;
-  box-shadow: 4px 4px 0 var(--shadow); z-index: 50;
+  box-shadow: 4px 4px 0 var(--shadow); z-index: 260;
   display: flex; flex-direction: column; min-width: 160px; overflow: hidden;
 }
 .event-menu-panel button {
