@@ -611,11 +611,12 @@ textarea { resize: vertical; min-height: 70px; }
   position: absolute; right: 0; top: 100%; margin-top: 4px;
   background: #fff; border: 2px solid var(--ink); border-radius: 10px;
   box-shadow: 4px 4px 0 var(--shadow); z-index: 260;
-  display: flex; flex-direction: column; min-width: 160px; overflow: hidden;
+  display: flex; flex-direction: column; width: max-content; max-width: 220px; overflow: hidden;
 }
 .event-menu-panel button {
   all: unset; box-sizing: border-box; cursor: pointer;
-  padding: 10px 14px; font-weight: 700; font-size: 13px; font-family: inherit; color: var(--ink);
+  padding: 8px 12px; font-weight: 700; font-size: 12.5px; font-family: inherit; color: var(--ink);
+  white-space: nowrap;
 }
 .event-menu-panel button:hover { background: var(--pink-soft); }
 .event-menu-panel button.danger { color: #c0392b; }
@@ -623,7 +624,7 @@ textarea { resize: vertical; min-height: 70px; }
 .event-menu-panel .menu-divider { height: 1.5px; background: rgba(45,42,62,0.15); margin: 2px 0; }
 .event-menu-trigger {
   border: none; background: none; box-shadow: none;
-  padding: 4px 8px; font-size: 16px; font-weight: 800; line-height: 1;
+  padding: 2px 6px; font-size: 15px; font-weight: 800; line-height: 1;
   cursor: pointer; font-family: inherit; color: var(--ink); border-radius: 6px;
 }
 .event-menu-trigger:hover { background: rgba(45,42,62,0.08); }

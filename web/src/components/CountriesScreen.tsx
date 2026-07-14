@@ -367,6 +367,7 @@ function CountryCard({
     )
       return;
     await api.countries.delete(country.id);
+    setDetailOpen(false);
     onChanged();
   };
   const addCity = async () => {
@@ -391,15 +392,6 @@ function CountryCard({
   return (
     <>
       <div className="mini-card" onClick={() => setDetailOpen(true)}>
-        <button
-          className="x-btn"
-          onClick={(e) => {
-            e.stopPropagation();
-            remove();
-          }}
-        >
-          ×
-        </button>
         <span style={{ fontSize: 26, lineHeight: 1 }}>
           {flagEmoji(country.code)}
         </span>
@@ -415,6 +407,7 @@ function CountryCard({
             <DropdownMenu actions={[
               { label: "✏️ 국가 정보 수정", onClick: () => { setForm(country); setEditing(true); } },
               { label: "＋ 도시 추가", onClick: () => setShowAddCity(true) },
+              { label: "🗑 국가 삭제", danger: true, onClick: remove },
             ]} />
           }
         >

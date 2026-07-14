@@ -7,10 +7,12 @@ export interface MenuAction {
   danger?: boolean
 }
 
-interface MenuPos { top: number; left: number }
+interface MenuPos { top: number; right: number }
 
 // 카드 안에 있는 ⋮ 메뉴는 카드의 overflow:hidden에 의해 잘릴 수 있어서,
 // Select/DatePicker와 동일하게 패널을 포털로 body에 fixed 배치한다.
+// 패널은 트리거의 오른쪽 끝에 right로 고정해서, 항목 텍스트 길이에 맞춰 폭이
+// 자동으로 정해지게 한다(고정 min-width로 짧은 메뉴가 쓸데없이 커지는 것 방지).
 export default function DropdownMenu({ actions, icon = '⋮', title = '더보기' }: {
   actions: Array<MenuAction | 'divider'>
   icon?: string
@@ -24,9 +26,7 @@ export default function DropdownMenu({ actions, icon = '⋮', title = '더보기
   const openMenu = () => {
     const r = triggerRef.current?.getBoundingClientRect()
     if (!r) return
-    const panelWidth = 180
-    const left = Math.min(r.right - panelWidth, window.innerWidth - panelWidth - 8)
-    setPos({ top: r.bottom + 4, left: Math.max(8, left) })
+    setPos({ top: r.bottom + 4, right: Math.max(8, window.innerWidth - r.right) })
     setOpen(true)
   }
 
@@ -63,7 +63,7 @@ export default function DropdownMenu({ actions, icon = '⋮', title = '더보기
         {icon}
       </button>
       {open && pos && createPortal(
-        <div ref={panelRef} className="event-menu-panel" style={{ position: 'fixed', top: pos.top, left: pos.left }}>
+        <div ref={panelRef} className="event-menu-panel" style={{ position: 'fixed', top: pos.top, right: pos.right }}>
           {actions.map((a, i) => (
             a === 'divider' ? (
               <div key={i} className="menu-divider" />
