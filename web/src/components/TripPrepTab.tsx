@@ -76,7 +76,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           발렛·항공·숙소처럼 여행 초반에 미리 예약하는 것들을 한 눈에 모아뒀어요. 일차가 아직 정해지지 않았어도 예약 정보부터
           바로 티켓으로 남겨두고, 나중에 일정에 배치할 수 있어요.
         </p>
-        <div className="row" style={{ flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
           <button className="btn primary small" onClick={() => setTicketKind('발렛')}>＋ 발렛 티켓</button>
           <button className="btn primary small" onClick={() => setTicketKind('항공')}>＋ 항공 티켓</button>
           <button className="btn primary small" onClick={() => setTicketKind('숙소')}>＋ 숙소 티켓</button>
@@ -92,6 +92,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
             kind={ticketKind}
             places={places}
             participants={participants}
+            existingFlights={flights}
             onClose={() => setTicketKind(null)}
             onCreated={refresh}
           />

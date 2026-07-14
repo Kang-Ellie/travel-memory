@@ -7,7 +7,7 @@ import type {
   Place,
   BucketKind,
 } from "../../shared/types";
-import { BUCKET_KIND_LABEL, bucketKindOf } from "../../shared/types";
+import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from "../../shared/types";
 import { api, fileUrl } from "../api";
 import { flagEmoji } from "../categories";
 import Window from "./Window";
@@ -230,6 +230,11 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   const [bucket, setBucket] = useState<BucketItem[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [collapsed, setCollapsed] = useState(false);
+  const [newTitle, setNewTitle] = useState<Record<BucketKind, string>>({
+    bucket: "",
+    food: "",
+    wish: "",
+  });
 
   const refresh = () => {
     api.countries.list().then(setCountries);
@@ -263,6 +268,21 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   const byKind = (kind: BucketKind) =>
     itemsForBase.filter((b) => bucketKindOf(b.category) === kind);
 
+  const addQuick = async (kind: BucketKind) => {
+    const title = newTitle[kind].trim();
+    if (!title) return;
+    await api.bucket.create({
+      title,
+      memo: null,
+      countryIds: [...countryIds],
+      cityIds: [],
+      category: BUCKET_KIND_CATEGORY[kind],
+      linkedTripId: trip.id,
+    });
+    setNewTitle((prev) => ({ ...prev, [kind]: "" }));
+    refresh();
+  };
+
   return (
     <Window title="BASE.EXE" color="blue">
       <div
@@ -289,7 +309,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               (c) => c.countryId === co.id,
             );
             const citiesWithInfo = citiesOfCountry.filter(
-              (c) => c.flightDuration || c.timeDiff || c.bestSeason || c.caution,
+              (c) => c.flightDuration || c.timeDiff || c.caution,
             );
             return (
               <div
@@ -370,18 +390,13 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                       <div style={{ textAlign: "center" }}>
                         <div style={{ fontSize: 18 }}>✈️</div>
                         {c.flightDuration && <div className="muted" style={{ fontSize: 11 }}>{c.flightDuration}</div>}
+                        {c.timeDiff && <div className="muted" style={{ fontSize: 11 }}>🕐 시차 {c.timeDiff}</div>}
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div style={{ fontWeight: 800, fontSize: 18 }}>{c.name}</div>
                         <div className="muted">{c.flightAirport ? `${c.flightAirport} 기준` : "도착"}</div>
                       </div>
                     </div>
-                    {c.timeDiff && (
-                      <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>🕐 시차 {c.timeDiff}</div>
-                    )}
-                    {c.bestSeason && (
-                      <div className="muted" style={{ padding: "0 16px 4px", fontSize: 12 }}>🗓 추천 시기 {c.bestSeason}</div>
-                    )}
                     {c.caution && (
                       <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>⚠️ {c.caution}</div>
                     )}
@@ -392,14 +407,9 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
           })}
           </div>
 
-          <div
-            style={{
-              marginTop: 14,
-              paddingTop: 14,
-              borderTop: "1.5px solid rgba(45,42,62,0.15)",
-            }}
-          >
-            <div className="prep-split">
+          <div style={{ marginTop: 14 }}>
+            <strong style={{ fontSize: 15 }}>✅ 체크리스트</strong>
+            <div className="prep-split" style={{ marginTop: 10 }}>
               <ChecklistPanel
                 tripId={trip.id}
                 scope="predeparture"
@@ -426,13 +436,38 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   borderTop: "1.5px solid rgba(45,42,62,0.15)",
                 }}
               >
-                <div style={{ fontWeight: 700, marginBottom: 10 }}>
-                  {BUCKET_KIND_LABEL[kind]}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 10,
+                  }}
+                >
+                  <strong className="grow">{BUCKET_KIND_LABEL[kind]}</strong>
+                  <input
+                    type="text"
+                    value={newTitle[kind]}
+                    placeholder={KIND_PLACEHOLDER[kind]}
+                    style={{ width: 200 }}
+                    onChange={(e) =>
+                      setNewTitle((prev) => ({
+                        ...prev,
+                        [kind]: e.target.value,
+                      }))
+                    }
+                    onKeyDown={(e) => e.key === "Enter" && addQuick(kind)}
+                  />
+                  <button
+                    className="btn small ghost"
+                    onClick={() => addQuick(kind)}
+                  >
+                    ＋
+                  </button>
                 </div>
                 {items.length === 0 ? (
                   <div className="empty">
                     {KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요.
-                    버킷리스트 탭에서 추가해보세요.
                   </div>
                 ) : (
                   <div className="city-grid">

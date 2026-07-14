@@ -1,6 +1,7 @@
-import { useState } from 'react'
-import type { Place, Member } from '../../shared/types'
+import { useRef, useState } from 'react'
+import type { Place, Member, VoucherCategory, TimelineEvent } from '../../shared/types'
 import { api } from '../api'
+import { fmtDateTime } from '../categories'
 import Modal from './Modal'
 import Select from './Select'
 import DateTimePicker from './DateTimePicker'
@@ -14,14 +15,16 @@ const CATEGORY_FOR_KIND: Record<TicketKind, string> = { 발렛: '발렛', 항공
 // "이름"은 항공/발렛이면 티켓 자체가 아니라 그 티켓이 속한 장소(공항 터미널, 발렛 맡기는 곳)의 이름이라
 // 라벨을 명확히 구분해준다.
 const NAME_LABEL: Record<TicketKind, string> = { 발렛: '발렛 맡기는 곳 이름', 항공: '공항/터미널 이름', 숙소: '숙소명' }
+const VOUCHER_CATEGORY_FOR_KIND: Record<TicketKind, VoucherCategory> = { 발렛: '티켓', 항공: '항공권', 숙소: '숙소' }
 
 export default function TicketQuickAdd({
-  tripId, kind, places, participants, onClose, onCreated,
+  tripId, kind, places, participants, existingFlights = [], onClose, onCreated,
 }: {
-  tripId: string; kind: TicketKind; places: Place[]; participants: Member[]
+  tripId: string; kind: TicketKind; places: Place[]; participants: Member[]; existingFlights?: TimelineEvent[]
   onClose: () => void; onCreated: () => void
 }) {
   const candidatePlaces = places.filter((p) => p.category === CATEGORY_FOR_KIND[kind])
+  const copyableFlights = existingFlights.filter((e) => e.flight)
   const [placeId, setPlaceId] = useState('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
@@ -47,6 +50,23 @@ export default function TicketQuickAdd({
   const [bookedVia, setBookedVia] = useState('')
   const [confirmed, setConfirmed] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [voucherFile, setVoucherFile] = useState<File | null>(null)
+  const voucherInput = useRef<HTMLInputElement>(null)
+
+  // 가족이 같은 비행기를 따로 예약했을 때: 이미 등록된 항공편에서 시간·출발지·도착지·항공사 정보를 그대로 가져오고,
+  // 탑승자는 그 항공편에 이미 들어간 사람을 뺀 나머지로 기본 선택해준다(따로 산 사람들이니까).
+  const copyFlightInfo = (eventId: string) => {
+    const source = copyableFlights.find((e) => e.id === eventId)
+    if (!source?.flight) return
+    setDepartAt(source.flight.departAt ?? '')
+    setArriveAt(source.flight.arriveAt ?? '')
+    setDepartureLocation(source.flight.departureLocation ?? '')
+    setDestination(source.flight.destination ?? '')
+    setAirline(source.flight.airline ?? '')
+    setFlightNo(source.flight.flightNo ?? '')
+    const covered = new Set(source.flight.passengerIds)
+    setPassengerIds(new Set(participants.filter((p) => !covered.has(p.id)).map((p) => p.id)))
+  }
 
   const submit = async () => {
     let resolvedPlaceId = placeId
@@ -56,19 +76,26 @@ export default function TicketQuickAdd({
       resolvedPlaceId = p.id
     }
     setSaving(true)
+    let voucherId: string | null = null
+    let voucherTitle: string | null = null
+    if (voucherFile) {
+      const [voucher] = await api.vouchers.add(tripId, [voucherFile], VOUCHER_CATEGORY_FOR_KIND[kind])
+      voucherId = voucher.id
+      voucherTitle = voucher.title
+    }
     const { id: eventId } = await api.events.create({ tripId, placeId: resolvedPlaceId, dayNumber: null })
     if (kind === '발렛') {
       await api.events.setValet(eventId, {
         scheduledAt: scheduledAt || null, location: location.trim() || null, company: company.trim() || null,
         bookedVia: bookedVia.trim() || null, bookingRef: bookingRef.trim() || null, confirmed,
-        voucherId: null, voucherTitle: null, note: null,
+        voucherId, voucherTitle, note: null,
       })
     } else if (kind === '항공') {
       await api.events.setFlight(eventId, {
         departAt: departAt || null, arriveAt: arriveAt || null, durationMinutes: null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
         departureLocation: departureLocation.trim() || null, confirmed,
-        voucherId: null, voucherTitle: null,
+        voucherId, voucherTitle,
         airline: airline.trim() || null, airlineLogoPath: null, flightNo: flightNo.trim() || null,
         destination: destination.trim() || null, gate: null, seat: null,
         passengerIds: [...passengerIds],
@@ -77,7 +104,7 @@ export default function TicketQuickAdd({
       await api.events.setLodging(eventId, {
         checkInAt: checkInAt || null, checkOutAt: checkOutAt || null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null, confirmed,
-        voucherId: null, voucherTitle: null, note: null,
+        voucherId, voucherTitle, note: null,
         breakfastIncluded, roomType: roomType.trim() || null,
       })
     }
@@ -126,6 +153,22 @@ export default function TicketQuickAdd({
 
       {kind === '항공' && (
         <div className="form-row">
+          {copyableFlights.length > 0 && (
+            <div className="field grow">
+              <label>🔁 가족이 같은 비행기를 따로 예약했나요? 기존 항공편에서 정보 복사</label>
+              <Select value="" onChange={(e) => e.target.value && copyFlightInfo(e.target.value)}>
+                <option value="">— 선택 안 함 —</option>
+                {copyableFlights.map((e) => {
+                  const dep = fmtDateTime(e.flight?.departAt ?? null)
+                  return (
+                    <option key={e.id} value={e.id}>
+                      {e.place.name}{e.flight?.destination ? ` → ${e.flight.destination}` : ''} · {dep.date} {dep.time}
+                    </option>
+                  )
+                })}
+              </Select>
+            </div>
+          )}
           <div className="field grow"><label>🛫 출발장소</label>
             <input type="text" value={departureLocation} placeholder="예: 인천공항 T2" onChange={(e) => setDepartureLocation(e.target.value)} /></div>
           <div className="field grow"><label>도착지</label>
@@ -183,6 +226,19 @@ export default function TicketQuickAdd({
           <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
           ✅ 예약 확정
         </label>
+      </div>
+      <div className="field grow" style={{ marginBottom: 12 }}>
+        <label>🎫 바우처 파일 (선택 · PDF·이미지)</label>
+        <input ref={voucherInput} type="file" accept=".pdf,image/*" hidden
+          onChange={(e) => setVoucherFile(e.target.files?.[0] ?? null)} />
+        <button type="button" className="btn small" onClick={() => voucherInput.current?.click()}>
+          {voucherFile ? `📎 ${voucherFile.name}` : '📎 파일 선택'}
+        </button>
+        {voucherFile && (
+          <button type="button" className="btn small ghost" style={{ marginLeft: 6 }} onClick={() => setVoucherFile(null)}>
+            취소
+          </button>
+        )}
       </div>
 
       <div style={{ marginTop: 12 }}>

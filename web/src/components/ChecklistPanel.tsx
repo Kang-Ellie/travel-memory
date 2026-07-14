@@ -4,6 +4,7 @@ import { PACKING_PRESETS } from '../../shared/types'
 import { api } from '../api'
 import Modal from './Modal'
 import Select from './Select'
+import DropdownMenu from './DropdownMenu'
 
 const PACKING_CATEGORIES = Object.keys(PACKING_PRESETS)
 const SEEDABLE_SCOPES = new Set<ChecklistScope>(['predeparture', 'packing'])
@@ -68,12 +69,13 @@ export default function ChecklistPanel({
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <strong className="grow">{title}</strong>
-        {SEEDABLE_SCOPES.has(scope) && (
-          <button className="btn small ghost" onClick={loadPresets} disabled={seeding}>
-            {seeding ? '불러오는 중…' : '✨ 프리셋 불러오기'}
-          </button>
-        )}
-        <button className="btn small ghost" onClick={() => setShowAdd(true)}>＋</button>
+        {seeding && <span className="muted">불러오는 중…</span>}
+        <DropdownMenu actions={[
+          ...(SEEDABLE_SCOPES.has(scope)
+            ? [{ label: '✨ 프리셋 불러오기', onClick: loadPresets }] as const
+            : []),
+          { label: '＋ 항목 추가', onClick: () => setShowAdd(true) },
+        ]} />
       </div>
       {items.length === 0 ? (
         <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
