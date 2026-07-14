@@ -1,8 +1,0 @@
-{
-  "name": "travel-memory-web",
-  "compatibility_date": "2026-07-14",
-  "assets": {
-    "directory": "./dist",
-    "not_found_handling": "single-page-application"
-  }
-}
