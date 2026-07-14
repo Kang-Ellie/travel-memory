@@ -6,7 +6,7 @@ import SnsArchiveScreen from './SnsArchiveScreen'
 import FolderIcon, { type FolderColor } from './FolderIcon'
 import PageHeader from './PageHeader'
 
-type BookmarkSection = 'places' | 'bucket' | 'sns'
+export type BookmarkSection = 'places' | 'bucket' | 'sns'
 
 const SECTIONS: Array<{ key: BookmarkSection; label: string; color: FolderColor }> = [
   { key: 'places', label: '📍 장소 북마크', color: 'blue' },
@@ -15,11 +15,12 @@ const SECTIONS: Array<{ key: BookmarkSection; label: string; color: FolderColor 
 ]
 
 export default function BookmarksScreen({
-  prefill, onConsumedPrefill,
-}: { prefill: SharePrefill | null; onConsumedPrefill: () => void }) {
-  const [section, setSection] = useState<BookmarkSection>(prefill ? 'sns' : 'places')
+  prefill, onConsumedPrefill, initialSection,
+}: { prefill: SharePrefill | null; onConsumedPrefill: () => void; initialSection?: BookmarkSection }) {
+  const [section, setSection] = useState<BookmarkSection>(prefill ? 'sns' : (initialSection ?? 'places'))
 
   useEffect(() => { if (prefill) setSection('sns') }, [prefill])
+  useEffect(() => { if (initialSection) setSection(initialSection) }, [initialSection])
 
   return (
     <div>

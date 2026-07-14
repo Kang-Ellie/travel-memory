@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Country, City } from "../../shared/types";
 import { api } from "../api";
 import { flagEmoji } from "../categories";
@@ -395,6 +395,8 @@ function CountryCard({
   const [cityDiff, setCityDiff] = useState("");
   const [cityBestSeason, setCityBestSeason] = useState("");
   const [cityCaution, setCityCaution] = useState("");
+  const [lastAdded, setLastAdded] = useState("");
+  const cityNameInput = useRef<HTMLInputElement>(null);
 
   const save = async () => {
     await api.countries.update(country.id, form);
@@ -414,9 +416,10 @@ function CountryCard({
   };
   const addCity = async () => {
     if (!cityName.trim()) return;
+    const addedName = cityName.trim();
     await api.cities.create({
       countryId: country.id,
-      name: cityName.trim(),
+      name: addedName,
       flightDuration: cityFlight.trim() || null,
       timeDiff: cityDiff.trim() || null,
       flightAirport: cityAirport.trim() || null,
@@ -424,6 +427,7 @@ function CountryCard({
       bestSeason: cityBestSeason.trim() || null,
       caution: cityCaution.trim() || null,
     });
+    // 도시를 연달아 여러 개 등록할 수 있게 모달은 안 닫고 이름만 비운 채 계속 입력받는다.
     setCityName("");
     setCityFlight("");
     setCityAirport("");
@@ -431,7 +435,8 @@ function CountryCard({
     setCityDiff("");
     setCityBestSeason("");
     setCityCaution("");
-    setShowAddCity(false);
+    setLastAdded(addedName);
+    cityNameInput.current?.focus();
     onChanged();
   };
 
@@ -452,7 +457,7 @@ function CountryCard({
           headerActions={
             <DropdownMenu actions={[
               { label: "✏️ 국가 정보 수정", onClick: () => { setForm(country); setEditing(true); } },
-              { label: "＋ 도시 추가", onClick: () => setShowAddCity(true) },
+              { label: "＋ 도시 추가", onClick: () => { setLastAdded(""); setShowAddCity(true); } },
               { label: "🗑 국가 삭제", danger: true, onClick: remove },
             ]} />
           }
@@ -545,6 +550,10 @@ function CountryCard({
           title={`${country.name} — 도시 추가`}
           onClose={() => setShowAddCity(false)}
         >
+          <p className="muted" style={{ marginTop: 0 }}>
+            추가하면 창은 안 닫히니, 여러 도시를 연달아 등록할 수 있어요. 다 넣었으면 닫기(×)를 눌러주세요.
+            {lastAdded && ` · ✅ '${lastAdded}' 추가됨`}
+          </p>
           <div
             className="row"
             style={{
@@ -558,10 +567,13 @@ function CountryCard({
             <div className="field">
               <label>도시명</label>
               <input
+                ref={cityNameInput}
                 type="text"
                 value={cityName}
                 placeholder="예: 후쿠오카"
+                autoFocus
                 onChange={(e) => setCityName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addCity()}
               />
             </div>
             <div className="field">

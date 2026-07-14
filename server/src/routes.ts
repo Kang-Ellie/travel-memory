@@ -26,6 +26,14 @@ async function overDailyLimit(kind: keyof typeof DAILY_API_LIMITS): Promise<bool
   return count > DAILY_API_LIMITS[kind]
 }
 
+// 최근 활동 로그 기록. 로그인이 공용 비밀번호 하나라 "누가"는 못 남기고 "무엇을·언제"만 남긴다.
+async function logActivity(tripId: string | null, action: string, summary: string): Promise<void> {
+  await pool.query(
+    'INSERT INTO activity_log (id, trip_id, action, summary) VALUES ($1,$2,$3,$4)',
+    [id(), tripId, action, summary],
+  )
+}
+
 // async 라우트 핸들러에서 던진(reject된) 에러를 자동으로 next(err)로 넘겨서
 // unhandled rejection으로 인한 프로세스 크래시(Node 22 기본 동작)를 막는다.
 // app.get/post/put/delete를 몽키패치해서 개별 핸들러마다 try/catch를 붙이지 않아도 되게 함.
@@ -265,6 +273,7 @@ export function registerRoutes(app: ExpressApp): void {
     await setTripCities(tripId, cityIds)
     await seedChecklistPresets(tripId, 'predeparture')
     await seedChecklistPresets(tripId, 'packing')
+    await logActivity(tripId, 'trip_created', title)
     const r = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t WHERE t.id = $1`, [tripId])
     res.json(mapTrip(r.rows[0]))
   })
@@ -295,6 +304,7 @@ export function registerRoutes(app: ExpressApp): void {
     try {
       const memberId = id()
       await pool.query('INSERT INTO members (id, name) VALUES ($1,$2)', [memberId, name])
+      await logActivity(null, 'member_added', name)
       res.json({ id: memberId, name, emoji: null })
     } catch {
       res.json({ error: '이미 같은 이름의 동행인이 있어요.' })
@@ -377,6 +387,7 @@ export function registerRoutes(app: ExpressApp): void {
         breakTime?.trim() || null,
         valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null,
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null])
+    await logActivity(null, 'place_added', name.trim())
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
   })
@@ -677,6 +688,8 @@ export function registerRoutes(app: ExpressApp): void {
         'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence) VALUES ($1,$2,$3,$4,$5)',
         [eventId, req.params.tripId, placeId, dayNumber, Number(max.rows[0].m) + 1])
     }
+    const placeRow = await pool.query('SELECT name FROM places WHERE id = $1', [placeId])
+    await logActivity(req.params.tripId, 'event_added', placeRow.rows[0]?.name ?? '장소')
     res.json({ id: eventId })
   })
 
@@ -907,6 +920,7 @@ export function registerRoutes(app: ExpressApp): void {
     for (const m of splitWith ?? []) {
       await pool.query('INSERT INTO expense_splits (expense_id, member_id) VALUES ($1,$2)', [expenseId, m])
     }
+    await logActivity(req.params.tripId, 'expense_added', `${description.trim()} (${amount.toLocaleString()} ${currency})`)
     res.json({ ok: true })
   })
 
@@ -1222,6 +1236,7 @@ export function registerRoutes(app: ExpressApp): void {
     await pool.query(
       'INSERT INTO bucket_items (id, title, memo, country_ids, city_ids, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
       [itemId, title.trim(), memo, countryIds ?? [], cityIds ?? [], category, linkedPlaceId || null, linkedTripId || null])
+    await logActivity(linkedTripId || null, 'bucket_added', title.trim())
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
     res.json(mapBucket(r.rows[0]))
   })
@@ -1365,5 +1380,19 @@ export function registerRoutes(app: ExpressApp): void {
       calendarPhotos: [...calendarPhotoByDate.entries()].map(([date, filePath]) => ({ date, filePath })),
       gallery,
     })
+  })
+
+  // 최근 활동 피드 — 가족 누구나 "방금 뭐가 추가됐는지" 확인용
+  app.get('/api/activity', async (req, res) => {
+    const limit = Math.min(50, Number(req.query.limit) || 20)
+    const r = await pool.query(
+      `SELECT al.*, t.title AS trip_title FROM activity_log al
+       LEFT JOIN trips t ON t.id = al.trip_id
+       ORDER BY al.created_at DESC LIMIT $1`,
+      [limit])
+    res.json(r.rows.map((row) => ({
+      id: row.id, tripId: row.trip_id, tripTitle: row.trip_title ?? null,
+      action: row.action, summary: row.summary, createdAt: row.created_at,
+    })))
   })
 }

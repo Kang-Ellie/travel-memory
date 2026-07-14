@@ -8,6 +8,7 @@ import { pad } from './DatePicker'
 import Window from './Window'
 import Lightbox from './Lightbox'
 import FolderIcon, { type FolderColor } from './FolderIcon'
+import ActivityFeed from './ActivityFeed'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -110,6 +111,12 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                 )}
               </div>
             )}
+          </Window>
+        </div>
+
+        <div style={{ flex: '1 1 280px' }}>
+          <Window title="RECENT_ACTIVITY.EXE" color="yellow">
+            <ActivityFeed />
           </Window>
         </div>
 

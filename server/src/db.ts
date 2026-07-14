@@ -356,6 +356,16 @@ export async function initSchema(): Promise<void> {
     ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS breakfast_included BOOLEAN NOT NULL DEFAULT false;
     ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS room_type TEXT;
 
+    -- 가족이 같이 쓰는 앱이라 "방금 누가 뭘 추가했는지"를 대시보드에 보여주기 위한 최근 활동 로그.
+    -- 로그인이 비밀번호 1개 공용이라 "누가"는 특정할 수 없어서 "무엇을·언제"만 기록한다.
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT REFERENCES trips(id) ON DELETE CASCADE,
+      action     TEXT NOT NULL,
+      summary    TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
     -- 추천 여행 시기·주의사항은 같은 나라라도 도시마다 달라서(예: 이탈리아, 중국)
     -- 국가가 아니라 도시 단위로 관리한다.
     ALTER TABLE cities ADD COLUMN IF NOT EXISTS best_season TEXT;

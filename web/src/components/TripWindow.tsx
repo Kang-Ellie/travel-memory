@@ -12,6 +12,8 @@ import ExpensesTab from './ExpensesTab'
 import SettlementTab from './SettlementTab'
 import TripPrepTab from './TripPrepTab'
 import FolderIcon, { type FolderColor } from './FolderIcon'
+import PrintItinerary from './PrintItinerary'
+import TripSummaryCard from './TripSummaryCard'
 
 type Tab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
 
@@ -31,6 +33,7 @@ interface Props {
 
 export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const [tab, setTab] = useState<Tab>('base')
+  const [showPrint, setShowPrint] = useState(false)
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [editing, setEditing] = useState(false)
@@ -79,8 +82,14 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       title={`${trip.title.replace(/\s+/g, '_').toUpperCase()}.EXE`}
       color="blue"
       onClose={onClose}
-      headerActions={<button className="window-icon-btn" onClick={startEdit} title="여행 정보 수정">⚙️</button>}
+      headerActions={
+        <>
+          <button className="window-icon-btn" onClick={() => setShowPrint(true)} title="일정 인쇄/PDF 보기">🖨</button>
+          <button className="window-icon-btn" onClick={startEdit} title="여행 정보 수정">⚙️</button>
+        </>
+      }
     >
+      <TripSummaryCard trip={trip} />
       <div className="row" style={{ flexWrap: 'wrap', border: 'none', padding: 0, background: 'transparent', marginBottom: 12, gap: 12 }}>
         {trip.cities.length > 0 ? (
           [...citiesByCountry.values()].map((c) => (
@@ -151,6 +160,8 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       {tab === 'workspace' && <TripWorkspace trip={trip} />}
       {tab === 'expenses' && <ExpensesTab trip={trip} />}
       {tab === 'settlement' && <SettlementTab trip={trip} />}
+
+      {showPrint && <PrintItinerary trip={trip} onClose={() => setShowPrint(false)} />}
     </Window>
   )
 }

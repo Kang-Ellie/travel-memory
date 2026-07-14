@@ -6,10 +6,11 @@ import Login from "./Login";
 import DashboardScreen from "./components/DashboardScreen";
 import TripsScreen from "./components/TripsScreen";
 import TripWindow from "./components/TripWindow";
-import BookmarksScreen from "./components/BookmarksScreen";
+import BookmarksScreen, { type BookmarkSection } from "./components/BookmarksScreen";
 import CountriesScreen from "./components/CountriesScreen";
 import MembersScreen from "./components/MembersScreen";
 import SettingsScreen from "./components/SettingsScreen";
+import SearchPalette from "./components/SearchPalette";
 
 type Screen =
   | "dashboard"
@@ -72,7 +73,20 @@ export default function App() {
   const [openTrip, setOpenTrip] = useState<Trip | null>(null);
   const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null);
   const [visitedFlags, setVisitedFlags] = useState<string[]>([]);
+  const [bookmarkSection, setBookmarkSection] = useState<BookmarkSection>("places");
+  const [showSearch, setShowSearch] = useState(false);
   const clock = useClock();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     auth
@@ -110,6 +124,16 @@ export default function App() {
             Y E O B A E K
             <span className="sidebar-logo-sub">나를 채우는, 여백</span>
           </div>
+          <button
+            className="sidebar-nav-btn sidebar-search-btn"
+            onClick={() => setShowSearch(true)}
+          >
+            <span className="sidebar-nav-icon">🔍</span>
+            <span className="sidebar-nav-text">
+              <span className="sidebar-nav-label">검색</span>
+              <span className="sidebar-nav-eng">⌘K</span>
+            </span>
+          </button>
           {NAV.map((n) => (
             <button
               key={n.key}
@@ -184,6 +208,7 @@ export default function App() {
                 <BookmarksScreen
                   prefill={sharePrefill}
                   onConsumedPrefill={() => setSharePrefill(null)}
+                  initialSection={bookmarkSection}
                 />
               )}
               {screen === "countries" && <CountriesScreen />}
@@ -199,6 +224,21 @@ export default function App() {
         <span>📁 travel_on — 우리만의 여행 OS</span>
         <span className="clock">{clock}</span>
       </footer>
+
+      {showSearch && (
+        <SearchPalette
+          onClose={() => setShowSearch(false)}
+          onOpenTrip={(t) => {
+            setOpenTrip(t);
+            setShowSearch(false);
+          }}
+          onNavigate={(nextScreen, section) => {
+            setScreen(nextScreen);
+            if (section) setBookmarkSection(section);
+            setOpenTrip(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
   ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
-  DashboardData,
+  DashboardData, ActivityLogEntry,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
 } from '../shared/types'
 
@@ -238,5 +238,9 @@ export const api = {
 
   dashboard: {
     get: () => req<DashboardData>('GET', '/api/dashboard'),
+  },
+
+  activity: {
+    list: (limit = 20) => req<ActivityLogEntry[]>('GET', `/api/activity?limit=${limit}`),
   },
 }

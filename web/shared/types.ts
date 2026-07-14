@@ -352,3 +352,12 @@ export interface DashboardData {
   calendarPhotos: DashboardCalendarPhoto[]
   gallery: DashboardGalleryItem[]
 }
+
+export interface ActivityLogEntry {
+  id: string
+  tripId: string | null
+  tripTitle: string | null
+  action: string
+  summary: string
+  createdAt: string
+}
