@@ -323,7 +323,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         ]} />
       </div>
       {city.flightDuration || city.timeDiff || city.bestSeason || city.caution ? (
-        <div style={{ marginTop: 8 }}>
+        <div style={{ marginTop: 8, minHeight: 350 }}>
           <InfoCardGrid
             items={[
               {
