@@ -382,17 +382,27 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                 {citiesWithInfo.length > 0 && (
                   <>
                     <div className="boarding-pass-divider" style={{ margin: "0 16px" }} />
-                    <div className="city-tile-grid">
+                    <div className="city-route-grid">
                       {citiesWithInfo.map((c) => (
-                        <div key={c.id} className="city-tile">
-                          <div style={{ fontWeight: 800, fontSize: 13 }}>🇰🇷→{c.name}</div>
-                          {c.flightDuration && (
-                            <div className="muted" style={{ fontSize: 11 }}>
-                              ✈️ {c.flightDuration}{c.flightAirport ? ` · ${c.flightAirport}` : ""}
+                        <div key={c.id} className="city-route-item">
+                          <div className="boarding-pass-route">
+                            <div>
+                              <div style={{ fontWeight: 800, fontSize: 18 }}>한국</div>
+                              <div className="muted">출발</div>
                             </div>
+                            <div style={{ textAlign: "center" }}>
+                              <div style={{ fontSize: 18 }}>✈️</div>
+                              {c.flightDuration && <div className="muted" style={{ fontSize: 11 }}>{c.flightDuration}</div>}
+                              {c.timeDiff && <div className="muted" style={{ fontSize: 11 }}>🕐 {c.timeDiff}</div>}
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div style={{ fontWeight: 800, fontSize: 18 }}>{c.name}</div>
+                              <div className="muted">{c.flightAirport ? `${c.flightAirport} 기준` : "도착"}</div>
+                            </div>
+                          </div>
+                          {c.caution && (
+                            <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>⚠️ {c.caution}</div>
                           )}
-                          {c.timeDiff && <div className="muted" style={{ fontSize: 11 }}>🕐 {c.timeDiff}</div>}
-                          {c.caution && <div className="muted" style={{ fontSize: 11 }}>⚠️ {c.caution}</div>}
                         </div>
                       ))}
                     </div>

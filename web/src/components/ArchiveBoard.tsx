@@ -3,7 +3,6 @@ import type { ArchiveItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
-import DropdownMenu from './DropdownMenu'
 
 const ICON: Record<ArchiveItem['kind'], string> = { memo: '📝', link: '🔗', image: '🖼' }
 
@@ -78,11 +77,9 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
     <div className="archive-board">
       <input ref={fileInput} type="file" multiple accept="image/*" hidden onChange={onImagesPicked} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        <DropdownMenu icon="＋" title="추가" actions={[
-          { label: '📝 메모 추가', onClick: () => { setMode('memo'); setShowAdd(true) } },
-          { label: '🔗 링크 추가', onClick: () => { setMode('link'); setShowAdd(true) } },
-          { label: '🖼 이미지 추가', onClick: () => fileInput.current?.click() },
-        ]} />
+        <button className="archive-add-btn" onClick={() => { setMode('memo'); setShowAdd(true) }}>📝 메모 추가</button>
+        <button className="archive-add-btn" onClick={() => { setMode('link'); setShowAdd(true) }}>🔗 링크 추가</button>
+        <button className="archive-add-btn" onClick={() => fileInput.current?.click()}>🖼 이미지 추가</button>
       </div>
 
       {showAdd && (

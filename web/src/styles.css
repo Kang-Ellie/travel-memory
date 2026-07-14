@@ -494,8 +494,11 @@ textarea { resize: vertical; min-height: 70px; }
 .boarding-pass-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 10px 16px; padding: 14px 16px; }
 
 /* ── 여행 BASE: 같은 나라의 여러 도시를 세로로 쌓지 않고 한 줄에 3~4개씩 ── */
-.city-tile-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; padding: 12px 16px 14px; }
-.city-tile { border: 1.5px solid rgba(45,42,62,0.15); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+/* 원래 쓰던 보딩패스 스타일(한국|✈️|도시)은 그대로 두고, 여러 도시가 있을 때
+   세로로 쌓이지 않고 한 줄에 여러 개 배치되도록 그리드로만 감싼다. */
+.city-route-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); padding: 4px 8px 10px; }
+.city-route-item { border: 1.5px dashed rgba(45,42,62,0.35); border-radius: 10px; margin: 6px 8px; overflow: hidden; }
+.city-route-item .boarding-pass-route { padding: 10px 12px; gap: 14px; }
 
 /* ── 티켓 반쪽 절취선(폼 안에서 "자세히" 펼칠 때, 진짜 티켓 뜯는 느낌) ── */
 .ticket-stub-divider { position: relative; border-top: 2px dashed rgba(45,42,62,0.35); margin: 18px 2px 22px; }

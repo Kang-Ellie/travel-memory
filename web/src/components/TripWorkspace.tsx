@@ -954,10 +954,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           </div>
 
           <div className="row" style={{ flexWrap: 'wrap', marginTop: 14 }}>
-            <DropdownMenu icon="＋" title="추가" actions={[
-              { label: '📍 장소 추가', onClick: () => setShowAddPlace(true) },
-              { label: '🚏 이동 구간 추가', onClick: () => setShowAddTransit(true) },
-            ]} />
+            <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 장소 추가</button>
+            <button className="btn small" onClick={() => setShowAddTransit(true)}>🚏 이동 구간 추가</button>
           </div>
 
           {showAddPlace && (
