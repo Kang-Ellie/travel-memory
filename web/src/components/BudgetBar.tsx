@@ -70,7 +70,7 @@ export default function BudgetBar({ trip, expenses, rates }: { trip: Trip; expen
       )}
       <div className="muted" style={{ marginTop: 4 }}>
         💡 예산·진행률은 원화(KRW) 환산 지출 기준이에요.
-        {summary.unconvertedCount > 0 && ` 환율이 등록되지 않은 외화 지출 ${summary.unconvertedCount}건은 빠져있어요 — [🧮 정산] 탭에서 환율을 등록해주세요.`}
+        {summary.unconvertedCount > 0 && ` 환율이 등록되지 않은 외화 지출 ${summary.unconvertedCount}건은 빠져있어요 — [🧾 지출] 탭에서 환율을 등록해주세요.`}
       </div>
     </div>
   )

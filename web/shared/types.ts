@@ -123,6 +123,7 @@ export interface FlightDetail {
   destination: string | null
   gate: string | null
   seat: string | null
+  passengerIds: string[]
 }
 
 export interface ValetDetail {

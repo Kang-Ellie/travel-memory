@@ -227,6 +227,17 @@ function PlaceCard({
                 {place.address || '지도에서 보기'}
               </a>
             ) : (place.address || '주소 없음')}
+            {(place.lat != null && place.lng != null) || place.address ? (
+              <a className="plain-link" style={{ marginLeft: 8 }}
+                href={`https://www.google.com/maps/dir/?api=1&destination=${
+                  place.lat != null && place.lng != null
+                    ? `${place.lat},${place.lng}`
+                    : encodeURIComponent(place.address)
+                }`}
+                target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="구글 지도로 길찾기">
+                🧭 길찾기
+              </a>
+            ) : null}
             {place.memo ? ` · 📝 ${place.memo}` : ''}
           </div>
           <PlaceMeta place={place} />

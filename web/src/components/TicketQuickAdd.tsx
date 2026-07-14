@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Place } from '../../shared/types'
+import type { Place, Member } from '../../shared/types'
 import { api } from '../api'
 import Modal from './Modal'
 import Select from './Select'
@@ -8,14 +8,17 @@ import DateTimePicker from './DateTimePicker'
 export type TicketKind = '발렛' | '항공' | '숙소'
 
 const TICKET_ICON: Record<TicketKind, string> = { 발렛: '🚗', 항공: '✈️', 숙소: '🏨' }
+// 항공 티켓의 장소는 "항공"이 아니라 "공항" 카테고리로 등록해야 장소 족보·여행 준비 탭의
+// 공항 필터([TripPrepTab.tsx]의 category === '공항')와 맞물린다.
+const CATEGORY_FOR_KIND: Record<TicketKind, string> = { 발렛: '발렛', 항공: '공항', 숙소: '숙소' }
 
 export default function TicketQuickAdd({
-  tripId, kind, places, onClose, onCreated,
+  tripId, kind, places, participants, onClose, onCreated,
 }: {
-  tripId: string; kind: TicketKind; places: Place[]
+  tripId: string; kind: TicketKind; places: Place[]; participants: Member[]
   onClose: () => void; onCreated: () => void
 }) {
-  const candidatePlaces = places.filter((p) => p.category === kind)
+  const candidatePlaces = places.filter((p) => p.category === CATEGORY_FOR_KIND[kind])
   const [placeId, setPlaceId] = useState('')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
@@ -30,6 +33,7 @@ export default function TicketQuickAdd({
   const [destination, setDestination] = useState('')
   const [airline, setAirline] = useState('')
   const [flightNo, setFlightNo] = useState('')
+  const [passengerIds, setPassengerIds] = useState<Set<string>>(new Set(participants.map((p) => p.id)))
 
   const [checkInAt, setCheckInAt] = useState('')
   const [checkOutAt, setCheckOutAt] = useState('')
@@ -43,7 +47,7 @@ export default function TicketQuickAdd({
     let resolvedPlaceId = placeId
     if (!resolvedPlaceId) {
       if (!newName.trim()) return
-      const p = await api.places.create({ name: newName.trim(), address: newAddress.trim(), category: kind })
+      const p = await api.places.create({ name: newName.trim(), address: newAddress.trim(), category: CATEGORY_FOR_KIND[kind] })
       resolvedPlaceId = p.id
     }
     setSaving(true)
@@ -62,6 +66,7 @@ export default function TicketQuickAdd({
         voucherId: null, voucherTitle: null,
         airline: airline.trim() || null, airlineLogoPath: null, flightNo: flightNo.trim() || null,
         destination: destination.trim() || null, gate: null, seat: null,
+        passengerIds: [...passengerIds],
       })
     } else {
       await api.events.setLodging(eventId, {
@@ -127,6 +132,24 @@ export default function TicketQuickAdd({
             <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
           <div className="field"><label>편명</label>
             <input type="text" value={flightNo} placeholder="예: LJ203" onChange={(e) => setFlightNo(e.target.value)} /></div>
+          {participants.length > 0 && (
+            <div className="field grow">
+              <label>🧑‍🤝‍🧑 탑승자 (가족이 따로 티켓을 샀으면 체크 해제)</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                {participants.map((m) => (
+                  <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center' }}>
+                    <input type="checkbox" checked={passengerIds.has(m.id)}
+                      onChange={(e) => {
+                        const next = new Set(passengerIds)
+                        e.target.checked ? next.add(m.id) : next.delete(m.id)
+                        setPassengerIds(next)
+                      }} />
+                    {m.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

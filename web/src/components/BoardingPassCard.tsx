@@ -1,4 +1,4 @@
-import type { FlightDetail } from '../../shared/types'
+import type { FlightDetail, Member } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
@@ -8,11 +8,17 @@ function formatDuration(minutes: number): string {
   return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
-export default function BoardingPassCard({ flight, fromName }: { flight: FlightDetail; fromName: string }) {
+export default function BoardingPassCard({ flight, fromName, participants = [] }: {
+  flight: FlightDetail; fromName: string; participants?: Member[]
+}) {
   const dep = fmtDateTime(flight.departAt)
   const arr = fmtDateTime(flight.arriveAt)
   const hasInfo = flight.durationMinutes != null || flight.bookingRef
     || flight.seat || flight.bookedVia || flight.departureLocation
+  const passengerNames = flight.passengerIds
+    .map((id) => participants.find((p) => p.id === id)?.name)
+    .filter((n): n is string => !!n)
+  const allAboard = participants.length > 0 && passengerNames.length === participants.length
 
   return (
     <div className="boarding-pass">
@@ -65,10 +71,13 @@ export default function BoardingPassCard({ flight, fromName }: { flight: FlightD
           </div>
         </>
       )}
-      {(flight.confirmed || flight.voucherId) && (
+      {(flight.confirmed || flight.voucherId || (!allAboard && passengerNames.length > 0)) && (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 14px' }}>
           {flight.confirmed && <span className="chip green">✅ 예약 확정</span>}
           {flight.voucherId && <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>}
+          {!allAboard && passengerNames.length > 0 && (
+            <span className="chip purple">🧑‍🤝‍🧑 {passengerNames.join(', ')}</span>
+          )}
         </div>
       )}
     </div>

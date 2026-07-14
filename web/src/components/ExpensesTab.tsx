@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api } from '../api'
-import { computeSettlement, fmtMoney } from '../settlement'
+import { fmtMoney } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
 import AddExpenseModal from './AddExpenseModal'
 import BudgetBar from './BudgetBar'
@@ -58,8 +58,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     setSelMembers((prev) => new Set(prev).add(res.id))
     api.members.list().then(setAllMembers)
   }
-
-  const settlements = computeSettlement(expenses, allMembers)
 
   return (
     <div>
@@ -171,41 +169,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
           </div>
         )}
       </div>
-
-      {/* 정산 */}
-      {settlements.map((s) => (
-        <div key={s.currency} className="settle-box">
-          <div style={{ fontWeight: 800, marginBottom: 8 }}>
-            🧮 정산 결과 — {s.currency} (총 {fmtMoney(s.total, s.currency)})
-          </div>
-          <div className="table-scroll" style={{ marginBottom: 10 }}>
-            <table className="simple">
-              <thead>
-                <tr><th>이름</th><th className="num">낸 돈</th><th className="num">부담액</th><th className="num">차액</th></tr>
-              </thead>
-              <tbody>
-                {s.balances.map((b) => (
-                  <tr key={b.memberId}>
-                    <td style={{ fontWeight: 700 }}>{b.name}</td>
-                    <td className="num">{fmtMoney(b.paid, s.currency)}</td>
-                    <td className="num">{fmtMoney(b.share, s.currency)}</td>
-                    <td className="num" style={{ fontWeight: 800, color: b.net >= 0 ? '#0a7d38' : '#d63031' }}>
-                      {b.net >= 0 ? '+' : ''}{fmtMoney(b.net, s.currency)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {s.transfers.length === 0 ? (
-            <div style={{ fontWeight: 700 }}>✅ 서로 주고받을 돈이 없어요!</div>
-          ) : s.transfers.map((t, i) => (
-            <div key={i} className="transfer-line">
-              💸 {t.fromName} → {t.toName} : {fmtMoney(t.amount, s.currency)}
-            </div>
-          ))}
-        </div>
-      ))}
     </div>
   )
 }

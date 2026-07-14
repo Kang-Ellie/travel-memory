@@ -9,16 +9,18 @@ import TripCountryCityPicker from './TripCountryCityPicker'
 import TripWorkspace from './TripWorkspace'
 import TripBaseSection from './TripBaseSection'
 import ExpensesTab from './ExpensesTab'
+import SettlementTab from './SettlementTab'
 import TripPrepTab from './TripPrepTab'
 import FolderIcon, { type FolderColor } from './FolderIcon'
 
-type Tab = 'base' | 'workspace' | 'settlement' | 'prep'
+type Tab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
 
 const TABS: Array<{ key: Tab; label: string; color: FolderColor }> = [
   { key: 'base', label: 'BASE', color: 'blue' },
-  { key: 'workspace', label: '일정 & 지출', color: 'purple' },
-  { key: 'settlement', label: '정산', color: 'pink' },
   { key: 'prep', label: '여행 준비', color: 'green' },
+  { key: 'workspace', label: '일정', color: 'purple' },
+  { key: 'expenses', label: '지출', color: 'yellow' },
+  { key: 'settlement', label: '정산', color: 'pink' },
 ]
 
 interface Props {
@@ -145,9 +147,10 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       </div>
 
       {tab === 'base' && <TripBaseSection trip={trip} />}
-      {tab === 'workspace' && <TripWorkspace trip={trip} />}
-      {tab === 'settlement' && <ExpensesTab trip={trip} />}
       {tab === 'prep' && <TripPrepTab trip={trip} />}
+      {tab === 'workspace' && <TripWorkspace trip={trip} />}
+      {tab === 'expenses' && <ExpensesTab trip={trip} />}
+      {tab === 'settlement' && <SettlementTab trip={trip} />}
     </Window>
   )
 }

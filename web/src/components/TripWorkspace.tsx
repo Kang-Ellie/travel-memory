@@ -192,6 +192,9 @@ function EventCard({
   const [destination, setDestination] = useState(ev.flight?.destination ?? '')
   const [gate, setGate] = useState(ev.flight?.gate ?? '')
   const [seat, setSeat] = useState(ev.flight?.seat ?? '')
+  const [passengerIds, setPassengerIds] = useState<Set<string>>(
+    new Set(ev.flight?.passengerIds?.length ? ev.flight.passengerIds : participants.map((m) => m.id)),
+  )
   const [scheduledAt, setScheduledAt] = useState(ev.valet?.scheduledAt ?? '')
   const [valetLocation, setValetLocation] = useState(ev.valet?.location ?? '')
   const [valetCompany, setValetCompany] = useState(ev.valet?.company ?? '')
@@ -217,6 +220,7 @@ function EventCard({
     setAirline(ev.flight?.airline ?? ''); setFlightNo(ev.flight?.flightNo ?? '')
     setDestination(ev.flight?.destination ?? ''); setGate(ev.flight?.gate ?? '')
     setSeat(ev.flight?.seat ?? '')
+    setPassengerIds(new Set(ev.flight?.passengerIds?.length ? ev.flight.passengerIds : participants.map((m) => m.id)))
     setScheduledAt(ev.valet?.scheduledAt ?? ''); setValetLocation(ev.valet?.location ?? '')
     setValetCompany(ev.valet?.company ?? '')
     setCheckInAt(ev.lodging?.checkInAt ?? ''); setCheckOutAt(ev.lodging?.checkOutAt ?? '')
@@ -247,6 +251,7 @@ function EventCard({
         airline: airline.trim() || null, airlineLogoPath: ev.flight?.airlineLogoPath ?? null,
         flightNo: flightNo.trim() || null, destination: destination.trim() || null,
         gate: gate.trim() || null, seat: seat.trim() || null,
+        passengerIds: [...passengerIds],
       })
     }
     if (isValet) {
@@ -424,6 +429,24 @@ function EventCard({
                     <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
                     ✅ 예약 확정
                   </label>
+                  {participants.length > 0 && (
+                    <div className="field grow">
+                      <label>🧑‍🤝‍🧑 탑승자 (가족이 따로 티켓을 샀으면 체크 해제)</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+                        {participants.map((m) => (
+                          <label key={m.id} style={{ fontWeight: 700, display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input type="checkbox" checked={passengerIds.has(m.id)}
+                              onChange={(e) => {
+                                const next = new Set(passengerIds)
+                                e.target.checked ? next.add(m.id) : next.delete(m.id)
+                                setPassengerIds(next)
+                              }} />
+                            {m.name}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               {isValet && (
@@ -511,7 +534,7 @@ function EventCard({
               {isAirport && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) ? (
-                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} />
+                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>✈️ 탑승권 정보 입력하기</button>
                   )}
@@ -609,7 +632,7 @@ function EventCard({
                   {participants.map((m) => <option key={m.id} value={m.id}>{m.name} 냄</option>)}
                 </Select></div>
             ) : (
-              <span className="muted">[🧮 정산] 탭에서 참여자를 먼저 추가하세요.</span>
+              <span className="muted">[🧾 지출] 탭에서 참여자를 먼저 추가하세요.</span>
             )}
           </div>
           <label style={{ fontWeight: 700, display: 'flex', gap: 6, alignItems: 'center', fontSize: 13, marginBottom: 14 }}>

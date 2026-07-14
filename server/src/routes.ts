@@ -85,7 +85,7 @@ const mapFlightDetail = (r: any) => ({
   bookingRef: r.booking_ref, bookedVia: r.booked_via, departureLocation: r.departure_location,
   confirmed: !!r.confirmed, voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null,
   airline: r.airline, airlineLogoPath: r.airline_logo_path ?? null, flightNo: r.flight_no,
-  destination: r.destination, gate: r.gate, seat: r.seat,
+  destination: r.destination, gate: r.gate, seat: r.seat, passengerIds: r.passenger_ids ?? [],
 })
 const FLIGHT_SELECT = `
   SELECT fd.*, v.title AS voucher_title FROM flight_details fd
@@ -730,28 +730,28 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/events/:id/flight', async (req, res) => {
     const {
       departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId,
-      airline, flightNo, destination, gate, seat,
+      airline, flightNo, destination, gate, seat, passengerIds,
     } = req.body as {
       departAt: string | null; arriveAt: string | null; durationMinutes: number | null
       bookingRef: string | null; bookedVia: string | null
       departureLocation: string | null; confirmed: boolean; voucherId: string | null
       airline: string | null; flightNo: string | null; destination: string | null
-      gate: string | null; seat: string | null
+      gate: string | null; seat: string | null; passengerIds?: string[]
     }
     await pool.query(
       `INSERT INTO flight_details
          (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id,
-          airline, flight_no, destination, gate, seat)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+          airline, flight_no, destination, gate, seat, passenger_ids)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (event_id) DO UPDATE SET
          depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
          booking_ref = excluded.booking_ref, booked_via = excluded.booked_via,
          departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id,
          airline = excluded.airline, flight_no = excluded.flight_no, destination = excluded.destination,
-         gate = excluded.gate, seat = excluded.seat`,
+         gate = excluded.gate, seat = excluded.seat, passenger_ids = excluded.passenger_ids`,
       [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId,
         airline?.trim() || null, flightNo?.trim() || null, destination?.trim() || null,
-        gate?.trim() || null, seat?.trim() || null])
+        gate?.trim() || null, seat?.trim() || null, passengerIds ?? []])
     res.json({ ok: true })
   })
 
