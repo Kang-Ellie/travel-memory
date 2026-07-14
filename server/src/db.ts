@@ -349,6 +349,11 @@ export async function initSchema(): Promise<void> {
     -- 도시별 항공편이 직항인지 경유인지
     ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_type TEXT;
 
+    -- 추천 여행 시기·주의사항은 같은 나라라도 도시마다 달라서(예: 이탈리아, 중국)
+    -- 국가가 아니라 도시 단위로 관리한다.
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS best_season TEXT;
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS caution TEXT;
+
     -- 구글 API(장소 검색·역지오코딩) 하루 호출 횟수 집계. 콘솔 할당량이 무제한(체험판 계정
     -- 등)이어도 여기서 하루 상한을 걸어서 요금 폭탄을 코드 레벨에서 막는다.
     CREATE TABLE IF NOT EXISTS api_usage (

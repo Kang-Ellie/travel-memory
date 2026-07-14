@@ -289,7 +289,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               (c) => c.countryId === co.id,
             );
             const citiesWithInfo = citiesOfCountry.filter(
-              (c) => c.flightDuration || c.timeDiff,
+              (c) => c.flightDuration || c.timeDiff || c.bestSeason || c.caution,
             );
             return (
               <div
@@ -326,7 +326,6 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                       { icon: "💴", label: "통화", value: co.currency },
                       { icon: "☎️", label: "국가번호", value: co.phoneCode },
                       { icon: "🔌", label: "전압", value: co.voltage },
-                      { icon: "🗓", label: "추천 시기", value: co.weather },
                       { icon: "💰", label: "팁", value: co.tip },
                       { icon: "📈", label: "물가", value: co.priceLevel },
                       { icon: "🚓", label: "경찰", value: co.emergencyPolice },
@@ -379,6 +378,12 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                     </div>
                     {c.timeDiff && (
                       <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>🕐 시차 {c.timeDiff}</div>
+                    )}
+                    {c.bestSeason && (
+                      <div className="muted" style={{ padding: "0 16px 4px", fontSize: 12 }}>🗓 추천 시기 {c.bestSeason}</div>
+                    )}
+                    {c.caution && (
+                      <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>⚠️ {c.caution}</div>
                     )}
                   </div>
                 ))}

@@ -144,6 +144,7 @@ const mapCountry = (r: any) => ({
 const mapCity = (r: any) => ({
   id: r.id, countryId: r.country_id, name: r.name, flightDuration: r.flight_duration,
   timeDiff: r.time_diff, flightAirport: r.flight_airport, flightType: r.flight_type,
+  bestSeason: r.best_season, caution: r.caution,
   createdAt: r.created_at, visited: !!r.visited,
 })
 const mapChecklist = (r: any) => ({
@@ -599,25 +600,32 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/cities', async (req, res) => {
-    const { countryId, name, flightDuration, timeDiff, flightAirport, flightType } = req.body as {
+    const { countryId, name, flightDuration, timeDiff, flightAirport, flightType, bestSeason, caution } = req.body as {
       countryId: string; name: string; flightDuration: string | null; timeDiff: string | null
       flightAirport?: string | null; flightType?: string | null
+      bestSeason?: string | null; caution?: string | null
     }
     const cityId = id()
     await pool.query(
-      'INSERT INTO cities (id, country_id, name, flight_duration, time_diff, flight_airport, flight_type) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [cityId, countryId, name.trim(), flightDuration, timeDiff, flightAirport ?? null, flightType ?? null])
+      `INSERT INTO cities (id, country_id, name, flight_duration, time_diff, flight_airport, flight_type, best_season, caution)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [cityId, countryId, name.trim(), flightDuration, timeDiff, flightAirport ?? null, flightType ?? null,
+        bestSeason?.trim() || null, caution?.trim() || null])
     const r = await pool.query(`${CITY_SELECT} WHERE c.id = $1`, [cityId])
     res.json(mapCity(r.rows[0]))
   })
 
   app.put('/api/cities/:id', async (req, res) => {
-    const { name, flightDuration, timeDiff, flightAirport, flightType } = req.body as {
+    const { name, flightDuration, timeDiff, flightAirport, flightType, bestSeason, caution } = req.body as {
       name: string; flightDuration: string | null; timeDiff: string | null
       flightAirport?: string | null; flightType?: string | null
+      bestSeason?: string | null; caution?: string | null
     }
-    await pool.query('UPDATE cities SET name=$1, flight_duration=$2, time_diff=$3, flight_airport=$4, flight_type=$5 WHERE id=$6',
-      [name.trim(), flightDuration, timeDiff, flightAirport ?? null, flightType ?? null, req.params.id])
+    await pool.query(
+      `UPDATE cities SET name=$1, flight_duration=$2, time_diff=$3, flight_airport=$4, flight_type=$5,
+         best_season=$6, caution=$7 WHERE id=$8`,
+      [name.trim(), flightDuration, timeDiff, flightAirport ?? null, flightType ?? null,
+        bestSeason?.trim() || null, caution?.trim() || null, req.params.id])
     res.json({ ok: true })
   })
 

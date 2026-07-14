@@ -121,15 +121,6 @@ export function CountryFields({
       </div>
       <div className="form-row">
         <div className="field">
-          <label>추천 여행 시기</label>
-          <input
-            type="text"
-            value={form.weather ?? ""}
-            placeholder="3~5월, 9~11월 추천 (우기 7~8월 비추)"
-            onChange={set("weather")}
-          />
-        </div>
-        <div className="field">
           <label>팁 문화</label>
           <input
             type="text"
@@ -201,6 +192,8 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   const [timeDiff, setTimeDiff] = useState(city.timeDiff ?? "");
   const [flightAirport, setFlightAirport] = useState(city.flightAirport ?? "");
   const [flightType, setFlightType] = useState(city.flightType ?? "");
+  const [bestSeason, setBestSeason] = useState(city.bestSeason ?? "");
+  const [caution, setCaution] = useState(city.caution ?? "");
 
   const save = async () => {
     await api.cities.update(city.id, {
@@ -209,6 +202,8 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
       timeDiff: timeDiff.trim() || null,
       flightAirport: flightAirport.trim() || null,
       flightType: flightType || null,
+      bestSeason: bestSeason.trim() || null,
+      caution: caution.trim() || null,
     });
     setEditing(false);
     onChanged();
@@ -275,6 +270,24 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
               onChange={(e) => setTimeDiff(e.target.value)}
             />
           </div>
+          <div className="field grow">
+            <label>추천 여행 시기</label>
+            <input
+              type="text"
+              value={bestSeason}
+              placeholder="3~5월, 9~11월 추천 (우기 7~8월 비추)"
+              onChange={(e) => setBestSeason(e.target.value)}
+            />
+          </div>
+          <div className="field grow">
+            <label>주의사항</label>
+            <input
+              type="text"
+              value={caution}
+              placeholder="예: 소매치기 주의, 야간 이동 자제"
+              onChange={(e) => setCaution(e.target.value)}
+            />
+          </div>
           <div style={{ marginTop: 12 }}>
             <button className="btn small primary" onClick={save}>
               저장
@@ -309,7 +322,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
           { label: "🗑 삭제", danger: true, onClick: remove },
         ]} />
       </div>
-      {city.flightDuration || city.timeDiff ? (
+      {city.flightDuration || city.timeDiff || city.bestSeason || city.caution ? (
         <div style={{ marginTop: 8 }}>
           <InfoCardGrid
             items={[
@@ -323,6 +336,8 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
                 ].filter(Boolean).join(" · ") || null,
               },
               { icon: "🕐", label: "시차", value: city.timeDiff },
+              { icon: "🗓", label: "추천 시기", value: city.bestSeason },
+              { icon: "⚠️", label: "주의사항", value: city.caution },
             ]}
           />
         </div>
@@ -353,6 +368,8 @@ function CountryCard({
   const [cityAirport, setCityAirport] = useState("");
   const [cityFlightType, setCityFlightType] = useState("");
   const [cityDiff, setCityDiff] = useState("");
+  const [cityBestSeason, setCityBestSeason] = useState("");
+  const [cityCaution, setCityCaution] = useState("");
 
   const save = async () => {
     await api.countries.update(country.id, form);
@@ -379,12 +396,16 @@ function CountryCard({
       timeDiff: cityDiff.trim() || null,
       flightAirport: cityAirport.trim() || null,
       flightType: cityFlightType || null,
+      bestSeason: cityBestSeason.trim() || null,
+      caution: cityCaution.trim() || null,
     });
     setCityName("");
     setCityFlight("");
     setCityAirport("");
     setCityFlightType("");
     setCityDiff("");
+    setCityBestSeason("");
+    setCityCaution("");
     setShowAddCity(false);
     onChanged();
   };
@@ -421,7 +442,6 @@ function CountryCard({
                 { icon: "💴", label: "통화", value: country.currency },
                 { icon: "☎️", label: "국가번호", value: country.phoneCode },
                 { icon: "🔌", label: "전압", value: country.voltage },
-                { icon: "🗓", label: "추천 시기", value: country.weather },
                 { icon: "💰", label: "팁", value: country.tip },
                 { icon: "📈", label: "물가", value: country.priceLevel },
                 { icon: "🚓", label: "경찰", value: country.emergencyPolice },
@@ -552,6 +572,24 @@ function CountryCard({
                 value={cityDiff}
                 placeholder="차이없음"
                 onChange={(e) => setCityDiff(e.target.value)}
+              />
+            </div>
+            <div className="field grow">
+              <label>추천 여행 시기</label>
+              <input
+                type="text"
+                value={cityBestSeason}
+                placeholder="3~5월, 9~11월 추천 (우기 7~8월 비추)"
+                onChange={(e) => setCityBestSeason(e.target.value)}
+              />
+            </div>
+            <div className="field grow">
+              <label>주의사항</label>
+              <input
+                type="text"
+                value={cityCaution}
+                placeholder="예: 소매치기 주의, 야간 이동 자제"
+                onChange={(e) => setCityCaution(e.target.value)}
               />
             </div>
             <div style={{ marginTop: 12 }}>

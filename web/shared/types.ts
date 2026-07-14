@@ -44,6 +44,8 @@ export interface City {
   timeDiff: string | null
   flightAirport: string | null
   flightType: string | null
+  bestSeason: string | null
+  caution: string | null
   createdAt: string
   visited: boolean
 }
