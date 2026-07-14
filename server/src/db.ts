@@ -343,6 +343,9 @@ export async function initSchema(): Promise<void> {
     -- 도시별 항공 소요시간이 어느 공항 기준인지(예: 인천 도시는 공항이 여러 개일 수 있음)
     ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_airport TEXT;
 
+    -- 도시별 항공편이 직항인지 경유인지
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_type TEXT;
+
     -- 준비서류를 온라인으로 신청할 수 있는 사이트 URL
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS prep_docs_url TEXT;
   `)

@@ -262,6 +262,8 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   box-shadow: 3px 3px 0 var(--shadow);
   cursor: pointer;
   font-family: inherit;
+  text-decoration: none;
+  display: inline-block;
 }
 .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--shadow); }
 .btn.primary { background: var(--pink); color: #fff; }

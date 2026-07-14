@@ -43,6 +43,7 @@ export interface City {
   flightDuration: string | null
   timeDiff: string | null
   flightAirport: string | null
+  flightType: string | null
   createdAt: string
   visited: boolean
 }

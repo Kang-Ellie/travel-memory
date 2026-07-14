@@ -6,6 +6,8 @@ import Window from "./Window";
 import Modal from "./Modal";
 import PageHeader from "./PageHeader";
 import InfoCardGrid from "./InfoCardGrid";
+import DropdownMenu from "./DropdownMenu";
+import Select from "./Select";
 
 export type CountryForm = Omit<Country, "id" | "createdAt">;
 
@@ -198,6 +200,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   );
   const [timeDiff, setTimeDiff] = useState(city.timeDiff ?? "");
   const [flightAirport, setFlightAirport] = useState(city.flightAirport ?? "");
+  const [flightType, setFlightType] = useState(city.flightType ?? "");
 
   const save = async () => {
     await api.cities.update(city.id, {
@@ -205,6 +208,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
       flightDuration: flightDuration.trim() || null,
       timeDiff: timeDiff.trim() || null,
       flightAirport: flightAirport.trim() || null,
+      flightType: flightType || null,
     });
     setEditing(false);
     onChanged();
@@ -255,6 +259,14 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
             />
           </div>
           <div className="field">
+            <label>직항/경유</label>
+            <Select value={flightType} onChange={(e) => setFlightType(e.target.value)}>
+              <option value="">선택 안 함</option>
+              <option value="직항">직항</option>
+              <option value="경유">경유</option>
+            </Select>
+          </div>
+          <div className="field">
             <label>시차</label>
             <input
               type="text"
@@ -292,14 +304,10 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         <div className="grow" style={{ fontWeight: 800 }}>
           {city.name}
         </div>
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
-        <button className="btn small" onClick={() => setEditing(true)}>
-          수정
-        </button>
-        <button className="x-btn" onClick={remove}>
-          ×
-        </button>
+        <DropdownMenu actions={[
+          { label: "✏️ 수정", onClick: () => setEditing(true) },
+          { label: "🗑 삭제", danger: true, onClick: remove },
+        ]} />
       </div>
       {city.flightDuration || city.timeDiff ? (
         <div style={{ marginTop: 8 }}>
@@ -309,7 +317,10 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
                 icon: "✈️",
                 label: "항공",
                 value: city.flightDuration,
-                sub: city.flightAirport ? `${city.flightAirport} 기준` : null,
+                sub: [
+                  city.flightAirport ? `${city.flightAirport} 기준` : null,
+                  city.flightType,
+                ].filter(Boolean).join(" · ") || null,
               },
               { icon: "🕐", label: "시차", value: city.timeDiff },
             ]}
@@ -339,6 +350,8 @@ function CountryCard({
   const [showAddCity, setShowAddCity] = useState(false);
   const [cityName, setCityName] = useState("");
   const [cityFlight, setCityFlight] = useState("");
+  const [cityAirport, setCityAirport] = useState("");
+  const [cityFlightType, setCityFlightType] = useState("");
   const [cityDiff, setCityDiff] = useState("");
 
   const save = async () => {
@@ -363,9 +376,13 @@ function CountryCard({
       name: cityName.trim(),
       flightDuration: cityFlight.trim() || null,
       timeDiff: cityDiff.trim() || null,
+      flightAirport: cityAirport.trim() || null,
+      flightType: cityFlightType || null,
     });
     setCityName("");
     setCityFlight("");
+    setCityAirport("");
+    setCityFlightType("");
     setCityDiff("");
     setShowAddCity(false);
     onChanged();
@@ -530,6 +547,23 @@ function CountryCard({
                 placeholder="1시간 15분"
                 onChange={(e) => setCityFlight(e.target.value)}
               />
+            </div>
+            <div className="field">
+              <label>기준 공항 (선택)</label>
+              <input
+                type="text"
+                value={cityAirport}
+                placeholder="예: KIX"
+                onChange={(e) => setCityAirport(e.target.value)}
+              />
+            </div>
+            <div className="field">
+              <label>직항/경유</label>
+              <Select value={cityFlightType} onChange={(e) => setCityFlightType(e.target.value)}>
+                <option value="">선택 안 함</option>
+                <option value="직항">직항</option>
+                <option value="경유">경유</option>
+              </Select>
             </div>
             <div className="field">
               <label>시차</label>

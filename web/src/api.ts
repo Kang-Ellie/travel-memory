@@ -64,10 +64,11 @@ export const api = {
     list: () => req<City[]>('GET', '/api/cities'),
     create: (data: {
       countryId: string; name: string; flightDuration: string | null; timeDiff: string | null
-      flightAirport?: string | null
+      flightAirport?: string | null; flightType?: string | null
     }) => req<City>('POST', '/api/cities', data),
     update: (id: string, data: {
-      name: string; flightDuration: string | null; timeDiff: string | null; flightAirport?: string | null
+      name: string; flightDuration: string | null; timeDiff: string | null
+      flightAirport?: string | null; flightType?: string | null
     }) => req<void>('PUT', `/api/cities/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/cities/${id}`),
   },
