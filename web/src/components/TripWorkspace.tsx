@@ -118,8 +118,10 @@ function TransitChip({
       ) : (
         <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
       )}
-      <button className="btn small ghost" onClick={() => setEditing(true)}>수정</button>
-      <button className="x-btn" onClick={remove}>×</button>
+      <DropdownMenu actions={[
+        { label: '✏️ 수정', onClick: () => setEditing(true) },
+        { label: '🗑 삭제', danger: true, onClick: remove },
+      ]} />
       {linking && (
         <Modal title="바우처 연결" onClose={() => setLinking(false)}>
           {vouchers.length === 0 ? (
@@ -917,8 +919,10 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           </div>
 
           <div className="row" style={{ flexWrap: 'wrap', marginTop: 14 }}>
-            <button className="btn primary small" onClick={() => setShowAddPlace(true)}>＋ 장소 추가</button>
-            <button className="btn small" onClick={() => setShowAddTransit(true)}>🚏 이동 구간 추가</button>
+            <DropdownMenu icon="＋" title="추가" actions={[
+              { label: '📍 장소 추가', onClick: () => setShowAddPlace(true) },
+              { label: '🚏 이동 구간 추가', onClick: () => setShowAddTransit(true) },
+            ]} />
           </div>
 
           {showAddPlace && (

@@ -11,6 +11,7 @@ import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
 import TicketQuickAdd, { type TicketKind } from './TicketQuickAdd'
 import VouchersTab from './VouchersTab'
+import DropdownMenu from './DropdownMenu'
 
 type PrepSection = 'tickets' | 'vouchers'
 
@@ -76,13 +77,16 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           발렛·항공·숙소처럼 여행 초반에 미리 예약하는 것들을 한 눈에 모아뒀어요. 일차가 아직 정해지지 않았어도 예약 정보부터
           바로 티켓으로 남겨두고, 나중에 일정에 배치할 수 있어요.
         </p>
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          <button className="btn primary small" onClick={() => setTicketKind('발렛')}>＋ 발렛 티켓</button>
-          <button className="btn primary small" onClick={() => setTicketKind('항공')}>＋ 항공 티켓</button>
-          <button className="btn primary small" onClick={() => setTicketKind('숙소')}>＋ 숙소 티켓</button>
-          {participants.length > 0 ? (
-            <button className="btn small" onClick={() => setShowAddPrebooked(true)}>＋ 사전예약 지출 추가</button>
-          ) : (
+        <div className="row" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+          <DropdownMenu icon="＋" title="추가" actions={[
+            { label: '🚗 발렛 티켓 추가', onClick: () => setTicketKind('발렛') },
+            { label: '✈️ 항공 티켓 추가', onClick: () => setTicketKind('항공') },
+            { label: '🏨 숙소 티켓 추가', onClick: () => setTicketKind('숙소') },
+            ...(participants.length > 0
+              ? [{ label: '💳 사전예약 지출 추가', onClick: () => setShowAddPrebooked(true) }] as const
+              : []),
+          ]} />
+          {participants.length === 0 && (
             <span className="muted">[🧮 정산] 탭에서 참여자를 먼저 추가하면 사전예약 지출도 추가할 수 있어요.</span>
           )}
         </div>

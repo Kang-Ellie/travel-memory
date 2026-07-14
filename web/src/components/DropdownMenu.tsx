@@ -11,7 +11,11 @@ interface MenuPos { top: number; left: number }
 
 // 카드 안에 있는 ⋮ 메뉴는 카드의 overflow:hidden에 의해 잘릴 수 있어서,
 // Select/DatePicker와 동일하게 패널을 포털로 body에 fixed 배치한다.
-export default function DropdownMenu({ actions }: { actions: Array<MenuAction | 'divider'> }) {
+export default function DropdownMenu({ actions, icon = '⋮', title = '더보기' }: {
+  actions: Array<MenuAction | 'divider'>
+  icon?: string
+  title?: string
+}) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<MenuPos | null>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -54,9 +58,9 @@ export default function DropdownMenu({ actions }: { actions: Array<MenuAction | 
         type="button"
         className="event-menu-trigger"
         onClick={() => (open ? setOpen(false) : openMenu())}
-        title="더보기"
+        title={title}
       >
-        ⋮
+        {icon}
       </button>
       {open && pos && createPortal(
         <div ref={panelRef} className="event-menu-panel" style={{ position: 'fixed', top: pos.top, left: pos.left }}>

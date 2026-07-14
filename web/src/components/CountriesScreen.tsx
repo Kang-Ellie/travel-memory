@@ -411,6 +411,12 @@ function CountryCard({
         <Modal
           title={`${flagEmoji(country.code)} ${country.name}`}
           onClose={() => setDetailOpen(false)}
+          headerActions={
+            <DropdownMenu actions={[
+              { label: "✏️ 국가 정보 수정", onClick: () => { setForm(country); setEditing(true); } },
+              { label: "＋ 도시 추가", onClick: () => setShowAddCity(true) },
+            ]} />
+          }
         >
           <strong style={{ fontSize: 13 }}>🧭 여행 기초정보</strong>
           <div style={{ marginTop: 10 }}>
@@ -461,18 +467,6 @@ function CountryCard({
               )}
             </div>
           )}
-          <div style={{ marginTop: 10 }}>
-            <button
-              className="btn small"
-              onClick={() => {
-                setForm(country);
-                setEditing(true);
-              }}
-            >
-              ✏️ 국가 정보 수정
-            </button>
-          </div>
-
           <div className="section-gap" style={{ marginTop: 16 }}>
             <strong>도시</strong>
             {cities.length === 0 ? (
@@ -486,13 +480,6 @@ function CountryCard({
                 ))}
               </div>
             )}
-            <button
-              className="btn small"
-              style={{ marginTop: 8 }}
-              onClick={() => setShowAddCity(true)}
-            >
-              ＋ 도시 추가
-            </button>
           </div>
         </Modal>
       )}
