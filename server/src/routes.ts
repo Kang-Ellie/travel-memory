@@ -2,13 +2,19 @@ import crypto from 'node:crypto'
 import path from 'node:path'
 import type { Express as ExpressApp, Request, Response, NextFunction } from 'express'
 import { pool } from './db.js'
-import { makeUploader, relativeFilePath, safeUnlink, absoluteFromRelative, UPLOAD_DIR, compressImageInPlace, decodeOriginalName } from './upload.js'
+import { makeUploader, uploadFile, safeUnlink, streamFile, decodeOriginalName, extractTakenDate } from './upload.js'
 import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSION_COOKIE } from './auth.js'
 
 const id = (): string => crypto.randomUUID()
 
 // 구글 API 하루 호출 상한. 콘솔 할당량과 별개로, 여기서 넘으면 구글에 요청 자체를 안 보낸다.
-const DAILY_API_LIMITS: Record<'places' | 'geocode', number> = { places: 300, geocode: 300 }
+const DAILY_API_LIMITS: Record<'places' | 'geocode' | 'directions', number> = { places: 300, geocode: 300, directions: 300 }
+
+// 이동수단 → 구글 Distance Matrix mode. 비행기/배/기타처럼 도로 경로가 의미 없는 수단은 매핑하지 않는다
+// (그런 수단은 자동 계산 버튼 자체를 프론트에서 숨김).
+const TRANSIT_MODE_TO_GOOGLE: Record<string, string> = {
+  도보: 'walking', 지하철: 'transit', 버스: 'transit', 기차: 'transit', 택시: 'driving',
+}
 
 async function incrementDailyUsage(kind: keyof typeof DAILY_API_LIMITS): Promise<number> {
   const today = new Date().toISOString().slice(0, 10)
@@ -56,12 +62,8 @@ function installAsyncErrorHandling(app: ExpressApp): void {
   }
 }
 
-const photoUploader = makeUploader('photos')
-const voucherUploader = makeUploader('vouchers')
-const archiveUploader = makeUploader('archive')
-const bucketUploader = makeUploader('bucket')
-const flightLogoUploader = makeUploader('flight-logos')
-const dayPhotoUploader = makeUploader('day-photos')
+// 전부 메모리 저장소라 저장 목적지(subDir)와 무관하게 하나의 인스턴스를 공유해도 된다.
+const uploader = makeUploader()
 
 // ── 행 매핑 (snake_case DB → camelCase API) ──────────────
 const mapTrip = (r: any) => ({
@@ -247,11 +249,9 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   // ── 파일 서빙 ─────────────────────────────────────────
-  app.get('/api/files/*', (req: Request, res: Response) => {
+  app.get('/api/files/*', async (req: Request, res: Response) => {
     const rel = (req.params as any)[0] as string
-    const abs = path.resolve(absoluteFromRelative(rel))
-    if (!abs.startsWith(path.resolve(UPLOAD_DIR))) { res.status(400).end(); return }
-    res.sendFile(abs, (err) => { if (err) res.status(404).end() })
+    await streamFile(rel, res)
   })
 
   // ── 여행 ──────────────────────────────────────────────
@@ -547,6 +547,45 @@ export function registerRoutes(app: ExpressApp): void {
     }
   })
 
+  // 두 장소 사이 이동시간을 구글 Distance Matrix로 자동 계산 — 이동 구간을 저장/수정할 때
+  // 한 번만 호출해서 durationText에 채워두는 용도(타임라인을 열 때마다 호출하지 않음, 무료 티어 방어).
+  app.get('/api/directions/duration', async (req, res) => {
+    const { originPlaceId, destPlaceId, mode } = req.query as { originPlaceId?: string; destPlaceId?: string; mode?: string }
+    const googleMode = mode ? TRANSIT_MODE_TO_GOOGLE[mode] : undefined
+    if (!originPlaceId || !destPlaceId || !googleMode) { res.json({ error: '이 교통수단은 자동 계산을 지원하지 않아요.' }); return }
+
+    const keyRow = await pool.query("SELECT value FROM settings WHERE key = 'googleApiKey'")
+    const key = keyRow.rows[0]?.value?.trim()
+    if (!key) { res.json({ error: '[⚙️ 설정]에서 구글 API 키를 먼저 등록해주세요.' }); return }
+    if (await overDailyLimit('directions')) { res.json({ error: '오늘 자동 계산 요청 한도를 넘었어요. 내일 다시 시도해주세요.' }); return }
+
+    const places = await pool.query('SELECT id, lat, lng, address FROM places WHERE id = ANY($1)', [[originPlaceId, destPlaceId]])
+    const origin = places.rows.find((p) => p.id === originPlaceId)
+    const dest = places.rows.find((p) => p.id === destPlaceId)
+    if (!origin || !dest) { res.json({ error: '장소를 찾을 수 없어요.' }); return }
+
+    const originParam = origin.lat != null && origin.lng != null ? `${origin.lat},${origin.lng}` : origin.address
+    const destParam = dest.lat != null && dest.lng != null ? `${dest.lat},${dest.lng}` : dest.address
+    if (!originParam || !destParam) { res.json({ error: '두 장소 모두 좌표나 주소가 있어야 계산할 수 있어요.' }); return }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originParam)}` +
+        `&destinations=${encodeURIComponent(destParam)}&mode=${googleMode}&language=ko&key=${key}`
+      const r = await fetch(url)
+      const json = (await r.json()) as {
+        rows?: Array<{ elements?: Array<{ status: string; duration?: { text: string } }> }>
+      }
+      const element = json.rows?.[0]?.elements?.[0]
+      if (!element || element.status !== 'OK' || !element.duration) {
+        res.json({ error: '경로를 찾지 못했어요. 직접 입력해주세요.' })
+        return
+      }
+      res.json({ durationText: element.duration.text })
+    } catch (err) {
+      res.json({ error: `계산 실패 (서버 인터넷 연결을 확인해주세요): ${String(err)}` })
+    }
+  })
+
   // ── 국가·도시 족보 ────────────────────────────────────
   app.get('/api/countries', async (_req, res) => {
     const r = await pool.query('SELECT * FROM countries ORDER BY name')
@@ -644,6 +683,46 @@ export function registerRoutes(app: ExpressApp): void {
   app.delete('/api/cities/:id', async (req, res) => {
     await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id])
     res.json({})
+  })
+
+  // 도시 허브 — 이 도시에 저장된 장소를 방문횟수·평점과 함께. "가봤어요"(visitCount>0) /
+  // "위시"(=0) 구분과 카테고리별 TOP3는 프론트에서 이 목록을 정렬해서 만든다.
+  app.get('/api/cities/:id/places', async (req, res) => {
+    const r = await pool.query(
+      `SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name,
+        (
+          SELECT ph.file_path FROM photos ph
+          JOIN timeline_events te ON te.id = ph.event_id
+          WHERE te.place_id = p.id ORDER BY ph.id LIMIT 1
+        ) AS cover_photo_path,
+        (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count,
+        (SELECT AVG(te3.rating) FROM timeline_events te3 WHERE te3.place_id = p.id AND te3.rating IS NOT NULL) AS avg_visit_rating
+      FROM places p
+      LEFT JOIN countries co ON co.id = p.country_id
+      LEFT JOIN cities ci ON ci.id = p.city_id
+      WHERE p.city_id = $1
+      ORDER BY p.name`,
+      [req.params.id])
+
+    const totalsR = await pool.query(
+      `SELECT te.place_id, e.currency, SUM(e.amount) AS total
+       FROM expenses e JOIN timeline_events te ON te.id = e.event_id
+       WHERE te.place_id IN (SELECT id FROM places WHERE city_id = $1)
+       GROUP BY te.place_id, e.currency`,
+      [req.params.id])
+    const totalsByPlace = new Map<string, Array<{ currency: string; total: number }>>()
+    for (const row of totalsR.rows) {
+      const list = totalsByPlace.get(row.place_id) ?? []
+      list.push({ currency: row.currency, total: Number(row.total) })
+      totalsByPlace.set(row.place_id, list)
+    }
+
+    res.json(r.rows.map((row) => ({
+      place: mapPlace(row),
+      visitCount: Number(row.visit_count),
+      avgVisitRating: row.avg_visit_rating != null ? Number(row.avg_visit_rating) : null,
+      spentTotals: totalsByPlace.get(row.id) ?? [],
+    })))
   })
 
   // ── 동선(타임라인) ────────────────────────────────────
@@ -769,14 +848,13 @@ export function registerRoutes(app: ExpressApp): void {
     res.json({ ok: true })
   })
 
-  app.post('/api/events/:id/flight/logo', flightLogoUploader.array('files', 1), async (req, res) => {
+  app.post('/api/events/:id/flight/logo', uploader.array('files', 1), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
     const file = files[0]
     if (!file) { res.status(400).json({ error: '파일이 없어요.' }); return }
-    const finalPath = await compressImageInPlace(file.path)
-    const rel = relativeFilePath('flight-logos', path.basename(finalPath))
+    const rel = await uploadFile('flight-logos', file)
     const old = await pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id])
-    if (old.rows[0]?.airline_logo_path) safeUnlink(old.rows[0].airline_logo_path)
+    if (old.rows[0]?.airline_logo_path) await safeUnlink(old.rows[0].airline_logo_path)
     await pool.query(
       `INSERT INTO flight_details (event_id, airline_logo_path) VALUES ($1,$2)
        ON CONFLICT (event_id) DO UPDATE SET airline_logo_path = excluded.airline_logo_path`,
@@ -787,7 +865,7 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.delete('/api/events/:id/flight', async (req, res) => {
     const old = await pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id])
-    if (old.rows[0]?.airline_logo_path) safeUnlink(old.rows[0].airline_logo_path)
+    if (old.rows[0]?.airline_logo_path) await safeUnlink(old.rows[0].airline_logo_path)
     await pool.query('DELETE FROM flight_details WHERE event_id = $1', [req.params.id])
     res.json({ ok: true })
   })
@@ -950,15 +1028,14 @@ export function registerRoutes(app: ExpressApp): void {
     res.json(r.rows.map(mapVoucher))
   })
 
-  app.post('/api/trips/:tripId/vouchers', voucherUploader.array('files', 10), async (req, res) => {
+  app.post('/api/trips/:tripId/vouchers', uploader.array('files', 10), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
     const category = ((req.body?.category as string | undefined) ?? '기타').trim() || '기타'
     const added = []
     for (const f of files) {
       const voucherId = id()
       const originalName = decodeOriginalName(f.originalname)
-      const finalPath = f.mimetype.startsWith('image/') ? await compressImageInPlace(f.path) : f.path
-      const rel = relativeFilePath('vouchers', path.basename(finalPath))
+      const rel = await uploadFile('vouchers', f)
       const fileType = path.extname(originalName).replace('.', '').toUpperCase() || 'FILE'
       await pool.query('INSERT INTO vouchers (id, trip_id, title, file_type, file_path, category) VALUES ($1,$2,$3,$4,$5,$6)',
         [voucherId, req.params.tripId, originalName, fileType, rel, category])
@@ -970,18 +1047,17 @@ export function registerRoutes(app: ExpressApp): void {
   app.delete('/api/vouchers/:id', async (req, res) => {
     const r = await pool.query('SELECT file_path FROM vouchers WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM vouchers WHERE id = $1', [req.params.id])
-    if (r.rows[0]) safeUnlink(r.rows[0].file_path)
+    if (r.rows[0]) await safeUnlink(r.rows[0].file_path)
     res.json({ ok: true })
   })
 
   // ── 사진 ──────────────────────────────────────────────
-  app.post('/api/events/:eventId/photos', photoUploader.array('files', 10), async (req, res) => {
+  app.post('/api/events/:eventId/photos', uploader.array('files', 10), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
     const added = []
     for (const f of files) {
       const photoId = id()
-      const finalPath = await compressImageInPlace(f.path)
-      const rel = relativeFilePath('photos', path.basename(finalPath))
+      const rel = await uploadFile('photos', f)
       await pool.query('INSERT INTO photos (id, event_id, file_path) VALUES ($1,$2,$3)', [photoId, req.params.eventId, rel])
       added.push({ id: photoId, eventId: req.params.eventId, filePath: rel })
     }
@@ -991,7 +1067,7 @@ export function registerRoutes(app: ExpressApp): void {
   app.delete('/api/photos/:id', async (req, res) => {
     const r = await pool.query('SELECT file_path FROM photos WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM photos WHERE id = $1', [req.params.id])
-    if (r.rows[0]) safeUnlink(r.rows[0].file_path)
+    if (r.rows[0]) await safeUnlink(r.rows[0].file_path)
     res.json({ ok: true })
   })
 
@@ -1046,14 +1122,13 @@ export function registerRoutes(app: ExpressApp): void {
     res.json(mapArchive(r.rows[0]))
   })
 
-  app.post('/api/trips/:tripId/archive/image', archiveUploader.array('files', 10), async (req, res) => {
+  app.post('/api/trips/:tripId/archive/image', uploader.array('files', 10), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
     const added = []
     for (const f of files) {
       const itemId = id()
       const originalName = decodeOriginalName(f.originalname)
-      const finalPath = await compressImageInPlace(f.path)
-      const rel = relativeFilePath('archive', path.basename(finalPath))
+      const rel = await uploadFile('archive', f)
       await pool.query('INSERT INTO archive_items (id, trip_id, kind, title, file_path) VALUES ($1,$2,$3,$4,$5)',
         [itemId, req.params.tripId, 'image', originalName, rel])
       added.push({ id: itemId, tripId: req.params.tripId, kind: 'image', title: originalName, body: null, filePath: rel })
@@ -1064,7 +1139,7 @@ export function registerRoutes(app: ExpressApp): void {
   app.delete('/api/archive/:id', async (req, res) => {
     const r = await pool.query('SELECT file_path FROM archive_items WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM archive_items WHERE id = $1', [req.params.id])
-    if (r.rows[0]?.file_path) safeUnlink(r.rows[0].file_path)
+    if (r.rows[0]?.file_path) await safeUnlink(r.rows[0].file_path)
     res.json({ ok: true })
   })
 
@@ -1135,7 +1210,7 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/trips/:tripId/day-notes/:dayNumber/photos',
-    dayPhotoUploader.array('files', 20), async (req, res) => {
+    uploader.array('files', 20), async (req, res) => {
       const dayNumber = Number(req.params.dayNumber)
       await pool.query(
         'INSERT INTO day_notes (trip_id, day_number) VALUES ($1,$2) ON CONFLICT (trip_id, day_number) DO NOTHING',
@@ -1144,8 +1219,7 @@ export function registerRoutes(app: ExpressApp): void {
       const added = []
       for (const f of files) {
         const photoId = id()
-        const finalPath = await compressImageInPlace(f.path)
-        const rel = relativeFilePath('day-photos', path.basename(finalPath))
+        const rel = await uploadFile('day-photos', f)
         await pool.query('INSERT INTO day_note_photos (id, trip_id, day_number, file_path) VALUES ($1,$2,$3,$4)',
           [photoId, req.params.tripId, dayNumber, rel])
         added.push({ id: photoId, dayNumber, filePath: rel })
@@ -1153,10 +1227,50 @@ export function registerRoutes(app: ExpressApp): void {
       res.json(added)
     })
 
+  // 여러 장을 한번에 올리면 EXIF 촬영일시를 읽어 해당 일차 일기에 자동으로 나눠 넣는다.
+  // EXIF가 없는 사진(스크린샷 등)은 여행 중이면 오늘 일차, 아니면 1일차로 떨어진다.
+  app.post('/api/trips/:tripId/day-notes/photos/auto', uploader.array('files', 30), async (req, res) => {
+    const tripRow = await pool.query('SELECT start_date, end_date FROM trips WHERE id = $1', [req.params.tripId])
+    const trip = tripRow.rows[0]
+    if (!trip) { res.status(404).json({ error: '여행을 찾을 수 없어요.' }); return }
+    const startDate = new Date(`${trip.start_date}T00:00:00`)
+    const endDate = new Date(`${trip.end_date}T00:00:00`)
+    const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const fallbackDay = today >= startDate && today <= endDate
+      ? Math.round((today.getTime() - startDate.getTime()) / 86_400_000) + 1
+      : 1
+
+    const files = (req.files ?? []) as Express.Multer.File[]
+    const added: Array<{ id: string; dayNumber: number; filePath: string }> = []
+    const daysTouched = new Set<number>()
+
+    for (const f of files) {
+      const taken = await extractTakenDate(f)
+      let dayNumber = fallbackDay
+      if (taken) {
+        taken.setHours(0, 0, 0, 0)
+        const diff = Math.round((taken.getTime() - startDate.getTime()) / 86_400_000) + 1
+        dayNumber = Math.min(Math.max(diff, 1), totalDays)
+      }
+      await pool.query(
+        'INSERT INTO day_notes (trip_id, day_number) VALUES ($1,$2) ON CONFLICT (trip_id, day_number) DO NOTHING',
+        [req.params.tripId, dayNumber])
+      const rel = await uploadFile('day-photos', f)
+      const photoId = id()
+      await pool.query('INSERT INTO day_note_photos (id, trip_id, day_number, file_path) VALUES ($1,$2,$3,$4)',
+        [photoId, req.params.tripId, dayNumber, rel])
+      added.push({ id: photoId, dayNumber, filePath: rel })
+      daysTouched.add(dayNumber)
+    }
+    res.json({ photos: added, dayCount: daysTouched.size })
+  })
+
   app.delete('/api/day-note-photos/:id', async (req, res) => {
     const r = await pool.query('SELECT file_path FROM day_note_photos WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM day_note_photos WHERE id = $1', [req.params.id])
-    if (r.rows[0]) safeUnlink(r.rows[0].file_path)
+    if (r.rows[0]) await safeUnlink(r.rows[0].file_path)
     res.json({ ok: true })
   })
 
@@ -1259,18 +1373,17 @@ export function registerRoutes(app: ExpressApp): void {
   app.delete('/api/bucket/:id', async (req, res) => {
     const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
     await pool.query('DELETE FROM bucket_items WHERE id = $1', [req.params.id])
-    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    if (old.rows[0]?.image_path) await safeUnlink(old.rows[0].image_path)
     res.json({ ok: true })
   })
 
-  app.post('/api/bucket/:id/photo', bucketUploader.array('files', 1), async (req, res) => {
+  app.post('/api/bucket/:id/photo', uploader.array('files', 1), async (req, res) => {
     const files = (req.files ?? []) as Express.Multer.File[]
     const file = files[0]
     if (!file) { res.status(400).json({ error: '파일이 없어요.' }); return }
-    const finalPath = await compressImageInPlace(file.path)
-    const rel = relativeFilePath('bucket', path.basename(finalPath))
+    const rel = await uploadFile('bucket', file)
     const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
-    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    if (old.rows[0]?.image_path) await safeUnlink(old.rows[0].image_path)
     await pool.query('UPDATE bucket_items SET image_path = $1 WHERE id = $2', [rel, req.params.id])
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [req.params.id])
     res.json(mapBucket(r.rows[0]))
@@ -1278,7 +1391,7 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.delete('/api/bucket/:id/photo', async (req, res) => {
     const old = await pool.query('SELECT image_path FROM bucket_items WHERE id = $1', [req.params.id])
-    if (old.rows[0]?.image_path) safeUnlink(old.rows[0].image_path)
+    if (old.rows[0]?.image_path) await safeUnlink(old.rows[0].image_path)
     await pool.query('UPDATE bucket_items SET image_path = NULL WHERE id = $1', [req.params.id])
     res.json({ ok: true })
   })

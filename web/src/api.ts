@@ -2,7 +2,7 @@ import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
   ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
   DashboardData, ActivityLogEntry,
-  ChecklistItem, ChecklistScope, BucketItem, TransitSegment,
+  ChecklistItem, ChecklistScope, BucketItem, TransitSegment, CityPlaceSummary,
 } from '../shared/types'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
@@ -73,6 +73,7 @@ export const api = {
       bestSeason?: string | null; caution?: string | null
     }) => req<void>('PUT', `/api/cities/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/cities/${id}`),
+    places: (id: string) => req<CityPlaceSummary[]>('GET', `/api/cities/${id}/places`),
   },
 
   members: {
@@ -228,6 +229,8 @@ export const api = {
     }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
     addPhotos: (tripId: string, dayNumber: number, files: File[]) =>
       upload<DayPhoto[]>(`/api/trips/${tripId}/day-notes/${dayNumber}/photos`, files),
+    addPhotosAuto: (tripId: string, files: File[]) =>
+      upload<{ photos: DayPhoto[]; dayCount: number }>(`/api/trips/${tripId}/day-notes/photos/auto`, files),
     deletePhoto: (id: string) => req<void>('DELETE', `/api/day-note-photos/${id}`),
   },
 
@@ -238,6 +241,14 @@ export const api = {
 
   dashboard: {
     get: () => req<DashboardData>('GET', '/api/dashboard'),
+  },
+
+  directions: {
+    duration: (originPlaceId: string, destPlaceId: string, mode: string) =>
+      req<{ durationText: string } | { error: string }>(
+        'GET',
+        `/api/directions/duration?originPlaceId=${encodeURIComponent(originPlaceId)}&destPlaceId=${encodeURIComponent(destPlaceId)}&mode=${encodeURIComponent(mode)}`,
+      ),
   },
 
   activity: {

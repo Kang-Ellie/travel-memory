@@ -256,6 +256,14 @@ export interface PlaceDetail {
   expenseTotals: Array<{ currency: string; total: number }>
 }
 
+// 도시 허브 — 이 도시에 저장된 장소 하나의 요약(방문횟수·평점·누적지출). "가봤어요"는 visitCount>0으로 판단.
+export interface CityPlaceSummary {
+  place: Place
+  visitCount: number
+  avgVisitRating: number | null
+  spentTotals: Array<{ currency: string; total: number }>
+}
+
 export interface GooglePlaceResult {
   name: string
   address: string

@@ -8,6 +8,7 @@ import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
 import PlaceMeta from './PlaceMeta'
+import PlacesMapView from './PlacesMapView'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
@@ -282,6 +283,7 @@ export default function PlacesScreen({
   const [results, setResults] = useState<GooglePlaceResult[]>([])
   const [searchError, setSearchError] = useState('')
   const [savedKeys, setSavedKeys] = useState<Set<string>>(new Set())
+  const [placesView, setPlacesView] = useState<'grid' | 'map'>('grid')
 
   const [manName, setManName] = useState('')
   const [manAddress, setManAddress] = useState('')
@@ -456,9 +458,15 @@ export default function PlacesScreen({
             <button key={c} className={`pill ${filter === c ? 'active' : ''}`} onClick={() => setFilter(c)}>{c}</button>
           ))}
         </div>
+        <div className="right-toggle">
+          <button className={`pill ${placesView === 'grid' ? 'active' : ''}`} onClick={() => setPlacesView('grid')}>🗂 목록</button>
+          <button className={`pill ${placesView === 'map' ? 'active' : ''}`} onClick={() => setPlacesView('map')}>🗺 지도로 보기</button>
+        </div>
 
         {filtered.length === 0 ? (
           <div className="empty">등록된 장소가 없어요. 위에서 검색하거나 직접 등록해보세요!</div>
+        ) : placesView === 'map' ? (
+          <PlacesMapView places={filtered} />
         ) : (
           <div className="grid">
             {filtered.map((p) => (

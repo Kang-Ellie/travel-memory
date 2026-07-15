@@ -42,7 +42,13 @@ npm run dev                 # http://localhost:5173
 1. [neon.tech](https://neon.tech) 가입 → 프로젝트 생성 (리전은 서울에서 가까운 곳 추천)
 2. Connection string 복사 (`postgresql://...`) → 아래 Railway 환경변수 `DATABASE_URL`에 사용
 
-### 2. Railway — API 서버
+### 2. Cloudflare R2 — 파일 저장소 (사진·바우처·보관함 이미지)
+1. Cloudflare 대시보드 → R2 → 버킷 생성 (예: `travel-on-uploads`)
+2. R2 → 관리 → API 토큰 생성 → "객체 읽기 및 쓰기" 권한으로 발급 → Access Key ID / Secret Access Key 복사
+3. 대시보드 오른쪽에 표시되는 **계정 ID**도 복사해두기 (R2_ACCOUNT_ID)
+4. 버킷은 **비공개로 유지** — 파일은 로그인 세션이 있어야 서버(`/api/files/*`)를 통해서만 조회됨
+
+### 3. Railway — API 서버
 1. [railway.app](https://railway.app) 가입 → New Project → 이 저장소 연결
 2. **Root Directory를 `server`로 지정**
 3. 환경변수 설정 (`server/.env.example` 참고):
@@ -50,13 +56,12 @@ npm run dev                 # http://localhost:5173
    - `APP_PASSCODE` (앱 접속 비밀번호, 직접 정하기)
    - `SESSION_SECRET` (`openssl rand -hex 32`로 생성)
    - `FRONTEND_ORIGIN` (Cloudflare Pages 배포 후 나오는 주소, 예: `https://travel-on.pages.dev`)
+   - `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME` (위 2단계에서 발급)
    - `NODE_ENV=production`
-4. **볼륨(Volume) 추가 필수**: Railway 서비스 설정 → Volumes → 마운트 경로를 `/data`로 지정하고
-   `UPLOAD_DIR=/data/uploads` 환경변수를 추가하세요.
-   ⚠️ 볼륨 없이 배포하면 사진·바우처·보관함 이미지가 **재배포할 때마다 사라집니다** (DB의 텍스트 데이터는 Neon에 있어 안전).
-5. Start Command는 `npm start` (package.json에 이미 설정됨)
+4. Start Command는 `npm start` (package.json에 이미 설정됨)
+5. **Railway 볼륨은 더 이상 필요 없음** — 파일은 R2에 저장되므로 컨테이너 재배포와 무관하게 유지됨
 
-### 3. Cloudflare Pages — 프론트
+### 4. Cloudflare Pages — 프론트
 1. Cloudflare 대시보드 → Pages → 이 저장소 연결
 2. **Root directory를 `web`로 지정**, Build command `npm run build`, Output directory `dist`
 3. 환경변수 `VITE_API_BASE` = Railway에서 발급된 API 주소 (예: `https://travel-on-server.up.railway.app`)

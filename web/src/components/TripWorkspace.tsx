@@ -24,12 +24,15 @@ import DateTimePicker from './DateTimePicker'
 import TimePicker from './TimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import TripBoardView from './TripBoardView'
+import TodayStrip from './TodayStrip'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
 const TRANSIT_ICON: Record<string, string> = {
   도보: '🚶', 지하철: '🚇', 버스: '🚌', 기차: '🚄', 택시: '🚕', 비행기: '✈️', 배: '⛴',
 }
+// 도로/대중교통 경로가 있는 수단만 구글 Distance Matrix로 자동 계산 가능 (서버 TRANSIT_MODE_TO_GOOGLE와 동일 기준).
+const AUTO_CALC_MODES = new Set(['도보', '지하철', '버스', '기차', '택시'])
 
 export function dayCount(trip: Trip): number {
   const s = new Date(trip.startDate + 'T00:00:00')
@@ -44,6 +47,16 @@ export function dayLabel(trip: Trip, day: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} (${week})`
 }
 
+// 여행 기간 중이면 오늘 날짜에 해당하는 일차 번호를, 아니면 null을 반환한다.
+export function todayDayNumber(trip: Trip): number | null {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const s = new Date(trip.startDate + 'T00:00:00')
+  const e = new Date(trip.endDate + 'T00:00:00')
+  if (today < s || today > e) return null
+  return Math.round((today.getTime() - s.getTime()) / 86_400_000) + 1
+}
+
 function TransitChip({
   segment, vouchers, dayEvents, onChanged,
 }: { segment: TransitSegment; vouchers: Voucher[]; dayEvents: TimelineEvent[]; onChanged: () => void }) {
@@ -53,6 +66,20 @@ function TransitChip({
   const [durationText, setDurationText] = useState(segment.durationText ?? '')
   const [note, setNote] = useState(segment.note ?? '')
   const [afterEventId, setAfterEventId] = useState(segment.afterEventId ?? '')
+  const [calculating, setCalculating] = useState(false)
+
+  const originIdx = dayEvents.findIndex((e) => e.id === afterEventId)
+  const destEvent = originIdx >= 0 ? dayEvents[originIdx + 1] : null
+  const canAutoCalc = AUTO_CALC_MODES.has(mode) && originIdx >= 0 && !!destEvent
+
+  const autoCalc = async () => {
+    if (originIdx < 0 || !destEvent) return
+    setCalculating(true)
+    const res = await api.directions.duration(dayEvents[originIdx].place.id, destEvent.place.id, mode)
+    setCalculating(false)
+    if ('error' in res) { alert(res.error); return }
+    setDurationText(res.durationText)
+  }
 
   const save = async () => {
     await api.transit.update(segment.id, {
@@ -89,7 +116,15 @@ function TransitChip({
               {TRANSIT_MODES.map((m) => <option key={m} value={m}>{TRANSIT_ICON[m] ?? '➡️'} {m}</option>)}
             </Select></div>
           <div className="field"><label>소요시간</label>
-            <input type="text" value={durationText} onChange={(e) => setDurationText(e.target.value)} /></div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input type="text" value={durationText} onChange={(e) => setDurationText(e.target.value)} />
+              {canAutoCalc && (
+                <button type="button" className="btn small" onClick={autoCalc} disabled={calculating}>
+                  {calculating ? '계산 중…' : '🧭 자동'}
+                </button>
+              )}
+            </div>
+          </div>
           <div className="field grow"><label>비고</label>
             <input type="text" value={note} placeholder="예: 2번 출구로 나가서 우회전" onChange={(e) => setNote(e.target.value)} /></div>
           <div style={{ marginTop: 12 }}>
@@ -156,7 +191,7 @@ interface QuickExpenseState {
 
 
 function EventCard({
-  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged,
+  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday,
 }: {
   ev: TimelineEvent
   participants: Member[]
@@ -167,6 +202,7 @@ function EventCard({
   onDragStart: (idx: number) => void
   onDrop: () => void
   onChanged: () => void
+  isToday?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [review, setReview] = useState(ev.review ?? '')
@@ -591,6 +627,10 @@ function EventCard({
               )}
               {!isTicket && (ev.review ? (
                 <p style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{ev.review}</p>
+              ) : isToday ? (
+                <button type="button" className="btn small ghost" style={{ marginBottom: 8 }} onClick={startEdit}>
+                  ✍️ 오늘 리뷰 남기기
+                </button>
               ) : (
                 <p className="muted" style={{ margin: '0 0 8px' }}>아직 리뷰가 없어요. [수정]을 눌러 적어보세요.</p>
               ))}
@@ -673,7 +713,8 @@ function EventCard({
 
 export default function TripWorkspace({ trip }: { trip: Trip }) {
   const days = dayCount(trip)
-  const [day, setDay] = useState(1)
+  const todayNum = todayDayNumber(trip)
+  const [day, setDay] = useState(() => todayNum ?? 1)
   const [events, setEvents] = useState<TimelineEvent[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [members, setMembers] = useState<Member[]>([])
@@ -698,8 +739,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [transitNote, setTransitNote] = useState('')
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showAddTransit, setShowAddTransit] = useState(false)
+  const [transitCalculating, setTransitCalculating] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
+  const [bulkUploading, setBulkUploading] = useState(false)
   const dragFrom = useRef<number | null>(null)
+  const bulkPhotoInput = useRef<HTMLInputElement>(null)
 
   const refresh = () => {
     api.events.list(trip.id).then(setEvents)
@@ -783,6 +827,17 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     await api.events.reorder({ tripId: trip.id, dayNumber: day, orderedIds: ids })
   }
 
+  const onBulkPhotosPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    e.target.value = ''
+    if (files.length === 0) return
+    setBulkUploading(true)
+    const res = await api.dayNotes.addPhotosAuto(trip.id, files)
+    setBulkUploading(false)
+    alert(`📷 ${res.photos.length}장을 촬영일 기준으로 ${res.dayCount}개 일차 일기에 나눠 넣었어요.`)
+    refresh()
+  }
+
   const addTransit = async () => {
     await api.transit.create({
       tripId: trip.id, dayNumber: day, afterEventId: transitAfterId || null,
@@ -791,6 +846,19 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     setTransitDuration(''); setTransitNote('')
     refresh()
     setShowAddTransit(false)
+  }
+
+  const transitOriginIdx = dayEvents.findIndex((e) => e.id === transitAfterId)
+  const transitDestEvent = transitOriginIdx >= 0 ? dayEvents[transitOriginIdx + 1] : null
+  const canAutoCalcTransit = AUTO_CALC_MODES.has(transitMode) && transitOriginIdx >= 0 && !!transitDestEvent
+
+  const autoCalcTransit = async () => {
+    if (transitOriginIdx < 0 || !transitDestEvent) return
+    setTransitCalculating(true)
+    const res = await api.directions.duration(dayEvents[transitOriginIdx].place.id, transitDestEvent.place.id, transitMode)
+    setTransitCalculating(false)
+    if ('error' in res) { alert(res.error); return }
+    setTransitDuration(res.durationText)
   }
 
   const handleZoneDrop = async (e: React.DragEvent) => {
@@ -858,7 +926,14 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       </div>
       <div className="field">
         <label>소요시간</label>
-        <input type="text" value={transitDuration} placeholder="예: 4분" onChange={(e) => setTransitDuration(e.target.value)} />
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input type="text" value={transitDuration} placeholder="예: 4분" onChange={(e) => setTransitDuration(e.target.value)} />
+          {canAutoCalcTransit && (
+            <button type="button" className="btn small" onClick={autoCalcTransit} disabled={transitCalculating}>
+              {transitCalculating ? '계산 중…' : '🧭 자동'}
+            </button>
+          )}
+        </div>
       </div>
       <div className="field grow">
         <label>비고 (선택)</label>
@@ -883,6 +958,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     <div className="workspace">
       {/* 좌측: 일차 내비게이션 */}
       <div className="day-nav-col">
+        {todayNum != null && day !== todayNum && (
+          <button type="button" className="btn small primary" onClick={() => setDay(todayNum)}>
+            📍 오늘({todayNum}일차)로 이동
+          </button>
+        )}
+        <input ref={bulkPhotoInput} type="file" multiple accept="image/*" hidden onChange={onBulkPhotosPicked} />
+        <button type="button" className="btn small" onClick={() => bulkPhotoInput.current?.click()} disabled={bulkUploading}
+          title="여러 장을 한번에 올리면 촬영일 기준으로 각 일차 일기에 자동으로 나눠 들어가요">
+          {bulkUploading ? '업로드 중…' : '📷 사진 일괄 업로드'}
+        </button>
         {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
           const cityInfo = dayCityInfo(d)
           const spend = computeDailySpend(trip, expenses, d, rates).total
@@ -937,6 +1022,18 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
 
       {/* 중앙: 오늘 할 일 + 타임라인 */}
       <div>
+        {todayNum != null && day === todayNum && (
+          <div style={{ marginBottom: 14 }}>
+            <TodayStrip
+              trip={trip}
+              dayNumber={todayNum}
+              dayEvents={dayEvents}
+              members={members}
+              onOpenDiary={() => setDiaryDay(todayNum)}
+              onChanged={refresh}
+            />
+          </div>
+        )}
         <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--yellow-soft)' }}>
           <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
         </div>
@@ -966,6 +1063,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   onDragStart={(i) => { dragFrom.current = i }}
                   onDrop={() => reorder(idx)}
                   onChanged={refresh}
+                  isToday={todayNum != null && day === todayNum}
                 />
                 {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
               </div>
@@ -1002,7 +1100,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         </div>
         {rightPanel === 'archive' && <ArchiveBoard tripId={trip.id} />}
         {rightPanel === 'planb' && <PlanBPanel trip={trip} places={places} events={events} day={day} onAdded={refresh} />}
-        {rightPanel === 'map' && <MapTab trip={trip} />}
+        {rightPanel === 'map' && <MapTab trip={trip} day={day} />}
       </div>
     </div>
       )}

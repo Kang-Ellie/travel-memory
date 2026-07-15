@@ -8,6 +8,7 @@ import PageHeader from "./PageHeader";
 import InfoCardGrid from "./InfoCardGrid";
 import DropdownMenu from "./DropdownMenu";
 import Select from "./Select";
+import CityHubPanel from "./CityHubPanel";
 
 export type CountryForm = Omit<Country, "id" | "createdAt">;
 
@@ -210,6 +211,7 @@ export function CountryFields({
 
 function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [hubOpen, setHubOpen] = useState(false);
   const [name, setName] = useState(city.name);
   const [flightDuration, setFlightDuration] = useState(
     city.flightDuration ?? "",
@@ -342,11 +344,19 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         <div className="grow" style={{ fontWeight: 800 }}>
           {city.name}
         </div>
+        <button type="button" className="btn small ghost" onClick={() => setHubOpen(true)}>
+          🏙 도시 허브
+        </button>
         <DropdownMenu actions={[
           { label: "✏️ 수정", onClick: () => setEditing(true) },
           { label: "🗑 삭제", danger: true, onClick: remove },
         ]} />
       </div>
+      {hubOpen && (
+        <Modal title={`🏙 ${city.name} · 도시 허브`} onClose={() => setHubOpen(false)}>
+          <CityHubPanel cityId={city.id} cityName={city.name} />
+        </Modal>
+      )}
       {city.flightDuration || city.timeDiff || city.bestSeason || city.caution ? (
         <div style={{ marginTop: 8 }}>
           <InfoCardGrid
