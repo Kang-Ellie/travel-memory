@@ -23,10 +23,16 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'var(--paper)',
+      minHeight: '100vh', display: 'flex', flexDirection: 'column', gap: 26,
+      alignItems: 'center', justifyContent: 'center',
+      background: 'linear-gradient(168deg, #2f52d4 0%, var(--passport) 45%, var(--passport-deep) 100%)',
     }}>
-      <div className="window" style={{ width: 320 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+        <div className="passport-emblem">✈</div>
+        <div className="sidebar-logo-kr">여 백 여 권</div>
+        <div className="sidebar-logo-eng">YEOBAEK TRAVEL PASSPORT</div>
+      </div>
+      <div className="window" style={{ width: 320, marginBottom: 0 }}>
         <div className="window-titlebar">
           <span className="window-title">IMMIGRATION · 입국 심사</span>
         </div>

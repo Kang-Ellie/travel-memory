@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { Trip, Member, Country, City } from '../../shared/types'
 import { api } from '../api'
-import { fmtMoney } from '../settlement'
-import { tripCitiesLabel } from '../categories'
-import Window from './Window'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 import PageHeader from './PageHeader'
+import TripTicket from './TripTicket'
 
 export function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
@@ -197,23 +195,7 @@ export default function TripsScreen({
 
       <div className="grid">
         {trips.map((t) => (
-          <Window
-            key={t.id}
-            title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
-            color="pink"
-            onClose={() => remove(t)}
-            footer={
-              <div className="card-footer">
-                <span>🧳 {dday(t)}</span>
-                <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
-              </div>
-            }
-          >
-            <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
-            <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
-            {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
-            {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
-          </Window>
+          <TripTicket key={t.id} trip={t} onOpen={() => onOpenTrip(t)} onDelete={() => remove(t)} />
         ))}
       </div>
     </div>

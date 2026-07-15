@@ -118,8 +118,9 @@ export default function App() {
       <div className="app-body">
         <nav className="nav sidebar-nav">
           <div className="sidebar-logo">
-            <span className="sidebar-logo-eyebrow">✈ TRAVEL DOCUMENT</span>
-            Y E O B A E K
+            <div className="passport-emblem">✈</div>
+            <span className="sidebar-logo-kr">여 백 여 권</span>
+            <span className="sidebar-logo-eng">YEOBAEK TRAVEL PASSPORT</span>
             <span className="sidebar-logo-sub">나를 채우는, 여백</span>
           </div>
           <button
@@ -187,6 +188,7 @@ export default function App() {
               <span className="sidebar-nav-eng">LOGOUT</span>
             </span>
           </button>
+          <div className="passport-chip" aria-hidden="true" />
         </nav>
 
         <main className="content">

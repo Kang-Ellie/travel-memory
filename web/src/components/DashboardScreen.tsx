@@ -9,6 +9,7 @@ import Window from './Window'
 import Lightbox from './Lightbox'
 import FolderIcon, { type FolderColor } from './FolderIcon'
 import ActivityFeed from './ActivityFeed'
+import TripTicket from './TripTicket'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -77,22 +78,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
     : null
 
   const renderTripCard = (t: Trip) => (
-    <Window
-      key={t.id}
-      title={`TRIP_${t.title.replace(/\s+/g, '_').toUpperCase()}`}
-      color="pink"
-      footer={
-        <div className="card-footer">
-          <span>🧳 {dday(t)}</span>
-          <button className="open-link" onClick={() => onOpenTrip(t)}>OPEN →</button>
-        </div>
-      }
-    >
-      <h3 style={{ margin: '0 0 6px', fontSize: 19 }}>{t.title}</h3>
-      <div style={{ fontWeight: 700 }}>{fmtRange(t)}</div>
-      {t.cities.length > 0 && <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(t)}</div>}
-      {t.budget > 0 && <div className="muted" style={{ marginTop: 4 }}>💰 예산 {fmtMoney(t.budget, 'KRW')}</div>}
-    </Window>
+    <TripTicket key={t.id} trip={t} onOpen={() => onOpenTrip(t)} />
   )
 
   return (
