@@ -15,8 +15,11 @@ const SECTIONS: Array<{ key: BookmarkSection; label: string; color: FolderColor 
 ]
 
 export default function BookmarksScreen({
-  prefill, onConsumedPrefill, initialSection,
-}: { prefill: SharePrefill | null; onConsumedPrefill: () => void; initialSection?: BookmarkSection }) {
+  prefill, onConsumedPrefill, initialSection, autoOpenAdd, onConsumedAutoOpenAdd,
+}: {
+  prefill: SharePrefill | null; onConsumedPrefill: () => void; initialSection?: BookmarkSection
+  autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void
+}) {
   const [section, setSection] = useState<BookmarkSection>(prefill ? 'sns' : (initialSection ?? 'places'))
 
   useEffect(() => { if (prefill) setSection('sns') }, [prefill])
@@ -35,8 +38,8 @@ export default function BookmarksScreen({
           </button>
         ))}
       </div>
-      {section === 'places' && <PlacesScreen />}
-      {section === 'bucket' && <BucketListScreen />}
+      {section === 'places' && <PlacesScreen autoOpenAdd={autoOpenAdd} onConsumedAutoOpenAdd={onConsumedAutoOpenAdd} />}
+      {section === 'bucket' && <BucketListScreen autoOpenAdd={autoOpenAdd} onConsumedAutoOpenAdd={onConsumedAutoOpenAdd} />}
       {section === 'sns' && <SnsArchiveScreen prefill={prefill} onConsumedPrefill={onConsumedPrefill} />}
     </div>
   )

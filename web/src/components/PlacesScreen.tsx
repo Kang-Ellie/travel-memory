@@ -269,7 +269,9 @@ function PlaceCard({
   )
 }
 
-export default function PlacesScreen() {
+export default function PlacesScreen({
+  autoOpenAdd, onConsumedAutoOpenAdd,
+}: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
   const [places, setPlaces] = useState<Place[]>([])
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
@@ -290,6 +292,10 @@ export default function PlacesScreen() {
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [manResolving, setManResolving] = useState(false)
   const [manResolveError, setManResolveError] = useState('')
+
+  useEffect(() => {
+    if (autoOpenAdd) { setShowAddPlace(true); onConsumedAutoOpenAdd?.() }
+  }, [autoOpenAdd])
 
   const manCitiesOfCountry = cities.filter((c) => c.countryId === manCountryId)
 
@@ -476,8 +482,10 @@ function mapCategory(googleCategory: string): string {
   const c = googleCategory.toLowerCase()
   if (/식당|음식|레스토랑|restaurant|food/.test(c)) return '맛집'
   if (/카페|커피|cafe|coffee|베이커리|bakery/.test(c)) return '카페'
-  if (/공항|airport/.test(c)) return '공항'
+  // 주차/발렛을 공항보다 먼저 체크 — "인천공항 단기주차장"처럼 두 단어가 같이 나오는
+  // 곳은 발렛(주차) 쪽이 실제 용도에 더 맞다.
   if (/주차|발렛|파킹|parking|valet/.test(c)) return '발렛'
+  if (/공항|airport/.test(c)) return '공항'
   if (/호텔|숙소|hotel|료칸|게스트/.test(c)) return '숙소'
   if (/쇼핑|상점|시장|store|mall|market|백화점/.test(c)) return '쇼핑'
   if (/관광|명소|공원|신사|사원|박물관|attraction|park|museum|temple/.test(c)) return '명소'

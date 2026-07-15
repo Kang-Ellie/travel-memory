@@ -10,7 +10,7 @@ import BookmarksScreen, { type BookmarkSection } from "./components/BookmarksScr
 import CountriesScreen from "./components/CountriesScreen";
 import MembersScreen from "./components/MembersScreen";
 import SettingsScreen from "./components/SettingsScreen";
-import SearchPalette from "./components/SearchPalette";
+import SearchPalette, { type QuickAddTarget } from "./components/SearchPalette";
 
 type Screen =
   | "dashboard"
@@ -75,6 +75,7 @@ export default function App() {
   const [visitedFlags, setVisitedFlags] = useState<string[]>([]);
   const [bookmarkSection, setBookmarkSection] = useState<BookmarkSection>("places");
   const [showSearch, setShowSearch] = useState(false);
+  const [quickAdd, setQuickAdd] = useState<QuickAddTarget | null>(null);
   const clock = useClock();
 
   useEffect(() => {
@@ -112,6 +113,16 @@ export default function App() {
       },
     );
   }, []);
+
+  const handleQuickAdd = (target: QuickAddTarget) => {
+    setOpenTrip(null);
+    if (target === "trip") setScreen("trips");
+    else if (target === "bucket") { setScreen("bookmarks"); setBookmarkSection("bucket"); }
+    else if (target === "place") { setScreen("bookmarks"); setBookmarkSection("places"); }
+    else if (target === "country") setScreen("countries");
+    else if (target === "member") setScreen("members");
+    setQuickAdd(target);
+  };
 
   if (authed === null) return null;
   if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
@@ -203,16 +214,34 @@ export default function App() {
               {screen === "dashboard" && (
                 <DashboardScreen onOpenTrip={setOpenTrip} />
               )}
-              {screen === "trips" && <TripsScreen onOpenTrip={setOpenTrip} />}
+              {screen === "trips" && (
+                <TripsScreen
+                  onOpenTrip={setOpenTrip}
+                  autoOpenAdd={quickAdd === "trip"}
+                  onConsumedAutoOpenAdd={() => setQuickAdd(null)}
+                />
+              )}
               {screen === "bookmarks" && (
                 <BookmarksScreen
                   prefill={sharePrefill}
                   onConsumedPrefill={() => setSharePrefill(null)}
                   initialSection={bookmarkSection}
+                  autoOpenAdd={quickAdd === "bucket" || quickAdd === "place"}
+                  onConsumedAutoOpenAdd={() => setQuickAdd(null)}
                 />
               )}
-              {screen === "countries" && <CountriesScreen />}
-              {screen === "members" && <MembersScreen />}
+              {screen === "countries" && (
+                <CountriesScreen
+                  autoOpenAdd={quickAdd === "country"}
+                  onConsumedAutoOpenAdd={() => setQuickAdd(null)}
+                />
+              )}
+              {screen === "members" && (
+                <MembersScreen
+                  autoOpenAdd={quickAdd === "member"}
+                  onConsumedAutoOpenAdd={() => setQuickAdd(null)}
+                />
+              )}
               {screen === "settings" && <SettingsScreen />}
             </>
           )}
@@ -237,6 +266,7 @@ export default function App() {
             if (section) setBookmarkSection(section);
             setOpenTrip(null);
           }}
+          onQuickAdd={handleQuickAdd}
         />
       )}
     </div>

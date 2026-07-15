@@ -39,12 +39,18 @@ export function dday(t: Trip): string {
   return `D-${Math.round((s.getTime() - today.getTime()) / 86_400_000)}`
 }
 
-export default function TripsScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
+export default function TripsScreen({
+  onOpenTrip, autoOpenAdd, onConsumedAutoOpenAdd,
+}: { onOpenTrip: (t: Trip) => void; autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
   const [trips, setTrips] = useState<Trip[]>([])
   const [members, setMembers] = useState<Member[]>([])
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
   const [creating, setCreating] = useState(false)
+
+  useEffect(() => {
+    if (autoOpenAdd) { setCreating(true); onConsumedAutoOpenAdd?.() }
+  }, [autoOpenAdd])
   const [title, setTitle] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')

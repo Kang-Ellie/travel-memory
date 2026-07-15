@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Member } from '../../shared/types'
 import { api } from '../api'
 import Window from './Window'
@@ -6,14 +6,21 @@ import PageHeader from './PageHeader'
 
 const MEMBER_EMOJIS = ['🧑', '👩', '👨', '👵', '👴', '👧', '👦', '🐶', '🐱']
 
-export default function MembersScreen() {
+export default function MembersScreen({
+  autoOpenAdd, onConsumedAutoOpenAdd,
+}: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
   const [members, setMembers] = useState<Member[]>([])
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [editingEmojiFor, setEditingEmojiFor] = useState<string | null>(null)
+  const nameInput = useRef<HTMLInputElement>(null)
 
   const refresh = () => { api.members.list().then(setMembers) }
   useEffect(refresh, [])
+
+  useEffect(() => {
+    if (autoOpenAdd) { nameInput.current?.focus(); onConsumedAutoOpenAdd?.() }
+  }, [autoOpenAdd])
 
   const add = async () => {
     if (!name.trim()) return
@@ -47,7 +54,7 @@ export default function MembersScreen() {
       <div className="form-row" style={{ marginBottom: 16 }}>
         <div className="field grow">
           <label>이름</label>
-          <input type="text" value={name} placeholder="예: 영아"
+          <input ref={nameInput} type="text" value={name} placeholder="예: 영아"
             onChange={(e) => setName(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && add()} />
         </div>

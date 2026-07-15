@@ -51,6 +51,16 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ]
 
+  // 진행 중인 여행이 있으면 그걸, 없으면 제일 가까운 다가오는 여행을 히어로로 보여준다.
+  const ongoingTrip = trips.find((t) => tripStatus(t) === 'ongoing')
+  const nextUpcomingTrip = trips
+    .filter((t) => tripStatus(t) === 'upcoming')
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0]
+  const heroTrip = ongoingTrip ?? nextUpcomingTrip ?? null
+  const heroPhoto = heroTrip
+    ? (data?.calendarPhotos ?? []).find((p) => p.date >= heroTrip.startDate && p.date <= heroTrip.endDate)?.filePath ?? null
+    : null
+
   const summary = data?.summary
   const gallery = data?.gallery ?? []
   const galleryUrls = gallery.map((g) => fileUrl(g.filePath))
@@ -91,6 +101,35 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
         <div className="dash-hero-sub">NOW, HERE</div>
         <div className="dash-hero-title">지금, 여기</div>
       </div>
+
+      {heroTrip && (
+        <Window
+          title={ongoingTrip ? 'CURRENT_TRIP.EXE' : 'NEXT_TRIP.EXE'}
+          color={ongoingTrip ? 'pink' : 'blue'}
+        >
+          <div className="dash-trip-hero">
+            {heroPhoto ? (
+              <img className="dash-trip-hero-photo" src={fileUrl(heroPhoto)} alt="" />
+            ) : (
+              <div className="dash-trip-hero-photo dash-trip-hero-photo-empty">✈️</div>
+            )}
+            <div className="dash-trip-hero-info">
+              <span className={`chip ${ongoingTrip ? 'pink' : 'blue'}`}>
+                {ongoingTrip ? '✈️ 여행 중' : '🗓 다가오는 여행'}
+              </span>
+              <h3 style={{ margin: '10px 0 4px', fontSize: 22 }}>{heroTrip.title}</h3>
+              <div style={{ fontWeight: 700 }}>{fmtRange(heroTrip)}</div>
+              {heroTrip.cities.length > 0 && (
+                <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(heroTrip)}</div>
+              )}
+              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
+                <strong>{dday(heroTrip)}</strong>
+                <button className="btn primary small" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
+              </div>
+            </div>
+          </div>
+        </Window>
+      )}
 
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 280px' }}>

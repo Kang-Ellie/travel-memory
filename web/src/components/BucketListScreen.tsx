@@ -140,7 +140,9 @@ function BucketCard({
   )
 }
 
-export default function BucketListScreen() {
+export default function BucketListScreen({
+  autoOpenAdd, onConsumedAutoOpenAdd,
+}: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
   const [items, setItems] = useState<BucketItem[]>([])
   const [countries, setCountries] = useState<Country[]>([])
   const [cities, setCities] = useState<City[]>([])
@@ -159,6 +161,10 @@ export default function BucketListScreen() {
   const [linkPlaceId, setLinkPlaceId] = useState('')
   const [linkTripId, setLinkTripId] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+
+  useEffect(() => {
+    if (autoOpenAdd) { setShowAdd(true); onConsumedAutoOpenAdd?.() }
+  }, [autoOpenAdd])
 
   const refresh = () => {
     api.bucket.list().then(setItems)

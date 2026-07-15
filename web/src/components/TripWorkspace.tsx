@@ -23,6 +23,7 @@ import LodgingPassCard from './LodgingPassCard'
 import DateTimePicker from './DateTimePicker'
 import TimePicker from './TimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
+import TripBoardView from './TripBoardView'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
@@ -697,6 +698,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [transitNote, setTransitNote] = useState('')
   const [showAddPlace, setShowAddPlace] = useState(false)
   const [showAddTransit, setShowAddTransit] = useState(false)
+  const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
   const dragFrom = useRef<number | null>(null)
 
   const refresh = () => {
@@ -869,6 +871,15 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   )
 
   return (
+    <div>
+      <div className="day-tabs" style={{ marginBottom: 12 }}>
+        <button className={`pill ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>📋 리스트</button>
+        <button className={`pill ${viewMode === 'board' ? 'active' : ''}`} onClick={() => setViewMode('board')}>🗂 보드</button>
+      </div>
+      {viewMode === 'board' && (
+        <TripBoardView trip={trip} events={events} onChanged={refresh} onOpenDay={(d) => { setDay(d); setViewMode('list') }} />
+      )}
+      {viewMode === 'list' && (
     <div className="workspace">
       {/* 좌측: 일차 내비게이션 */}
       <div className="day-nav-col">
@@ -993,6 +1004,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         {rightPanel === 'planb' && <PlanBPanel trip={trip} places={places} events={events} day={day} onAdded={refresh} />}
         {rightPanel === 'map' && <MapTab trip={trip} />}
       </div>
+    </div>
+      )}
     </div>
   )
 }

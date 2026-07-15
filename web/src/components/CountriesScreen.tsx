@@ -641,7 +641,9 @@ function CountryCard({
   );
 }
 
-export default function CountriesScreen() {
+export default function CountriesScreen({
+  autoOpenAdd, onConsumedAutoOpenAdd,
+}: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [creating, setCreating] = useState(false);
@@ -652,6 +654,10 @@ export default function CountriesScreen() {
     api.cities.list().then(setCities);
   };
   useEffect(refresh, []);
+
+  useEffect(() => {
+    if (autoOpenAdd) { setCreating(true); onConsumedAutoOpenAdd?.() }
+  }, [autoOpenAdd]);
 
   const create = async () => {
     if (!form.name.trim()) return;
