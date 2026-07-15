@@ -338,21 +338,36 @@ function CityRow({ city, onChanged, onOpenHub }: {
       className="row"
       style={{ flexDirection: "column", alignItems: "stretch" }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span className={`chip ${city.visited ? "green" : "yellow"}`}>
-          {city.visited ? "✅ 방문완료" : "⏳ 미방문"}
-        </span>
-        <div className="grow" style={{ fontWeight: 800 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          className="grow"
+          style={{
+            fontWeight: 800,
+            fontSize: 15,
+            minWidth: 0,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}
+        >
           {city.name}
         </div>
-        <button type="button" className="btn small ghost" onClick={() => onOpenHub(city)}>
-          🏙 도시 허브
-        </button>
+        <span className={`chip ${city.visited ? "green" : "yellow"}`} style={{ flexShrink: 0 }}>
+          {city.visited ? "✅ 방문" : "⏳ 미방문"}
+        </span>
         <DropdownMenu actions={[
           { label: "✏️ 수정", onClick: () => setEditing(true) },
           { label: "🗑 삭제", danger: true, onClick: remove },
         ]} />
       </div>
+      <button
+        type="button"
+        className="btn small"
+        style={{ marginTop: 8, alignSelf: "flex-start" }}
+        onClick={() => onOpenHub(city)}
+      >
+        🏙 도시 허브 — 저장 장소·TOP3 보기
+      </button>
       {city.flightDuration || city.timeDiff || city.bestSeason || city.caution ? (
         <div style={{ marginTop: 8 }}>
           <InfoCardGrid

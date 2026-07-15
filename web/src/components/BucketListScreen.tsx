@@ -71,9 +71,18 @@ function BucketCard({
   const itemCountries = item.countryIds.map((id) => countries.find((c) => c.id === id)).filter((c): c is Country => !!c)
   const itemCities = item.cityIds.map((id) => cities.find((c) => c.id === id)).filter((c): c is City => !!c)
 
+  const kindEmoji = kind === 'food' ? '🍽' : kind === 'wish' ? '🛍' : '🪣'
+  const kindPastel = kind === 'food' ? 'var(--pink-soft)' : kind === 'wish' ? 'var(--blue-soft)' : 'var(--purple-soft)'
+
   return (
     <div className="card place-card" style={{ cursor: 'default' }}>
-      {coverPhoto && <img className="place-card-photo" src={fileUrl(coverPhoto)} alt="" />}
+      {coverPhoto ? (
+        <img className="place-card-photo" src={fileUrl(coverPhoto)} alt="" />
+      ) : (
+        <div className="place-card-photo-wrap place-card-photo-empty" style={{ background: kindPastel }}>
+          <span>{kindEmoji}</span>
+        </div>
+      )}
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="place-card-body">
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>

@@ -926,6 +926,42 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 }
 .transit-chip select { padding: 2px 6px; font-size: 12px; }
 
+/* 체크박스는 앱 전체에서 핑크 포인트로 통일 (체크리스트·버킷·먹킷·위시) */
+input[type='checkbox'] {
+  accent-color: var(--pink);
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+/* ── 버킷·먹킷·위시 리스트 행 카드 ── */
+.bucket-row-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px;
+}
+.bucket-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  box-shadow: 2px 2px 0 var(--shadow); /* .card보다 작은 그림자 */
+  border-radius: 10px;
+}
+.bucket-row:hover { background: var(--pink-soft); }
+.bucket-row.done { opacity: 0.6; }
+.bucket-row-thumb {
+  width: 42px; height: 42px; border-radius: 9px;
+  object-fit: cover; flex-shrink: 0; display: block;
+  border: 1.5px solid rgba(45, 42, 62, 0.25);
+}
+.bucket-row-thumb-empty {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; background: var(--yellow-soft);
+}
+
 .checklist-row {
   display: flex;
   align-items: center;

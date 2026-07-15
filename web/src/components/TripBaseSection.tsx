@@ -23,6 +23,8 @@ const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   wish: "사고 싶은 것 (예: 캐리어)",
 };
 
+const KIND_EMOJI: Record<BucketKind, string> = { bucket: "🪣", food: "🍽", wish: "🛍" };
+
 function BaseListCard({
   item,
   kind,
@@ -94,48 +96,43 @@ function BaseListCard({
 
   return (
     <>
-      <div className="card place-card" onClick={() => setOpen(true)}>
-        {coverPhoto && (
-          <img
-            className="place-card-photo"
-            src={fileUrl(coverPhoto)}
-            alt=""
-            style={{ opacity: item.done ? 0.5 : 1 }}
-          />
+      <div className={`card bucket-row ${item.done ? "done" : ""}`} onClick={() => setOpen(true)}>
+        <input
+          type="checkbox"
+          checked={item.done}
+          onClick={(e) => e.stopPropagation()}
+          onChange={toggleDone}
+          title={item.done ? "미완료로 표시" : "완료로 표시"}
+        />
+        {coverPhoto ? (
+          <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" />
+        ) : (
+          <div className="bucket-row-thumb bucket-row-thumb-empty">{KIND_EMOJI[kind]}</div>
         )}
-        <div className="place-card-body">
-          <span
-            className={`chip ${item.done ? "green" : "yellow"}`}
-            style={{ alignSelf: "flex-start" }}
-          >
-            {item.done ? "✅ 완료" : "⏳ 미완료"}
-          </span>
+        <div className="grow" style={{ minWidth: 0 }}>
           <div
             style={{
               fontWeight: 800,
               textDecoration: item.done ? "line-through" : undefined,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {item.title}
           </div>
+          {linkedPlace && (
+            <div className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {placeLine()}
+            </div>
+          )}
         </div>
       </div>
       {open && (
-        <Modal title={item.title} onClose={() => setOpen(false)}>
-          <input
-            ref={photoInput}
-            type="file"
-            accept="image/*"
-            hidden
-            onChange={onPhotoPicked}
-          />
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginBottom: 10,
-            }}
-          >
+        <Modal
+          title={`${KIND_EMOJI[kind]} ${item.title}`}
+          onClose={() => setOpen(false)}
+          headerActions={
             <DropdownMenu
               actions={[
                 {
@@ -173,8 +170,16 @@ function BaseListCard({
                   : []),
               ]}
             />
-          </div>
-          {coverPhoto && (
+          }
+        >
+          <input
+            ref={photoInput}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={onPhotoPicked}
+          />
+          {coverPhoto ? (
             <img
               src={fileUrl(coverPhoto)}
               alt=""
@@ -185,13 +190,26 @@ function BaseListCard({
                 display: "block",
               }}
             />
+          ) : (
+            <button
+              type="button"
+              className="diary-cover-empty"
+              style={{ borderRadius: 10, marginBottom: 12 }}
+              onClick={() => photoInput.current?.click()}
+            >
+              📷 사진 추가
+            </button>
           )}
           {item.memo && (
             <p style={{ whiteSpace: "pre-wrap", marginTop: 0 }}>{item.memo}</p>
           )}
-          {linkedPlace && (
+          {linkedPlace ? (
             <div className="muted" style={{ marginBottom: 12 }}>
               {placeLine()}
+            </div>
+          ) : (
+            <div className="muted" style={{ marginBottom: 12 }}>
+              오른쪽 위 메뉴(⋮)에서 장소 족보와 연결해두면, 어디서 하는지가 여기 붙어요.
             </div>
           )}
           {linkingPlace && (
@@ -449,7 +467,13 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                     marginBottom: 10,
                   }}
                 >
-                  <strong className="grow">{BUCKET_KIND_LABEL[kind]}</strong>
+                  <strong>{BUCKET_KIND_LABEL[kind]}</strong>
+                  {items.length > 0 && (
+                    <span className={`chip ${items.every((b) => b.done) ? "green" : "yellow"}`}>
+                      {items.filter((b) => b.done).length}/{items.length}
+                    </span>
+                  )}
+                  <span className="grow" />
                   <button
                     className="btn small ghost"
                     onClick={() => {
@@ -465,7 +489,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                     {KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요.
                   </div>
                 ) : (
-                  <div className="city-grid">
+                  <div className="bucket-row-grid">
                     {items.map((b) => (
                       <BaseListCard
                         key={b.id}

@@ -65,17 +65,23 @@ export default function ChecklistPanel({
     </label>
   )
 
+  const doneCount = items.filter((i) => i.done).length
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <strong className="grow">{title}</strong>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong>{title}</strong>
+        {items.length > 0 && (
+          <span className={`chip ${doneCount === items.length ? 'green' : 'yellow'}`}>
+            {doneCount}/{items.length}
+          </span>
+        )}
+        <span className="grow" />
         {seeding && <span className="muted">불러오는 중…</span>}
-        <DropdownMenu actions={[
-          ...(SEEDABLE_SCOPES.has(scope)
-            ? [{ label: '✨ 프리셋 불러오기', onClick: loadPresets }] as const
-            : []),
-          { label: '＋ 항목 추가', onClick: () => setShowAdd(true) },
-        ]} />
+        <button className="btn small ghost" onClick={() => setShowAdd(true)}>＋ 추가</button>
+        {SEEDABLE_SCOPES.has(scope) && (
+          <DropdownMenu actions={[{ label: '✨ 프리셋 불러오기', onClick: loadPresets }]} />
+        )}
       </div>
       {items.length === 0 ? (
         <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
