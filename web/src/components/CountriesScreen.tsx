@@ -352,9 +352,13 @@ function CityRow({ city, onChanged, onOpenHub }: {
         >
           {city.name}
         </div>
-        <span className={`chip ${city.visited ? "green" : "yellow"}`} style={{ flexShrink: 0 }}>
-          {city.visited ? "✅ 방문" : "⏳ 미방문"}
-        </span>
+        {city.visited ? (
+          <span className="stamp small green" title="방문완료">
+            <span className="stamp-text">VISITED</span>
+          </span>
+        ) : (
+          <span className="chip yellow" style={{ flexShrink: 0 }}>⏳ 미방문</span>
+        )}
         <DropdownMenu actions={[
           { label: "✏️ 수정", onClick: () => setEditing(true) },
           { label: "🗑 삭제", danger: true, onClick: remove },

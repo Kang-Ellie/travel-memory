@@ -470,6 +470,9 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   <strong>{BUCKET_KIND_LABEL[kind]}</strong>
                   {items.length > 0 && (
                     <span className={`chip ${items.every((b) => b.done) ? "green" : "yellow"}`}>
+                      {items.every((b) => b.done) && (
+                        <img src="/할일목록 v.png" alt="" className="done-check-icon" />
+                      )}
                       {items.filter((b) => b.done).length}/{items.length}
                     </span>
                   )}

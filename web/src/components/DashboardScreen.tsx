@@ -111,9 +111,11 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
             {heroPhoto ? (
               <img className="dash-trip-hero-photo" src={fileUrl(heroPhoto)} alt="" />
             ) : (
-              <div className="dash-trip-hero-photo dash-trip-hero-photo-empty">✈️</div>
+              <div className="dash-trip-hero-photo dash-trip-hero-photo-empty">
+                <img src="/대지 1_13.png" alt="" className="dash-trip-hero-plane" />
+              </div>
             )}
-            <div className="dash-trip-hero-info">
+            <div className={`dash-trip-hero-info dash-trip-hero-info-blob ${ongoingTrip ? 'red' : 'blue'}`}>
               <span className={`chip ${ongoingTrip ? 'pink' : 'blue'}`}>
                 {ongoingTrip ? '✈️ 여행 중' : '🗓 다가오는 여행'}
               </span>

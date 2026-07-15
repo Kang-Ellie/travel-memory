@@ -73,6 +73,7 @@ export default function ChecklistPanel({
         <strong>{title}</strong>
         {items.length > 0 && (
           <span className={`chip ${doneCount === items.length ? 'green' : 'yellow'}`}>
+            {doneCount === items.length && <img src="/할일목록 v.png" alt="" className="done-check-icon" />}
             {doneCount}/{items.length}
           </span>
         )}
