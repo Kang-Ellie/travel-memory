@@ -103,34 +103,31 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
       </div>
 
       {heroTrip && (
-        <Window
-          title={ongoingTrip ? 'CURRENT_TRIP.EXE' : 'NEXT_TRIP.EXE'}
-          color={ongoingTrip ? 'pink' : 'blue'}
-        >
-          <div className="dash-trip-hero">
+        <div className="ticket-hero">
+          <div className="ticket-hero-photo-wrap">
             {heroPhoto ? (
-              <img className="dash-trip-hero-photo" src={fileUrl(heroPhoto)} alt="" />
+              <img className="ticket-hero-photo" src={fileUrl(heroPhoto)} alt="" />
             ) : (
-              <div className="dash-trip-hero-photo dash-trip-hero-photo-empty">
-                <img src="/대지 1_13.png" alt="" className="dash-trip-hero-plane" />
-              </div>
+              <img src="/대지 1_13.png" alt="" className="ticket-hero-plane" />
             )}
-            <div className={`dash-trip-hero-info dash-trip-hero-info-blob ${ongoingTrip ? 'red' : 'blue'}`}>
-              <span className={`chip ${ongoingTrip ? 'pink' : 'blue'}`}>
-                {ongoingTrip ? '✈️ 여행 중' : '🗓 다가오는 여행'}
-              </span>
-              <h3 style={{ margin: '10px 0 4px', fontSize: 26 }}>{heroTrip.title}</h3>
-              <div style={{ fontWeight: 700 }}>{fmtRange(heroTrip)}</div>
-              {heroTrip.cities.length > 0 && (
-                <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(heroTrip)}</div>
-              )}
-              <div className="dash-dday">{dday(heroTrip)}</div>
-              <div style={{ marginTop: 8 }}>
-                <button className="btn primary" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
-              </div>
-            </div>
           </div>
-        </Window>
+          <div className="ticket-hero-body">
+            <div className={`ticket-hero-blob ${ongoingTrip ? 'red' : 'blue'}`} />
+            <div className="ticket-hero-eyebrow">
+              BOARDING PASS · {ongoingTrip ? 'NOW TRAVELING' : 'UPCOMING TRIP'}
+            </div>
+            <h3 style={{ margin: '0 0 4px', fontSize: 26 }}>{heroTrip.title}</h3>
+            <div style={{ fontWeight: 700 }}>{fmtRange(heroTrip)}</div>
+            {heroTrip.cities.length > 0 && (
+              <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(heroTrip)}</div>
+            )}
+            <div className="dash-dday">{dday(heroTrip)}</div>
+            <div style={{ marginTop: 8 }}>
+              <button className="btn primary" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
+            </div>
+            <div className="ticket-hero-barcode" />
+          </div>
+        </div>
       )}
 
       <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>

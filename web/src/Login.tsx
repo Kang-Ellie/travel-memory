@@ -24,12 +24,11 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(160deg, #ffe9f2, #e8e0f7)',
+      background: 'var(--paper)',
     }}>
       <div className="window" style={{ width: 320 }}>
         <div className="window-titlebar">
-          <div className="dots"><span className="dot r" /><span className="dot y" /><span className="dot g" /></div>
-          <span className="window-title">LOGIN.EXE</span>
+          <span className="window-title">IMMIGRATION · 입국 심사</span>
         </div>
         <div className="window-body">
           <p style={{ marginTop: 0, fontWeight: 700 }}>✈️ 트래블 온에 들어가려면 비밀번호를 입력하세요.</p>

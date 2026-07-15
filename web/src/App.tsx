@@ -30,19 +30,6 @@ const NAV: Array<{ key: Screen; icon: string; label: string; eng: string }> = [
 
 const SETTINGS_NAV = { key: "settings" as const, icon: "⚙️", label: "설정", eng: "SETTINGS" };
 
-function useClock(): string {
-  const [now, setNow] = useState(new Date());
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 10_000);
-    return () => clearInterval(t);
-  }, []);
-  return now.toLocaleTimeString("ko-KR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-}
-
 export interface SharePrefill {
   title: string;
   url: string;
@@ -76,7 +63,6 @@ export default function App() {
   const [bookmarkSection, setBookmarkSection] = useState<BookmarkSection>("places");
   const [showSearch, setShowSearch] = useState(false);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | null>(null);
-  const clock = useClock();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -132,6 +118,7 @@ export default function App() {
       <div className="app-body">
         <nav className="nav sidebar-nav">
           <div className="sidebar-logo">
+            <span className="sidebar-logo-eyebrow">✈ TRAVEL DOCUMENT</span>
             Y E O B A E K
             <span className="sidebar-logo-sub">나를 채우는, 여백</span>
           </div>
@@ -247,12 +234,6 @@ export default function App() {
           )}
         </main>
       </div>
-
-      <footer className="taskbar">
-        <span className="start-btn">🌸 start</span>
-        <span>📁 travel_on — 우리만의 여행 OS</span>
-        <span className="clock">{clock}</span>
-      </footer>
 
       {showSearch && (
         <SearchPalette
