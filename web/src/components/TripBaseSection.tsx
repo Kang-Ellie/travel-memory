@@ -10,7 +10,6 @@ import type {
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from "../../shared/types";
 import { api, fileUrl } from "../api";
 import { flagEmoji } from "../categories";
-import Window from "./Window";
 import Modal from "./Modal";
 import Select from "./Select";
 import ChecklistPanel from "./ChecklistPanel";
@@ -261,12 +260,9 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
 
   if (trip.cities.length === 0) {
     return (
-      <Window title="BASE.EXE" color="blue">
-        <span style={{ color: "var(--ink)", opacity: 0.7 }}>
-          🌍 국가·도시가 아직 연결 안 됐어요 — 상단 "✏️ 여행 정보 수정"에서
-          어디로 가는지 먼저 등록해주세요.
-        </span>
-      </Window>
+      <div className="empty">
+        🌍 국가·도시가 아직 연결 안 됐어요 — 상단 "⚙️ 수정"에서 어디로 가는지 먼저 등록해주세요.
+      </div>
     );
   }
 
@@ -301,7 +297,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   };
 
   return (
-    <Window title="BASE.EXE" color="blue">
+    <div>
       <div
         style={{
           display: "flex",
@@ -534,6 +530,6 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
           )}
         </>
       )}
-    </Window>
+    </div>
   );
 }

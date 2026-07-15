@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import type { Country, City, Trip } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
-import Window from './Window'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
@@ -11,19 +10,24 @@ import TripBaseSection from './TripBaseSection'
 import ExpensesTab from './ExpensesTab'
 import SettlementTab from './SettlementTab'
 import TripPrepTab from './TripPrepTab'
-import FolderIcon, { type FolderColor } from './FolderIcon'
 import PrintItinerary from './PrintItinerary'
 import TripSummaryCard from './TripSummaryCard'
 
 type Tab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
 
-const TABS: Array<{ key: Tab; label: string; color: FolderColor }> = [
-  { key: 'base', label: 'BASE', color: 'blue' },
-  { key: 'prep', label: '여행 준비', color: 'green' },
-  { key: 'workspace', label: '일정', color: 'purple' },
-  { key: 'expenses', label: '지출', color: 'yellow' },
-  { key: 'settlement', label: '정산', color: 'pink' },
+const TABS: Array<{ key: Tab; icon: string; label: string; color: string }> = [
+  { key: 'base', icon: '🧭', label: 'BASE', color: '#3a7d99' },
+  { key: 'prep', icon: '🎒', label: '여행 준비', color: '#3f8a55' },
+  { key: 'workspace', icon: '📅', label: '일정', color: '#7a5fb8' },
+  { key: 'expenses', icon: '💸', label: '지출', color: '#a8842a' },
+  { key: 'settlement', icon: '🧮', label: '정산', color: '#c8446f' },
 ]
+
+// 여권 하단의 기계판독영역(MRZ)처럼 보이는 장식용 문자열 — 영숫자만 남기고 나머지는 '<'로 채운다.
+function mrzLine(raw: string, len = 44): string {
+  const s = raw.toUpperCase().replace(/[^A-Z0-9]/g, '<')
+  return (s + '<'.repeat(len)).slice(0, len)
+}
 
 interface Props {
   trip: Trip
@@ -77,29 +81,39 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
     citiesByCountry.set(c.countryName, entry)
   }
 
+  const countryCodes = [...new Set(trip.cities.map((c) => c.countryCode).filter(Boolean))].join('')
+  const mrz1 = mrzLine(`P<TRIP<${countryCodes}<${trip.title}`)
+  const mrz2 = mrzLine(`${trip.startDate}<${trip.endDate}<${trip.id.slice(0, 8)}<YEOBAEK`)
+
   return (
-    <Window
-      title={`${trip.title.replace(/\s+/g, '_').toUpperCase()}.EXE`}
-      color="blue"
-      onClose={onClose}
-      headerActions={
-        <>
-          <button className="window-icon-btn" onClick={() => setShowPrint(true)} title="일정 인쇄/PDF 보기">🖨</button>
-          <button className="window-icon-btn" onClick={startEdit} title="여행 정보 수정">⚙️</button>
-        </>
-      }
-    >
-      <TripSummaryCard trip={trip} />
-      <div className="row" style={{ flexWrap: 'wrap', border: 'none', padding: 0, background: 'transparent', marginBottom: 12, gap: 12 }}>
-        {trip.cities.length > 0 ? (
-          [...citiesByCountry.values()].map((c) => (
-            <span key={c.name} style={{ fontSize: 13, fontWeight: 700 }}>
-              {flagEmoji(c.code)} {c.name} · {c.cities.join(', ')}
-            </span>
-          ))
-        ) : (
-          <span style={{ color: 'var(--ink)' }}>🌍 국가·도시가 아직 연결 안 됐어요 — 오른쪽 위 ⚙️에서 등록해보세요.</span>
-        )}
+    <div>
+      {/* 비자 페이지 스타일 문서 헤더 */}
+      <div className="trip-doc-head">
+        <div className="trip-doc-topline">
+          <button className="btn small ghost" onClick={onClose}>← 목록</button>
+          <span className="trip-doc-eyebrow">TRIP DOCUMENT · 여행 서류</span>
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+            <button className="btn small" onClick={() => setShowPrint(true)} title="일정 인쇄/PDF 보기">🖨 인쇄</button>
+            <button className="btn small" onClick={startEdit} title="여행 정보 수정">⚙️ 수정</button>
+          </span>
+        </div>
+        <h2 className="trip-doc-title">{trip.title}</h2>
+        <div className="trip-doc-route">
+          {trip.cities.length > 0 ? (
+            [...citiesByCountry.values()].map((c) => (
+              <span key={c.name}>
+                {flagEmoji(c.code)} {c.name} · {c.cities.join(', ')}
+              </span>
+            ))
+          ) : (
+            <span>🌍 국가·도시가 아직 연결 안 됐어요 — 오른쪽 위 [⚙️ 수정]에서 등록해보세요.</span>
+          )}
+        </div>
+        <TripSummaryCard trip={trip} />
+        <div className="trip-mrz" aria-hidden="true">
+          <div>{mrz1}</div>
+          <div>{mrz2}</div>
+        </div>
       </div>
 
       {editing && (
@@ -146,22 +160,28 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
         </Modal>
       )}
 
-      <div className="folder-tabs">
+      {/* 바인더 인덱스 탭 + 서류 시트 */}
+      <div className="doc-tabs">
         {TABS.map((t) => (
-          <button key={t.key} className={`folder-tab ${tab === t.key ? 'active' : ''}`} onClick={() => setTab(t.key)}>
-            <FolderIcon color={t.color} />
-            <span>{t.label}</span>
+          <button
+            key={t.key}
+            className={`doc-tab ${tab === t.key ? 'active' : ''}`}
+            style={{ '--tab-color': t.color } as CSSProperties}
+            onClick={() => setTab(t.key)}
+          >
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
-
-      {tab === 'base' && <TripBaseSection trip={trip} />}
-      {tab === 'prep' && <TripPrepTab trip={trip} />}
-      {tab === 'workspace' && <TripWorkspace trip={trip} />}
-      {tab === 'expenses' && <ExpensesTab trip={trip} />}
-      {tab === 'settlement' && <SettlementTab trip={trip} />}
+      <div className="doc-tab-sheet">
+        {tab === 'base' && <TripBaseSection trip={trip} />}
+        {tab === 'prep' && <TripPrepTab trip={trip} />}
+        {tab === 'workspace' && <TripWorkspace trip={trip} />}
+        {tab === 'expenses' && <ExpensesTab trip={trip} />}
+        {tab === 'settlement' && <SettlementTab trip={trip} />}
+      </div>
 
       {showPrint && <PrintItinerary trip={trip} onClose={() => setShowPrint(false)} />}
-    </Window>
+    </div>
   )
 }
