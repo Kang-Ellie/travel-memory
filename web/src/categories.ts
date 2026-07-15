@@ -33,6 +33,14 @@ export function fmtDateTime(v: string | null): { time: string; date: string } {
   }
 }
 
+// 장소의 "추천 메뉴" 필드는 카테고리마다 실제로 뜻하는 게 달라서(맛집은 메뉴, 명소는 놓치면
+// 안 되는 포인트, 쇼핑은 아이템) 라벨을 카테고리별로 다르게 보여준다. 데이터는 같은 필드를 쓴다.
+export function recommendedFieldLabel(category: string): string {
+  if (category === '맛집' || category === '카페' || category === '숙소') return '🍽 추천 메뉴'
+  if (category === '쇼핑') return '🛍 추천 아이템'
+  return '📍 POINT'
+}
+
 // 장소 평점(0~5, 0.5 단위) 색상 — 낮을수록 빨강, 높을수록 초록
 export function ratingColor(n: number): string {
   if (n >= 4.5) return '#0a7d38'

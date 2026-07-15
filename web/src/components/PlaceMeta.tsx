@@ -1,4 +1,5 @@
 import type { Place } from '../../shared/types'
+import { recommendedFieldLabel } from '../categories'
 
 // 장소의 부가정보(영업시간·예약필요·추천메뉴·팁·장단점 등)를 한 곳에서 렌더링.
 // 장소 족보 카드뿐 아니라 북마크·PLAN B·일정에서도 같은 정보가 같은 모양으로 보이게 공용화했다.
@@ -9,7 +10,7 @@ export default function PlaceMeta({ place }: { place: Place }) {
         <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>
       )}
       {place.reservationNeeded && <div className="muted">📌 예약 필요</div>}
-      {place.recommendedMenu && <div className="muted">🍽 추천: {place.recommendedMenu}</div>}
+      {place.recommendedMenu && <div className="muted">{recommendedFieldLabel(place.category)}: {place.recommendedMenu}</div>}
       {place.babyMenu && <div className="muted">🍼 영아 픽: {place.babyMenu}</div>}
       {place.directions && <div className="muted">🚕 {place.directions}</div>}
       {place.tip && <div className="muted">💡 {place.tip}</div>}

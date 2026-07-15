@@ -230,11 +230,8 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   const [bucket, setBucket] = useState<BucketItem[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [collapsed, setCollapsed] = useState(false);
-  const [newTitle, setNewTitle] = useState<Record<BucketKind, string>>({
-    bucket: "",
-    food: "",
-    wish: "",
-  });
+  const [addingKind, setAddingKind] = useState<BucketKind | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   const refresh = () => {
     api.countries.list().then(setCountries);
@@ -268,9 +265,10 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
   const byKind = (kind: BucketKind) =>
     itemsForBase.filter((b) => bucketKindOf(b.category) === kind);
 
-  const addQuick = async (kind: BucketKind) => {
-    const title = newTitle[kind].trim();
-    if (!title) return;
+  const addQuick = async () => {
+    const kind = addingKind;
+    const title = newTitle.trim();
+    if (!kind || !title) return;
     await api.bucket.create({
       title,
       memo: null,
@@ -279,7 +277,8 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
       category: BUCKET_KIND_CATEGORY[kind],
       linkedTripId: trip.id,
     });
-    setNewTitle((prev) => ({ ...prev, [kind]: "" }));
+    setNewTitle("");
+    setAddingKind(null);
     refresh();
   };
 
@@ -451,24 +450,14 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   }}
                 >
                   <strong className="grow">{BUCKET_KIND_LABEL[kind]}</strong>
-                  <input
-                    type="text"
-                    value={newTitle[kind]}
-                    placeholder={KIND_PLACEHOLDER[kind]}
-                    style={{ width: 200 }}
-                    onChange={(e) =>
-                      setNewTitle((prev) => ({
-                        ...prev,
-                        [kind]: e.target.value,
-                      }))
-                    }
-                    onKeyDown={(e) => e.key === "Enter" && addQuick(kind)}
-                  />
                   <button
                     className="btn small ghost"
-                    onClick={() => addQuick(kind)}
+                    onClick={() => {
+                      setNewTitle("");
+                      setAddingKind(kind);
+                    }}
                   >
-                    ＋
+                    ＋ 추가
                   </button>
                 </div>
                 {items.length === 0 ? (
@@ -492,6 +481,30 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               </div>
             );
           })}
+
+          {addingKind && (
+            <Modal
+              title={`${BUCKET_KIND_LABEL[addingKind]} 추가`}
+              onClose={() => setAddingKind(null)}
+            >
+              <div className="field grow">
+                <label>{BUCKET_KIND_LABEL[addingKind]}</label>
+                <input
+                  type="text"
+                  value={newTitle}
+                  placeholder={KIND_PLACEHOLDER[addingKind]}
+                  autoFocus
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addQuick()}
+                />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <button className="btn primary" onClick={addQuick}>
+                  ＋ 추가
+                </button>
+              </div>
+            </Modal>
+          )}
         </>
       )}
     </Window>

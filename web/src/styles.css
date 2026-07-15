@@ -473,7 +473,7 @@ textarea { resize: vertical; min-height: 70px; }
   display: flex;
   flex-direction: column;
 }
-.place-card-photo { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; }
+.place-card-photo { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
 .place-card-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
 
 /* ── 탑승권 카드 ───────────────────────── */
@@ -560,6 +560,10 @@ textarea { resize: vertical; min-height: 70px; }
 
 /* ── 타임라인 ──────────────────────────── */
 .day-tabs { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+/* "여행 준비" 안에서 예약 티켓/바우처를 고르는 하위 선택지라는 걸 드러내려고
+   본문 탭보다 한 단계 작고 왼쪽으로 살짝 들여쓴다. */
+.prep-sub-tabs { margin-left: 2px; }
+.prep-sub-tabs .pill { padding: 5px 14px; font-size: 12.5px; }
 
 .event-card {
   padding: 14px;
@@ -584,16 +588,31 @@ textarea { resize: vertical; min-height: 70px; }
 
 .photo-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
-/* ── 오늘의 일기: 왼쪽 사진첩 + 오른쪽 일기 2단 레이아웃 ─── */
-.day-diary-layout { display: flex; gap: 20px; flex-wrap: wrap; align-items: stretch; }
-.day-diary-photos-col { flex: 1 1 260px; min-width: 240px; }
-.day-diary-text-col {
-  flex: 1 1 260px; min-width: 240px;
-  border-left: 2px solid var(--ink); padding-left: 20px;
+/* ── 오늘의 일기: 커버 사진 + 제목/날짜/도시/예산 소진율 + 일기 ─── */
+.diary-cover-wrap {
+  position: relative;
+  margin: -28px -32px 16px;
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
 }
-@media (max-width: 640px) {
-  .day-diary-text-col { border-left: none; padding-left: 0; border-top: 2px solid var(--ink); padding-top: 16px; }
+@media (max-width: 640px) { .diary-cover-wrap { margin: -20px -20px 16px; } }
+.diary-cover { width: 100%; height: 220px; object-fit: cover; display: block; cursor: zoom-in; }
+.diary-cover-empty {
+  width: 100%; height: 140px; border: none; background: var(--purple-soft);
+  font-weight: 800; font-size: 14px; cursor: pointer; color: var(--ink);
 }
+.diary-cover-wrap .photo-del { top: 12px; right: 12px; }
+.diary-cover-wrap:hover .photo-del { opacity: 1; }
+.diary-title { font-size: 19px; font-weight: 800; margin-bottom: 6px; }
+.diary-sub-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; color: rgba(45,42,62,0.6); margin-bottom: 10px; }
+.diary-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.diary-budget { margin-bottom: 6px; }
+.diary-budget-track {
+  height: 14px; border-radius: 999px; background: rgba(45,42,62,0.1);
+  border: 1.5px solid var(--ink); overflow: hidden;
+}
+.diary-budget-fill { height: 100%; transition: width 0.2s; }
+.diary-budget-label { margin-top: 6px; font-weight: 800; font-size: 13px; }
 .photo-thumb { position: relative; }
 .photo-thumb img {
   width: 92px; height: 92px; object-fit: cover;
@@ -604,7 +623,9 @@ textarea { resize: vertical; min-height: 70px; }
   width: 22px; height: 22px; border-radius: 50%;
   border: 2px solid var(--ink); background: #fff;
   font-weight: 800; cursor: pointer; line-height: 1; font-size: 11px;
+  opacity: 0; transition: opacity 0.12s;
 }
+.photo-thumb:hover .photo-del, .photo-thumb:focus-within .photo-del { opacity: 1; }
 
 /* ── 사진 왼쪽 + 내용 오른쪽 카드 레이아웃 ─── */
 .event-card-body { display: flex; gap: 14px; margin-top: 10px; align-items: flex-start; }

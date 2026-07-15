@@ -21,6 +21,7 @@ import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
 import DateTimePicker from './DateTimePicker'
+import TimePicker from './TimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
@@ -179,6 +180,9 @@ function EventCard({
   const isAirport = ev.place.category === '공항'
   const isValet = ev.place.category === '발렛'
   const isLodging = ev.place.category === '숙소'
+  // 발렛/항공/숙소는 "리뷰할 장소"가 아니라 예매해둔 티켓이라, 별점·리뷰 안내 같은
+  // 장소 방문용 UI 대신 탑승권/발렛권/숙박권 모양의 카드만 보여준다.
+  const isTicket = isAirport || isValet || isLodging
   const [departAt, setDepartAt] = useState(ev.flight?.departAt ?? '')
   const [arriveAt, setArriveAt] = useState(ev.flight?.arriveAt ?? '')
   const [durationMinutes, setDurationMinutes] = useState(ev.flight?.durationMinutes != null ? String(ev.flight.durationMinutes) : '')
@@ -326,12 +330,14 @@ function EventCard({
         </span>
         <span className="chip blue">{ev.place.category}</span>
         {ev.plannedTime && !editing && <span className="chip yellow">🕒 {ev.plannedTime}</span>}
-        <span className="stars">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button key={n} className={`star ${ev.rating != null && n <= ev.rating ? 'on' : ''}`}
-              onClick={() => setRating(n)} title={`${n}점`}>★</button>
-          ))}
-        </span>
+        {!isTicket && (
+          <span className="stars">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <button key={n} className={`star ${ev.rating != null && n <= ev.rating ? 'on' : ''}`}
+                onClick={() => setRating(n)} title={`${n}점`}>★</button>
+            ))}
+          </span>
+        )}
         <span style={{ marginLeft: 'auto' }}>
           <DropdownMenu
             actions={[
@@ -348,7 +354,7 @@ function EventCard({
           />
         </span>
       </div>
-      {(ev.place.address || ev.place.mapUrl) && (
+      {!isTicket && (ev.place.address || ev.place.mapUrl) && (
         <div className="muted" style={{ marginTop: 6 }}>
           {ev.place.mapUrl ? (
             <a className="plain-link" href={ev.place.mapUrl} target="_blank" rel="noreferrer" title="지도에서 보기">
@@ -359,7 +365,7 @@ function EventCard({
           )}
         </div>
       )}
-      <div style={{ marginTop: 6 }}><PlaceMeta place={ev.place} /></div>
+      {!isTicket && <div style={{ marginTop: 6 }}><PlaceMeta place={ev.place} /></div>}
 
       <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
       <div className="event-card-body">
@@ -506,7 +512,7 @@ function EventCard({
               )}
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>방문 시간 (선택)</label>
-                <input type="time" value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
+                <TimePicker value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
               </div>
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>📝 메모 (발렛·주차·입장코드 등 실용 정보)</label>
@@ -572,7 +578,7 @@ function EventCard({
               {ev.memo && (
                 <div className="muted" style={{ marginBottom: 8, whiteSpace: 'pre-wrap' }}>📝 {ev.memo}</div>
               )}
-              {ev.mustTry && (
+              {!isTicket && ev.mustTry && (
                 <div style={{ marginBottom: 8 }}>
                   <div className="muted">🌟 꼭 해봐야 하는 것</div>
                   <ul style={{ margin: '4px 0 0', paddingLeft: 20 }}>
@@ -582,12 +588,12 @@ function EventCard({
                   </ul>
                 </div>
               )}
-              {ev.review ? (
+              {!isTicket && (ev.review ? (
                 <p style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{ev.review}</p>
               ) : (
                 <p className="muted" style={{ margin: '0 0 8px' }}>아직 리뷰가 없어요. [수정]을 눌러 적어보세요.</p>
-              )}
-              {ev.linkUrl && (
+              ))}
+              {!isTicket && ev.linkUrl && (
                 <div className="muted">🔗 <a href={ev.linkUrl} target="_blank" rel="noreferrer">{ev.linkUrl}</a></div>
               )}
             </>
@@ -906,9 +912,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         )}
         {diaryDay != null && (
           <DayDiaryModal
-            tripId={trip.id}
+            trip={trip}
             dayNumber={diaryDay}
             note={dayNotes.find((n) => n.dayNumber === diaryDay) ?? null}
+            expenses={expenses}
+            rates={rates}
             onClose={() => setDiaryDay(null)}
             onChanged={refresh}
             onEdit={() => { setEditingDay(diaryDay); setDiaryDay(null) }}

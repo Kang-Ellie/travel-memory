@@ -382,5 +382,10 @@ export async function initSchema(): Promise<void> {
 
     -- 준비서류를 온라인으로 신청할 수 있는 사이트 URL
     ALTER TABLE countries ADD COLUMN IF NOT EXISTS prep_docs_url TEXT;
+
+    -- 항공 티켓 등록 시 장소 카테고리를 '공항'이 아니라 '항공'으로 잘못 저장하던 예전 버그의
+    -- 잔존 데이터를 바로잡는다('항공'은 어느 화면에서도 정식 카테고리로 선택할 수 없는 값이라
+    -- 이 값이 남아있다면 100% 그 버그로 생긴 데이터).
+    UPDATE places SET category = '공항' WHERE category = '항공';
   `)
 }

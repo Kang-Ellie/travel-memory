@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { Trip, Place } from '../../shared/types'
 import { api } from '../api'
 
+// 발렛·항공·숙소는 예매해둔 "티켓"이지 둘러볼 "장소"가 아니라서 지도에서 아예 뺀다.
+const TICKET_CATEGORIES = new Set(['발렛', '공항', '숙소'])
+
 let mapsPromise: Promise<void> | null = null
 
 function loadGoogleMaps(key: string): Promise<void> {
@@ -39,6 +42,7 @@ export default function MapTab({ trip }: { trip: Trip }) {
       const pins: Place[] = []
       const noCoord: Place[] = []
       for (const ev of events) {
+        if (TICKET_CATEGORIES.has(ev.place.category)) continue
         if (seen.has(ev.place.id)) continue
         seen.add(ev.place.id)
         if (ev.place.lat != null && ev.place.lng != null) pins.push(ev.place)

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
-import { flagEmoji, ratingColor } from '../categories'
+import { flagEmoji, ratingColor, recommendedFieldLabel } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
@@ -164,7 +164,7 @@ function PlaceCard({
                       <input type="checkbox" checked={reservationNeeded} onChange={(e) => setReservationNeeded(e.target.checked)} /> 예약 필요
                     </label>
                   </div>
-                  <div className="field grow"><label>🍽 추천 메뉴</label>
+                  <div className="field grow"><label>{recommendedFieldLabel(category)}</label>
                     <input type="text" value={recommendedMenu} placeholder="예: 명란 정식" onChange={(e) => setRecommendedMenu(e.target.value)} /></div>
                   {BABY_MENU_CATEGORIES.includes(category) && (
                     <div className="field grow"><label>🍼 영아 픽 메뉴</label>
