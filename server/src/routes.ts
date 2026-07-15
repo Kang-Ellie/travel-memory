@@ -83,6 +83,7 @@ const mapPlace = (r: any) => ({
   valetCompany: r.valet_company, bookingChannel: r.booking_channel,
   grade: r.grade, directions: r.directions, babyMenu: r.baby_menu,
   recommend: r.recommend == null ? null : !!r.recommend, tip: r.tip,
+  visitCount: r.visit_count != null ? Number(r.visit_count) : 0,
 })
 const mapTransit = (r: any) => ({
   id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
@@ -350,7 +351,8 @@ export function registerRoutes(app: ExpressApp): void {
         JOIN timeline_events te ON te.id = ph.event_id
         WHERE te.place_id = p.id
         ORDER BY ph.id LIMIT 1
-      ) AS cover_photo_path
+      ) AS cover_photo_path,
+      (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count
     FROM places p
     LEFT JOIN countries co ON co.id = p.country_id
     LEFT JOIN cities ci ON ci.id = p.city_id

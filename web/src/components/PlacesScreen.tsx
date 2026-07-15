@@ -7,10 +7,17 @@ import Modal from './Modal'
 import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
-import PlaceMeta from './PlaceMeta'
 import PlacesMapView from './PlacesMapView'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
+// 사진이 아직 없는 장소 카드의 플레이스홀더 (카테고리별 이모지 + 파스텔 배경)
+export const CATEGORY_EMOJI: Record<string, string> = {
+  맛집: '🍜', 카페: '☕', 명소: '🏛', 쇼핑: '🛍', 숙소: '🏨', 공항: '✈️', 발렛: '🚗', 기타: '📍',
+}
+const CATEGORY_PASTEL: Record<string, string> = {
+  맛집: 'var(--pink-soft)', 카페: 'var(--yellow-soft)', 명소: 'var(--purple-soft)', 쇼핑: 'var(--blue-soft)',
+  숙소: 'var(--green-soft)', 공항: 'var(--blue-soft)', 발렛: 'var(--yellow-soft)', 기타: 'var(--purple-soft)',
+}
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 const BABY_MENU_CATEGORIES = ['맛집', '카페', '숙소']
 const RECOMMEND_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소']
@@ -208,58 +215,66 @@ function PlaceCard({
 
   return (
     <div className="card place-card" onClick={() => setDetailOpen(true)}>
-      {place.coverPhoto && <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />}
+      {place.coverPhoto ? (
+        <div className="place-card-photo-wrap">
+          <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />
+          {place.visitCount > 0 && <span className="place-visit-badge">🔁 {place.visitCount}번 방문</span>}
+        </div>
+      ) : (
+        <div className="place-card-photo-wrap place-card-photo-empty"
+          style={{ background: CATEGORY_PASTEL[place.category] ?? 'var(--purple-soft)' }}>
+          <span>{CATEGORY_EMOJI[place.category] ?? '📍'}</span>
+          {place.visitCount > 0 && <span className="place-visit-badge">🔁 {place.visitCount}번 방문</span>}
+        </div>
+      )}
       <div className="place-card-body">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'flex-start' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, flex: 1 }}>
-            <span className="chip blue">{place.category}</span>
-            {place.countryName && (
-              <span className="chip purple">{flagEmoji(place.countryCode)} {place.countryName}{place.cityName ? ` · ${place.cityName}` : ''}</span>
-            )}
-            {place.rating != null && (
-              <span className="chip yellow" style={{ color: ratingColor(place.rating), fontWeight: 800 }}>
-                ★ {place.rating.toFixed(1)}
-              </span>
-            )}
-            {place.reservationNeeded && <span className="chip pink">📌 예약 필요</span>}
-            {place.grade && <span className="chip yellow">⭐ {place.grade}</span>}
-            {place.recommend === true && <span className="chip green">👍 추천</span>}
-            {place.recommend === false && <span className="chip pink">👎 비추천</span>}
-          </div>
-          <div onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
+          <div className="place-card-name">{place.name}</div>
+          <div style={{ marginLeft: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <DropdownMenu actions={[
               { label: '✏️ 수정', onClick: () => setEditing(true) },
               { label: '🗑 삭제', danger: true, onClick: remove },
             ]} />
           </div>
         </div>
-        <div style={{ fontWeight: 800 }}>{place.name}</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <div className="muted">
-            {place.mapUrl ? (
-              <a className="plain-link" href={place.mapUrl} target="_blank" rel="noreferrer"
-                onClick={(e) => e.stopPropagation()} title="지도에서 보기">
-                {place.address || '지도에서 보기'}
-              </a>
-            ) : (place.address || '주소 없음')}
-            {(place.lat != null && place.lng != null) || place.address ? (
-              <a className="plain-link" style={{ marginLeft: 8 }}
-                href={`https://www.google.com/maps/dir/?api=1&destination=${
-                  place.lat != null && place.lng != null
-                    ? `${place.lat},${place.lng}`
-                    : encodeURIComponent(place.address)
-                }`}
-                target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="구글 지도로 길찾기">
-                🧭 길찾기
-              </a>
-            ) : null}
-            {place.memo ? ` · 📝 ${place.memo}` : ''}
-          </div>
-          <PlaceMeta place={place} />
-          {linkedBucketItems.length > 0 && (
-            <div className="muted">✨ 위시리스트: {linkedBucketItems.map((b) => b.title).join(', ')}</div>
+        <div className="place-card-rating-row">
+          {place.rating != null && (
+            <span className="place-card-rating" style={{ color: ratingColor(place.rating) }}>
+              ★ {place.rating.toFixed(1)}
+            </span>
+          )}
+          {place.recommend === true && <span className="chip green">👍 추천</span>}
+          {place.recommend === false && <span className="chip pink">👎 비추천</span>}
+          {place.reservationNeeded && <span className="chip pink">📌 예약</span>}
+        </div>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="chip blue">{place.category}</span>
+          {place.countryName && (
+            <span className="chip purple">{flagEmoji(place.countryCode)} {place.cityName ?? place.countryName}</span>
           )}
         </div>
+        <div className="muted place-card-address">
+          {place.mapUrl ? (
+            <a className="plain-link" href={place.mapUrl} target="_blank" rel="noreferrer"
+              onClick={(e) => e.stopPropagation()} title="지도에서 보기">
+              {place.address || '지도에서 보기'}
+            </a>
+          ) : (place.address || '주소 없음')}
+          {(place.lat != null && place.lng != null) || place.address ? (
+            <a className="plain-link" style={{ marginLeft: 8 }}
+              href={`https://www.google.com/maps/dir/?api=1&destination=${
+                place.lat != null && place.lng != null
+                  ? `${place.lat},${place.lng}`
+                  : encodeURIComponent(place.address)
+              }`}
+              target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} title="구글 지도로 길찾기">
+              🧭 길찾기
+            </a>
+          ) : null}
+        </div>
+        {linkedBucketItems.length > 0 && (
+          <div className="muted">✨ {linkedBucketItems.map((b) => b.title).join(', ')}</div>
+        )}
       </div>
       {detailOpen && (
         <Modal title={`${place.name} · 방문 기록`} onClose={() => setDetailOpen(false)}>

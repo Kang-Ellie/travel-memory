@@ -117,14 +117,14 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
               <span className={`chip ${ongoingTrip ? 'pink' : 'blue'}`}>
                 {ongoingTrip ? '✈️ 여행 중' : '🗓 다가오는 여행'}
               </span>
-              <h3 style={{ margin: '10px 0 4px', fontSize: 22 }}>{heroTrip.title}</h3>
+              <h3 style={{ margin: '10px 0 4px', fontSize: 26 }}>{heroTrip.title}</h3>
               <div style={{ fontWeight: 700 }}>{fmtRange(heroTrip)}</div>
               {heroTrip.cities.length > 0 && (
                 <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(heroTrip)}</div>
               )}
-              <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
-                <strong>{dday(heroTrip)}</strong>
-                <button className="btn primary small" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
+              <div className="dash-dday">{dday(heroTrip)}</div>
+              <div style={{ marginTop: 8 }}>
+                <button className="btn primary" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
               </div>
             </div>
           </div>

@@ -56,6 +56,7 @@ export default function TodayStrip({
   }
 
   return (
+    <div className="today-frame">
     <Window title="TODAY.EXE" color="pink">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20 }}>
         <div style={{ flex: '1 1 240px' }}>
@@ -114,5 +115,6 @@ export default function TodayStrip({
         </div>
       </div>
     </Window>
+    </div>
   )
 }

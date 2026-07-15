@@ -209,9 +209,10 @@ export function CountryFields({
   );
 }
 
-function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
+function CityRow({ city, onChanged, onOpenHub }: {
+  city: City; onChanged: () => void; onOpenHub: (city: City) => void
+}) {
   const [editing, setEditing] = useState(false);
-  const [hubOpen, setHubOpen] = useState(false);
   const [name, setName] = useState(city.name);
   const [flightDuration, setFlightDuration] = useState(
     city.flightDuration ?? "",
@@ -344,7 +345,7 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
         <div className="grow" style={{ fontWeight: 800 }}>
           {city.name}
         </div>
-        <button type="button" className="btn small ghost" onClick={() => setHubOpen(true)}>
+        <button type="button" className="btn small ghost" onClick={() => onOpenHub(city)}>
           🏙 도시 허브
         </button>
         <DropdownMenu actions={[
@@ -352,11 +353,6 @@ function CityRow({ city, onChanged }: { city: City; onChanged: () => void }) {
           { label: "🗑 삭제", danger: true, onClick: remove },
         ]} />
       </div>
-      {hubOpen && (
-        <Modal title={`🏙 ${city.name} · 도시 허브`} onClose={() => setHubOpen(false)}>
-          <CityHubPanel cityId={city.id} cityName={city.name} />
-        </Modal>
-      )}
       {city.flightDuration || city.timeDiff || city.bestSeason || city.caution ? (
         <div style={{ marginTop: 8 }}>
           <InfoCardGrid
@@ -389,10 +385,12 @@ function CountryCard({
   country,
   cities,
   onChanged,
+  onOpenHub,
 }: {
   country: Country;
   cities: City[];
   onChanged: () => void;
+  onOpenHub: (city: City) => void;
 }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -529,7 +527,7 @@ function CountryCard({
             ) : (
               <div className="city-grid" style={{ marginTop: 8 }}>
                 {cities.map((c) => (
-                  <CityRow key={c.id} city={c} onChanged={onChanged} />
+                  <CityRow key={c.id} city={c} onChanged={onChanged} onOpenHub={onOpenHub} />
                 ))}
               </div>
             )}
@@ -658,6 +656,7 @@ export default function CountriesScreen({
   const [cities, setCities] = useState<City[]>([]);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<CountryForm>(EMPTY_COUNTRY_FORM);
+  const [hubCity, setHubCity] = useState<City | null>(null);
 
   const refresh = () => {
     api.countries.list().then(setCountries);
@@ -682,6 +681,27 @@ export default function CountriesScreen({
     const list = citiesByCountry.get(c.countryId) ?? [];
     list.push(c);
     citiesByCountry.set(c.countryId, list);
+  }
+
+  // 도시 허브는 모달이 아니라 화면 전체를 차지하는 전용 뷰 — 여기가 "나만의 미식 지도"의 본편이라서.
+  if (hubCity) {
+    const hubCountry = countries.find((c) => c.id === hubCity.countryId);
+    return (
+      <div>
+        <PageHeader
+          icon="🏙"
+          title={`${hubCity.name} 도시 허브`}
+          eng="CITY HUB"
+          description={`${hubCountry ? `${flagEmoji(hubCountry.code)} ${hubCountry.name} · ` : ""}이 도시에 쌓인 나만의 기록 — 다음 여행 때 여기서 골라요.`}
+        />
+        <button type="button" className="btn small" style={{ marginBottom: 14 }} onClick={() => setHubCity(null)}>
+          ← 국가 도감으로
+        </button>
+        <Window title={`CITY_${hubCity.name.replace(/\s+/g, "_").toUpperCase()}.EXE`} color="purple">
+          <CityHubPanel cityId={hubCity.id} cityName={hubCity.name} />
+        </Window>
+      </div>
+    );
   }
 
   return (
@@ -738,6 +758,7 @@ export default function CountriesScreen({
                 country={c}
                 cities={citiesByCountry.get(c.id) ?? []}
                 onChanged={refresh}
+                onOpenHub={setHubCity}
               />
             ))}
           </div>

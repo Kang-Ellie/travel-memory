@@ -191,7 +191,7 @@ interface QuickExpenseState {
 
 
 function EventCard({
-  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday,
+  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday, displaySeq,
 }: {
   ev: TimelineEvent
   participants: Member[]
@@ -203,6 +203,8 @@ function EventCard({
   onDrop: () => void
   onChanged: () => void
   isToday?: boolean
+  // 하루 안에서 티켓(항공·발렛·숙소)을 뺀 방문 순번. 티켓이면 null → 배지 자체를 안 그린다.
+  displaySeq: number | null
 }) {
   const [editing, setEditing] = useState(false)
   const [review, setReview] = useState(ev.review ?? '')
@@ -361,7 +363,7 @@ function EventCard({
       onDrop={(e) => { e.preventDefault(); onDrop() }}
     >
       <div className="event-head">
-        <span className="seq-badge">{ev.sequence}</span>
+        {displaySeq != null && <span className="seq-badge">{displaySeq}</span>}
         <span className="event-place" style={{ cursor: 'pointer' }} onClick={() => setPlaceDetailOpen(true)} title="장소 족보에서 상세 정보 보기">
           {ev.place.name}
         </span>
@@ -759,6 +761,16 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   useEffect(refresh, [trip.id])
 
   const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+  // 표시용 방문 순번 — 티켓(항공·발렛·숙소)은 방문지가 아니라 번호에서 빼고,
+  // 나머지만 1부터 다시 센다 (그냥 숨기면 1,2,4처럼 구멍이 생겨 버그처럼 보임).
+  const TICKET_CATEGORIES = new Set(['공항', '발렛', '숙소'])
+  const displaySeqById = new Map<string, number | null>()
+  {
+    let n = 0
+    for (const ev of dayEvents) {
+      displaySeqById.set(ev.id, TICKET_CATEGORIES.has(ev.place.category) ? null : ++n)
+    }
+  }
   const dayTransit = transit.filter((t) => t.dayNumber === day)
   const transitAfter = (eventId: string | null) => dayTransit.filter((t) => t.afterEventId === eventId)
   const expensesByEvent = new Map<string, Expense[]>()
@@ -1064,6 +1076,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   onDrop={() => reorder(idx)}
                   onChanged={refresh}
                   isToday={todayNum != null && day === todayNum}
+                  displaySeq={displaySeqById.get(ev.id) ?? null}
                 />
                 {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
               </div>

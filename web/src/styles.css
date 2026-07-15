@@ -65,18 +65,26 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 }
 
 /* ── 대시보드: 진행 중/다가오는 여행 히어로 카드 ── */
-.dash-trip-hero { display: flex; gap: 20px; align-items: stretch; flex-wrap: wrap; }
+.dash-trip-hero { display: flex; gap: 24px; align-items: stretch; flex-wrap: wrap; }
 .dash-trip-hero-photo {
-  width: 220px; height: 160px; object-fit: cover;
+  width: 380px; max-width: 100%; height: 230px; object-fit: cover;
   border-radius: 14px; border: 2px solid var(--ink); flex-shrink: 0; display: block;
+  box-shadow: 5px 5px 0 var(--shadow);
 }
 .dash-trip-hero-photo-empty {
   display: flex; align-items: center; justify-content: center;
-  font-size: 40px; background: var(--blue-soft);
+  font-size: 56px; background: var(--blue-soft);
 }
-.dash-trip-hero-info { flex: 1; min-width: 200px; }
+.dash-trip-hero-info { flex: 1; min-width: 220px; display: flex; flex-direction: column; }
+.dash-dday {
+  font-family: var(--font-computer);
+  font-size: 46px; font-weight: 700; line-height: 1.1;
+  letter-spacing: 0.04em; color: var(--pink-deep);
+  margin-top: auto; padding-top: 10px;
+}
 @media (max-width: 640px) {
-  .dash-trip-hero-photo { width: 100%; height: 160px; }
+  .dash-trip-hero-photo { width: 100%; height: 180px; }
+  .dash-dday { font-size: 36px; }
 }
 
 /* ── 내비게이션 (왼쪽 사이드바) ─────────── */
@@ -488,8 +496,26 @@ textarea { resize: vertical; min-height: 70px; }
   display: flex;
   flex-direction: column;
 }
-.place-card-photo { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; }
+.place-card-photo { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; display: block; }
 .place-card-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+.place-card-photo-wrap { position: relative; }
+.place-card-photo-empty {
+  aspect-ratio: 4 / 3;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 52px;
+  border-bottom: 2px solid rgba(45, 42, 62, 0.12);
+}
+.place-visit-badge {
+  position: absolute; left: 10px; bottom: 10px;
+  border: 2px solid var(--ink); border-radius: 999px;
+  background: #fff; padding: 3px 10px;
+  font-size: 11.5px; font-weight: 800;
+  box-shadow: 2px 2px 0 var(--shadow);
+}
+.place-card-name { font-weight: 800; font-size: 16px; line-height: 1.35; }
+.place-card-rating-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.place-card-rating { font-size: 19px; font-weight: 800; letter-spacing: 0.01em; }
+.place-card-address { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── 탑승권 카드 ───────────────────────── */
 .boarding-pass {
@@ -1173,6 +1199,50 @@ table.simple th { font-size: 12px; letter-spacing: 0.05em; }
 .trip-summary-label { font-size: 11px; font-weight: 700; color: rgba(45,42,62,0.6); margin-bottom: 3px; }
 .trip-summary-value { font-weight: 800; font-size: 15px; }
 .trip-summary-value.warn { color: #c0392b; }
+
+/* ── TODAY.EXE — 여행 중 오늘 카드는 다른 창보다 확실히 눈에 띄게 ── */
+.today-frame .window {
+  border-width: 3px;
+  box-shadow: 9px 9px 0 var(--shadow);
+}
+.today-frame .window-titlebar {
+  background: linear-gradient(90deg, var(--pink-bar), var(--yellow-soft));
+  font-size: 14px;
+}
+.today-frame .window-body {
+  background: linear-gradient(160deg, #fff 55%, var(--pink-soft));
+}
+
+/* ── 도시 허브: TOP3 포디움(시상대) ── */
+.podium { display: flex; align-items: flex-end; justify-content: center; gap: 12px; margin: 18px 0 8px; }
+.podium-slot {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  flex: 1; max-width: 160px; min-width: 0;
+}
+.podium-photo {
+  width: 62px; height: 62px; border-radius: 50%;
+  border: 2px solid var(--ink); object-fit: cover; display: block;
+  box-shadow: 2px 2px 0 var(--shadow); background: #fff;
+}
+.podium-photo-empty { display: flex; align-items: center; justify-content: center; font-size: 28px; }
+.podium-slot .podium-medal { font-size: 22px; line-height: 1; }
+.podium-name {
+  font-weight: 800; font-size: 13px; text-align: center;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%;
+}
+.podium-meta { font-size: 11.5px; font-weight: 700; color: rgba(45,42,62,0.6); }
+.podium-block {
+  width: 100%;
+  border: 2px solid var(--ink); border-radius: 10px 10px 0 0;
+  border-bottom: none;
+  display: flex; align-items: flex-start; justify-content: center;
+  font-family: var(--font-computer); font-weight: 700; font-size: 15px;
+  padding-top: 6px;
+}
+.podium-block.first { height: 88px; background: var(--pink-soft); }
+.podium-block.second { height: 62px; background: var(--blue-soft); }
+.podium-block.third { height: 44px; background: var(--yellow-soft); }
+.podium-base { border-top: 2px solid var(--ink); margin: 0 4px 18px; }
 
 /* ── 통합 검색 팔레트 ── */
 .search-palette {

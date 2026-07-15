@@ -86,6 +86,7 @@ export interface Place {
   babyMenu: string | null
   recommend: boolean | null
   tip: string | null
+  visitCount: number
 }
 
 export interface TransitSegment {

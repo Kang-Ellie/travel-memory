@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { CityPlaceSummary } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney } from '../settlement'
+import { recommendedFieldLabel } from '../categories'
+import { CATEGORY_EMOJI } from './PlacesScreen'
 
 const CATEGORY_ORDER = ['맛집', '카페', '숙소', '명소', '쇼핑', '기타']
 const RANK_MEDAL = ['🥇', '🥈', '🥉']
@@ -10,8 +12,27 @@ function score(s: CityPlaceSummary): number {
   return s.place.rating ?? s.avgVisitRating ?? 0
 }
 
-// 도시별 "나만의 미식 지도" — 저장 장소를 가봤어요/위시로 나누고, 카테고리별 TOP3와
-// 평점·방문횟수·누적지출 비교표를 보여준다. 다음에 이 도시를 또 갈 때 여기서 바로 훑어보는 용도.
+function PodiumSlot({ item, rank }: { item: CityPlaceSummary; rank: number }) {
+  const heightClass = rank === 0 ? 'first' : rank === 1 ? 'second' : 'third'
+  return (
+    <div className="podium-slot">
+      <span className="podium-medal">{RANK_MEDAL[rank]}</span>
+      {item.place.coverPhoto ? (
+        <img className="podium-photo" src={fileUrl(item.place.coverPhoto)} alt="" />
+      ) : (
+        <div className="podium-photo podium-photo-empty">{CATEGORY_EMOJI[item.place.category] ?? '📍'}</div>
+      )}
+      <div className="podium-name" title={item.place.name}>{item.place.name}</div>
+      <div className="podium-meta">
+        {score(item) > 0 ? `★${score(item).toFixed(1)}` : '평점 없음'} · 🔁{item.visitCount}
+      </div>
+      <div className={`podium-block ${heightClass}`}>{rank + 1}</div>
+    </div>
+  )
+}
+
+// 도시별 "나만의 미식 지도" — 저장 장소를 가봤어요/위시로 나누고, 카테고리별 TOP3 포디움과
+// 평점·방문횟수·추천메뉴·누적지출 비교표를 보여준다. 다음에 이 도시를 또 갈 때 여기서 바로 훑는 용도.
 export default function CityHubPanel({ cityId, cityName }: { cityId: string; cityName: string }) {
   const [items, setItems] = useState<CityPlaceSummary[] | null>(null)
 
@@ -21,7 +42,7 @@ export default function CityHubPanel({ cityId, cityName }: { cityId: string; cit
   if (items.length === 0) {
     return (
       <div className="empty">
-        아직 이 도시에 저장된 장소가 없어요. [📍 장소 족보]에서 국가/도시를 지정해 등록하면 여기 쌓여요.
+        아직 이 도시에 저장된 장소가 없어요. [📍 장소 북마크]에서 국가/도시를 지정해 등록하면 여기 쌓여요.
       </div>
     )
   }
@@ -48,54 +69,47 @@ export default function CityHubPanel({ cityId, cityName }: { cityId: string; cit
       </p>
 
       {categories.length === 0 && (
-        <div className="empty">아직 방문 기록이 있는 장소가 없어요. 동선에 추가하고 리뷰를 남기면 여기 랭킹이 생겨요.</div>
+        <div className="empty">아직 방문 기록이 있는 장소가 없어요. 동선에 추가하고 평점을 남기면 여기 랭킹이 생겨요.</div>
       )}
 
       {categories.map((cat) => {
         const list = byCategory.get(cat)!
-        const top3 = list.slice(0, 3)
+        // 시상대는 2위-1위-3위 순서로 배치해야 실제 포디움처럼 보인다.
+        const podiumOrder = [list[1], list[0], list[2]].filter((s): s is CityPlaceSummary => !!s)
+        const podiumRanks = list.length >= 3 ? [1, 0, 2] : list.length === 2 ? [1, 0] : [0]
         return (
           <div key={cat} className="section-gap">
-            <strong>{cat} TOP{Math.min(3, list.length)}</strong>
-            <div className="mini-card-grid" style={{ marginTop: 8, marginBottom: 10 }}>
-              {top3.map((s, i) => (
-                <div key={s.place.id} className="card mini-card">
-                  <div style={{ fontSize: 18 }}>{RANK_MEDAL[i]}</div>
-                  {s.place.coverPhoto && (
-                    <img src={fileUrl(s.place.coverPhoto)} alt=""
-                      style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
-                  )}
-                  <div className="mini-card-name">{s.place.name}</div>
-                  <div className="mini-card-meta">
-                    {score(s) > 0 ? `★${score(s).toFixed(1)} · ` : ''}🔁{s.visitCount}
-                  </div>
-                </div>
-              ))}
+            <strong>{CATEGORY_EMOJI[cat] ?? ''} {cityName} {cat} TOP{Math.min(3, list.length)}</strong>
+            <div className="podium">
+              {podiumOrder.map((s, i) => <PodiumSlot key={s.place.id} item={s} rank={podiumRanks[i]} />)}
             </div>
+            <div className="podium-base" />
 
-            {list.length > 3 && (
-              <div className="table-scroll">
-                <table className="simple">
-                  <thead>
-                    <tr><th>이름</th><th>★평점</th><th>🔁방문</th><th className="num">누적지출</th></tr>
-                  </thead>
-                  <tbody>
-                    {list.slice(3).map((s) => (
-                      <tr key={s.place.id}>
-                        <td>{s.place.name}</td>
-                        <td>{score(s) > 0 ? score(s).toFixed(1) : '—'}</td>
-                        <td>{s.visitCount}</td>
-                        <td className="num">
-                          {s.spentTotals.length > 0
-                            ? s.spentTotals.map((t) => fmtMoney(t.total, t.currency)).join(' · ')
-                            : '—'}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <div className="table-scroll">
+              <table className="simple">
+                <thead>
+                  <tr>
+                    <th>이름</th><th>★평점</th><th>🔁방문</th>
+                    <th>{recommendedFieldLabel(cat)}</th><th className="num">누적지출</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((s, i) => (
+                    <tr key={s.place.id}>
+                      <td>{i < 3 ? `${RANK_MEDAL[i]} ` : ''}{s.place.name}</td>
+                      <td>{score(s) > 0 ? score(s).toFixed(1) : '—'}</td>
+                      <td>{s.visitCount}</td>
+                      <td>{s.place.recommendedMenu ?? '—'}</td>
+                      <td className="num">
+                        {s.spentTotals.length > 0
+                          ? s.spentTotals.map((t) => fmtMoney(t.total, t.currency)).join(' · ')
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )
       })}
@@ -105,7 +119,9 @@ export default function CityHubPanel({ cityId, cityName }: { cityId: string; cit
           <strong>✨ 아직 안 가본 곳 ({wishlist.length})</strong>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
             {wishlist.map((s) => (
-              <span key={s.place.id} className="chip yellow">{s.place.name}</span>
+              <span key={s.place.id} className="chip yellow">
+                {CATEGORY_EMOJI[s.place.category] ?? ''} {s.place.name}
+              </span>
             ))}
           </div>
         </div>
