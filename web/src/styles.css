@@ -948,14 +948,84 @@ textarea { resize: vertical; min-height: 70px; }
 .plain-link:hover { text-decoration: underline; }
 
 /* ── 정산 ──────────────────────────────── */
+/* ── 정산서 — 결론(송금 카드)부터, 계산 근거는 접힘 ── */
 .settle-box {
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--stamp-green);
   border-radius: 12px;
-  background: var(--green-soft);
-  padding: 14px;
-  margin-top: 8px;
+  background: #fff;
+  padding: 16px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-xs);
 }
-.transfer-line { font-weight: 800; font-size: 15px; padding: 4px 0; }
+.transfer-cards { display: flex; flex-direction: column; gap: 8px; }
+.transfer-card {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+  padding: 12px 16px;
+  font-weight: 800; font-size: 15px;
+}
+.transfer-arrow { color: var(--stamp-green); font-size: 17px; }
+.transfer-amount {
+  margin-left: auto;
+  font-size: 17px;
+  color: var(--stamp-green);
+  font-variant-numeric: tabular-nums;
+}
+.settle-details { margin-top: 14px; }
+.settle-details summary {
+  cursor: pointer; font-weight: 700; font-size: 12.5px;
+  color: rgba(45,42,62,0.6);
+}
+
+/* ── 지출 장부 (날짜별 그룹) ── */
+.ledger-day { margin-bottom: 22px; }
+.ledger-day-head {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 2px solid var(--ink);
+}
+.ledger-day-total {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ledger-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 2px;
+  border-bottom: 1px solid var(--line);
+}
+.ledger-row .x-btn { opacity: 0; }
+.ledger-row:hover .x-btn { opacity: 1; }
+.ledger-amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+  min-width: 80px;
+  text-align: right;
+}
+
+/* ── BASE: 버킷·먹킷·위시 3열 컬럼 ── */
+.base-lists {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1.5px solid var(--line);
+}
+.base-list-col {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--purple-deep);
+  border-radius: 12px;
+  padding: 12px 12px 14px;
+  min-width: 0;
+}
+.base-list-col.food { border-top-color: var(--pink); }
+.base-list-col.wish { border-top-color: var(--blue-deep); }
 
 .table-scroll { overflow-x: auto; }
 table.simple { width: 100%; min-width: 480px; border-collapse: collapse; font-size: 13px; }

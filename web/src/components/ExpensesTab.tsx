@@ -6,6 +6,12 @@ import { CATEGORY_COLOR } from '../categories'
 import AddExpenseModal from './AddExpenseModal'
 import BudgetBar from './BudgetBar'
 
+// "7/15 (화)" — 장부의 날짜 헤더용
+function dateLabel(date: string): string {
+  const d = new Date(date + 'T00:00:00')
+  return `${d.getMonth() + 1}/${d.getDate()} (${'일월화수목금토'[d.getDay()]})`
+}
+
 export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [participants, setParticipants] = useState<Member[]>([])
   const [allMembers, setAllMembers] = useState<Member[]>([])
@@ -59,13 +65,37 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     api.members.list().then(setAllMembers)
   }
 
+  // 장부(가계부)답게 날짜별로 묶는다 — 최신 날짜가 위.
+  const byDate = new Map<string, Expense[]>()
+  for (const e of [...expenses].sort((a, b) => b.spentAt.localeCompare(a.spentAt))) {
+    const d = e.spentAt.slice(0, 10)
+    const list = byDate.get(d) ?? []
+    list.push(e)
+    byDate.set(d, list)
+  }
+  const dayNumberOf = (date: string): number | null => {
+    if (date < trip.startDate || date > trip.endDate) return null
+    const diff = Math.round(
+      (new Date(date + 'T00:00:00').getTime() - new Date(trip.startDate + 'T00:00:00').getTime()) / 86_400_000,
+    )
+    return diff + 1
+  }
+  const dayTotalLabel = (list: Expense[]): string => {
+    const totals = new Map<string, number>()
+    for (const e of list) totals.set(e.currency, (totals.get(e.currency) ?? 0) + e.amount)
+    return [...totals.entries()].map(([c, t]) => fmtMoney(t, c)).join(' · ')
+  }
+
   return (
     <div>
       <BudgetBar trip={trip} expenses={expenses} rates={rates} />
 
-      {/* 참여자 */}
+      {/* 툴바: 지출 기록 + 참여자 */}
       <div className="row" style={{ flexWrap: 'wrap' }}>
-        <strong>참여자:</strong>
+        {participants.length > 0 && (
+          <button className="btn primary small" onClick={() => setShowAddExpense(true)}>＋ 지출 기록</button>
+        )}
+        <strong style={{ marginLeft: 4 }}>참여자:</strong>
         {participants.length === 0 && <span className="muted">아직 없음 — 편집을 눌러 추가하세요</span>}
         {participants.map((m) => <span key={m.id} className="chip pink">{m.name}</span>)}
         <span style={{ marginLeft: 'auto' }}>
@@ -111,13 +141,6 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         </div>
       )}
 
-      {/* 지출 추가 */}
-      {participants.length > 0 && (
-        <div className="row">
-          <button className="btn primary small" onClick={() => setShowAddExpense(true)}>＋ 지출 기록</button>
-        </div>
-      )}
-
       {showAddExpense && (
         <AddExpenseModal
           trip={trip}
@@ -127,46 +150,46 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         />
       )}
 
-      {/* 지출 목록 */}
+      {/* 지출 장부 — 날짜별 그룹 */}
       <div className="section-gap">
         {expenses.length === 0 ? (
           <div className="empty">아직 지출 기록이 없어요.</div>
         ) : (
-          <div className="table-scroll">
-            <table className="simple">
-              <thead>
-                <tr><th>날짜</th><th>내용</th><th>분류</th><th>낸 사람</th><th className="num">금액</th><th /></tr>
-              </thead>
-              <tbody>
-                {expenses.map((e) => (
-                  <tr key={e.id}>
-                    <td className="muted">{e.spentAt.slice(0, 10)}</td>
-                    <td>
-                      <div style={{ fontWeight: 700 }}>{e.description}</div>
-                      <div className="muted" style={{ fontSize: 11 }}>
-                        {!e.isShared && '🙋 개인지출 '}
-                        {e.isPrebooked && '📌 사전예약 '}
-                        {e.paymentMethod && `💳 ${e.paymentMethod} `}
-                        {e.memo && `📝 ${e.memo} `}
-                        {e.purchaseItems && `🧾 ${e.purchaseItems}`}
+          [...byDate.entries()].map(([date, list]) => {
+            const dayNum = dayNumberOf(date)
+            return (
+              <div key={date} className="ledger-day">
+                <div className="ledger-day-head">
+                  <strong>{dayNum != null ? `${dayNum}일차 · ` : ''}{dateLabel(date)}</strong>
+                  <span className="muted">{list.length}건</span>
+                  <span className="ledger-day-total">{dayTotalLabel(list)}</span>
+                </div>
+                {list.map((e) => (
+                  <div key={e.id} className="ledger-row">
+                    <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
+                    <div className="grow" style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700 }}>
+                        {e.description}
+                        <span className="muted" style={{ fontWeight: 600, marginLeft: 6 }}>{e.category}</span>
                       </div>
-                    </td>
-                    <td>
-                      <span className="legend-item">
-                        <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />
-                        {e.category}
-                      </span>
-                    </td>
-                    <td>{e.payerName}</td>
-                    <td className="num" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</td>
-                    <td className="num">
-                      <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
-                    </td>
-                  </tr>
+                      {(e.paymentMethod || e.memo || e.purchaseItems || !e.isShared || e.isPrebooked) && (
+                        <div className="muted" style={{ fontSize: 11 }}>
+                          {!e.isShared && '🙋 개인지출 '}
+                          {e.isPrebooked && '📌 사전예약 '}
+                          {e.paymentMethod && `💳 ${e.paymentMethod} `}
+                          {e.memo && `📝 ${e.memo} `}
+                          {e.purchaseItems && `🧾 ${e.purchaseItems}`}
+                        </div>
+                      )}
+                    </div>
+                    <span className="muted" style={{ flexShrink: 0 }}>{e.payerName}</span>
+                    <span className="ledger-amount">{fmtMoney(e.amount, e.currency)}</span>
+                    <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            )
+          })
         )}
       </div>
     </div>

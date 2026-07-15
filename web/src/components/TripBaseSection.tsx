@@ -12,7 +12,6 @@ import { api, fileUrl } from "../api";
 import { flagEmoji } from "../categories";
 import Modal from "./Modal";
 import Select from "./Select";
-import ChecklistPanel from "./ChecklistPanel";
 import DropdownMenu from "./DropdownMenu";
 import InfoCardGrid from "./InfoCardGrid";
 
@@ -426,35 +425,13 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
           })}
           </div>
 
-          <div style={{ marginTop: 14 }}>
-            <strong style={{ fontSize: 15 }}>✅ 체크리스트</strong>
-            <div className="prep-split" style={{ marginTop: 10 }}>
-              <ChecklistPanel
-                tripId={trip.id}
-                scope="predeparture"
-                title="🛫 여행 전 Todo"
-                addPlaceholder="예: 여행자보험 가입"
-              />
-              <ChecklistPanel
-                tripId={trip.id}
-                scope="packing"
-                title="🎒 여행 준비물"
-                addPlaceholder="예: 여권, 충전기"
-              />
-            </div>
-          </div>
-
+          {/* 버킷·먹킷·위시 — 세로로 길게 쌓지 않고 3열 컬럼으로 나란히.
+              체크리스트는 [🎒 여행 준비] 탭으로 이사했다 (준비는 준비 탭에). */}
+          <div className="base-lists">
           {(["bucket", "food", "wish"] as BucketKind[]).map((kind) => {
             const items = byKind(kind);
             return (
-              <div
-                key={kind}
-                style={{
-                  marginTop: 14,
-                  paddingTop: 14,
-                  borderTop: "1.5px solid rgba(45,42,62,0.15)",
-                }}
-              >
+              <div key={kind} className={`base-list-col ${kind}`}>
                 <div
                   style={{
                     display: "flex",
@@ -484,11 +461,11 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                   </button>
                 </div>
                 {items.length === 0 ? (
-                  <div className="empty">
-                    {KIND_PLACEHOLDER[kind]} — 아직 등록된 항목이 없어요.
+                  <div className="muted" style={{ textAlign: "center", padding: "18px 4px" }}>
+                    {KIND_PLACEHOLDER[kind]}
                   </div>
                 ) : (
-                  <div className="bucket-row-grid">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {items.map((b) => (
                       <BaseListCard
                         key={b.id}
@@ -504,6 +481,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
               </div>
             );
           })}
+          </div>
 
           {addingKind && (
             <Modal

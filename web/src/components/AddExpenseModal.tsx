@@ -10,17 +10,21 @@ import DatePicker from './DatePicker'
 const CURRENCIES = ['KRW', 'JPY', 'USD', 'EUR', 'TWD', 'THB', 'VND']
 
 export default function AddExpenseModal({
-  trip, participants, title = '지출 기록', defaultCategory = '기타', defaultPrebooked = false, onClose, onAdded,
+  trip, participants, title = '지출 기록', defaultCategory = '기타', defaultPrebooked = false,
+  eventId = null, defaultDescription = '', onClose, onAdded,
 }: {
   trip: Trip
   participants: Member[]
   title?: string
   defaultCategory?: string
   defaultPrebooked?: boolean
+  // 티켓(발렛·항공·숙소) 카드에서 "결제 기록하기"로 열면 그 일정에 지출이 바로 연결된다.
+  eventId?: string | null
+  defaultDescription?: string
   onClose: () => void
   onAdded: () => void
 }) {
-  const [description, setDescription] = useState('')
+  const [description, setDescription] = useState(defaultDescription)
   const [amount, setAmount] = useState('')
   const [currency, setCurrency] = useState('KRW')
   const [category, setCategory] = useState<string>(defaultCategory)
@@ -39,7 +43,7 @@ export default function AddExpenseModal({
     if (!description.trim() || !amt || amt <= 0 || !paidBy) return
     if (isShared && splitWith.size === 0) return
     await api.expenses.create({
-      tripId: trip.id, eventId: null, amount: amt, currency, category, description,
+      tripId: trip.id, eventId, amount: amt, currency, category, description,
       paidBy, splitWith: isShared ? [...splitWith] : [paidBy], spentAt,
       paymentMethod: paymentMethod.trim() || null, memo: memo.trim() || null,
       purchaseItems: purchaseItems.trim() || null, isShared, isPrebooked,
