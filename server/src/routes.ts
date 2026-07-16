@@ -329,11 +329,46 @@ export function registerRoutes(app: ExpressApp): void {
     await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4, nights=$5 WHERE id=$6',
       [title, startDate, endDate, budget ?? 0, nights ?? null, req.params.id])
     await setTripCities(req.params.id, cityIds)
-    res.json({ ok: true })
+
+    // 여행 기간을 줄이면 범위 밖 일차의 일정이 DB에 남는데, 일정 화면은 1~N일차 탭만
+    // 그리므로 접근 불가능한 유령 데이터가 된다. 지우는 대신 '미배정 티켓'(day_number NULL)으로
+    // 옮겨서 리뷰·사진·지출 연결을 보존하고, 유저가 다시 일차를 배정할 수 있게 한다.
+    // 그 일차들의 이동 구간은 앞뒤 일정이 사라져 의미가 없으므로 삭제한다.
+    const s = new Date(`${startDate}T00:00:00`)
+    const e = new Date(`${endDate}T00:00:00`)
+    const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+    await pool.query('DELETE FROM transit_segments WHERE trip_id = $1 AND day_number > $2', [req.params.id, days])
+    const moved = await pool.query(
+      'UPDATE timeline_events SET day_number = NULL, sequence = 0 WHERE trip_id = $1 AND day_number > $2 RETURNING id',
+      [req.params.id, days])
+    res.json({ ok: true, unassignedCount: moved.rows.length })
   })
 
+  // 여행 삭제 시 CASCADE로 함께 지워지는 행(사진·일기 사진·바우처·보관함 이미지·항공사 로고)이
+  // 가리키던 R2 파일을 먼저 모아뒀다가, DB 삭제가 성공한 뒤 지운다. DB만 지우면 R2에
+  // 아무도 참조하지 않는 유령 파일이 영구히 쌓인다 (개별 삭제 라우트는 safeUnlink를
+  // 호출하지만 CASCADE 삭제는 코드에서 감지할 수 없으므로 여기서 직접 처리).
+  async function collectTripFilePaths(tripId: string): Promise<string[]> {
+    const [photos, dayPhotos, vouchers, archives, logos] = await Promise.all([
+      pool.query(
+        `SELECT ph.file_path FROM photos ph
+         JOIN timeline_events te ON te.id = ph.event_id WHERE te.trip_id = $1`, [tripId]),
+      pool.query('SELECT file_path FROM day_note_photos WHERE trip_id = $1', [tripId]),
+      pool.query('SELECT file_path FROM vouchers WHERE trip_id = $1', [tripId]),
+      pool.query('SELECT file_path FROM archive_items WHERE trip_id = $1 AND file_path IS NOT NULL', [tripId]),
+      pool.query(
+        `SELECT fd.airline_logo_path AS file_path FROM flight_details fd
+         JOIN timeline_events te ON te.id = fd.event_id
+         WHERE te.trip_id = $1 AND fd.airline_logo_path IS NOT NULL`, [tripId]),
+    ])
+    return [...photos.rows, ...dayPhotos.rows, ...vouchers.rows, ...archives.rows, ...logos.rows]
+      .map((r) => r.file_path as string)
+  }
+
   app.delete('/api/trips/:id', async (req, res) => {
+    const filePaths = await collectTripFilePaths(req.params.id)
     await pool.query('DELETE FROM trips WHERE id = $1', [req.params.id])
+    await Promise.all(filePaths.map((p) => safeUnlink(p)))
     res.json({ ok: true })
   })
 
@@ -835,7 +870,17 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/events/:id', async (req, res) => {
+    // CASCADE로 지워지는 사진·항공사 로고의 R2 파일도 함께 정리 (여행 삭제와 같은 이유)
+    const [photos, logo] = await Promise.all([
+      pool.query('SELECT file_path FROM photos WHERE event_id = $1', [req.params.id]),
+      pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id]),
+    ])
     await pool.query('DELETE FROM timeline_events WHERE id = $1', [req.params.id])
+    const filePaths = [
+      ...photos.rows.map((r) => r.file_path as string),
+      ...(logo.rows[0]?.airline_logo_path ? [logo.rows[0].airline_logo_path as string] : []),
+    ]
+    await Promise.all(filePaths.map((p) => safeUnlink(p)))
     res.json({ ok: true })
   })
 

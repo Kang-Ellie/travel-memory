@@ -1,6 +1,6 @@
 import { createRoot } from 'react-dom/client'
 import App from './App'
-import 'typeface-nanum-barun-gothic/nanumbarungothic.css'
+import './fonts/nanum-barun-gothic.css'
 import './styles.css'
 
 if ('serviceWorker' in navigator) {

@@ -80,7 +80,7 @@
 
 - [x] **미사용 20.7MB 동영상 배포 중** ✅ 2026-07-16 완료 — `web/public/109821-685694725.mp4`. 코드 어디서도 참조 안 함(전수 grep 확인). 배포 아티팩트만 키움. → 삭제.
 - [x] **미사용/중복 이미지 정리** ✅ 2026-07-16 완료 — `file.png`(203KB), `연차계획.png`(77KB), `대지 1_13.png`(131KB), `Purple_..._1_-removebg-preview.png`(171KB), `2.플래너.png`, `3.투두리스트.png`, 웹p 시안들 — 참조되는 것은 `할일목록 v.png` 하나뿐(`TripBaseSection.tsx:501`). → 쓰는 것만 남기고 삭제, 남기는 PNG는 webp로 변환.
-- [ ] **폰트 로딩** — `index.html:12` 구글 폰트 CSS가 렌더 블로킹, `main.tsx:3` typeface-nanum-barun-gothic 전체 웨이트 로드. → `display=swap` 확인, 실제 쓰는 웨이트만 남기기, 한글 서브셋 woff2 self-host + `<link rel="preload">` 검토.
+- [x] **폰트 로딩** ✅ 2026-07-16 완료 — typeface-nanum-barun-gothic 풀 폰트(400+700 woff2만 3.08MB)를 KS X 1001 한글 2,350자 서브셋 woff2(합계 282KB, **91% 감소**)로 교체해 `web/src/fonts/`에 self-host. `font-display: swap` 적용, 패키지 의존성 제거. 재생성 방법은 `fonts/nanum-barun-gothic.css` 주석 참고.
 
 ### B-2. 이미지 렌더링
 
