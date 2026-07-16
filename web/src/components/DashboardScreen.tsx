@@ -10,6 +10,7 @@ import Lightbox from './Lightbox'
 import FolderIcon, { type FolderColor } from './FolderIcon'
 import ActivityFeed from './ActivityFeed'
 import TripTicket from './TripTicket'
+import HanokSky from './HanokSky'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -118,11 +119,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
       {heroTrip && (
         <div className="ticket-hero">
           <div className="ticket-hero-photo-wrap">
-            {heroPhoto ? (
-              <img className="ticket-hero-photo" src={fileUrl(heroPhoto)} alt="" />
-            ) : (
-              <img src="/대지 1_13.png" alt="" className="ticket-hero-plane" />
-            )}
+            <HanokSky photo={heroPhoto ? fileUrl(heroPhoto) : null} />
           </div>
           <div className="ticket-hero-body">
             <div className={`ticket-hero-blob ${ongoingTrip ? 'red' : 'blue'}`} />

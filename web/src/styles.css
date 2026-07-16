@@ -185,15 +185,13 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   position: relative;
 }
 .ticket-hero-photo-wrap {
+  position: relative;
   width: 40%;
   min-width: 240px;
+  min-height: 240px;
   align-self: stretch;
-  background: var(--blue-soft);
-  display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
-.ticket-hero-photo { width: 100%; height: 100%; min-height: 230px; object-fit: cover; display: block; }
-.ticket-hero-plane { width: 84px; height: 84px; object-fit: contain; opacity: 0.85; }
 .ticket-hero-body {
   flex: 1;
   min-width: 0;
@@ -246,8 +244,7 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 .ticket-hero-body > * { position: relative; z-index: 1; }
 @media (max-width: 720px) {
   .ticket-hero { flex-direction: column; }
-  .ticket-hero-photo-wrap { width: 100%; min-width: 0; }
-  .ticket-hero-photo { min-height: 170px; max-height: 190px; }
+  .ticket-hero-photo-wrap { width: 100%; min-width: 0; min-height: 190px; }
   .ticket-hero-body { border-left: none; border-top: 2px dashed var(--line-strong); padding: 18px 20px 56px; }
   .ticket-hero-body::before { top: -11px; left: -11px; }
   .ticket-hero-body::after { top: -11px; bottom: auto; left: auto; right: -11px; }
@@ -1156,6 +1153,136 @@ textarea { resize: vertical; min-height: 70px; }
   min-width: 80px;
   text-align: right;
 }
+
+/* ══ 한옥 처마 하늘 (보딩패스 왼쪽 면) ══
+   시간대(새벽/아침/낮/노을/밤)에 따라 하늘·해·달·별·구름이 바뀐다.
+   이미지 파일 없이 전부 CSS/SVG. 처마 끝 풍경(종)은 천천히 흔들린다. */
+.sky {
+  position: absolute; inset: 0;
+  overflow: hidden;
+  --roof: #23232a;
+  --roof-2: #2f2f38;
+  --tile: #3c3c47;
+  --dancheong: rgba(122, 190, 170, 0.5);
+}
+.sky-photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.sky-grad { position: absolute; inset: 0; }
+.sky.has-photo .sky-grad { opacity: 0.72; }
+
+/* 시간대별 하늘색 */
+.sky.dawn .sky-grad { background: linear-gradient(#243063, #6f6099 42%, #e8977a 78%, #f8cfa4); }
+.sky.morning .sky-grad { background: linear-gradient(#6fb0e6, #b6d9f4 58%, #e6f3fb); }
+.sky.day .sky-grad { background: linear-gradient(#3f97d8, #8ac6ee 55%, #d6ebfa); }
+.sky.dusk .sky-grad { background: linear-gradient(#37356a, #9c5484 44%, #ee7f4c 76%, #ffbf78); }
+.sky.night .sky-grad { background: linear-gradient(#060a18, #0f1938 55%, #1b2a4e); }
+.sky.night { --roof: #0a0d1a; --roof-2: #111529; --tile: #191e35; --dancheong: rgba(122, 190, 170, 0.3); }
+.sky.dusk { --roof: #1a1723; --roof-2: #241f30; --tile: #2d2739; }
+
+/* 해 / 달 */
+.sky-orb { position: absolute; border-radius: 50%; }
+.sky.dawn .sky-orb {
+  width: 46px; height: 46px; right: 16%; bottom: 24%;
+  background: radial-gradient(circle at 35% 35%, #fff2dc, #ffb17c);
+  box-shadow: 0 0 36px rgba(255, 177, 124, 0.75);
+}
+.sky.morning .sky-orb {
+  width: 42px; height: 42px; right: 14%; top: 20%;
+  background: radial-gradient(circle at 35% 35%, #fffdf0, #ffdf85);
+  box-shadow: 0 0 40px rgba(255, 223, 133, 0.8);
+}
+.sky.day .sky-orb {
+  width: 38px; height: 38px; right: 16%; top: 10%;
+  background: radial-gradient(circle at 35% 35%, #ffffff, #ffe89a);
+  box-shadow: 0 0 44px rgba(255, 232, 154, 0.85);
+}
+.sky.dusk .sky-orb {
+  width: 52px; height: 52px; right: 14%; bottom: 26%;
+  background: radial-gradient(circle at 35% 35%, #fff0cf, #ff8a4c);
+  box-shadow: 0 0 46px rgba(255, 138, 76, 0.7);
+}
+/* 보름달 — 옅은 크레이터까지 */
+.sky.night .sky-orb {
+  width: 58px; height: 58px; right: 13%; top: 12%;
+  background:
+    radial-gradient(circle at 62% 38%, rgba(190, 196, 220, 0.5) 0 7px, transparent 8px),
+    radial-gradient(circle at 40% 62%, rgba(190, 196, 220, 0.42) 0 5px, transparent 6px),
+    radial-gradient(circle at 30% 32%, rgba(190, 196, 220, 0.35) 0 3.5px, transparent 4px),
+    radial-gradient(circle at 38% 36%, #ffffff, #dfe3ef 70%, #c3c9dc);
+  box-shadow: 0 0 46px rgba(214, 224, 255, 0.6), 0 0 90px rgba(160, 180, 255, 0.3);
+}
+
+/* 별 — 밤·새벽에만, 천천히 반짝임 */
+.sky-stars {
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.4px 1.4px at 12% 18%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 28% 9%, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1.6px 1.6px at 44% 24%, #fff, transparent),
+    radial-gradient(1.1px 1.1px at 62% 8%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1.5px 1.5px at 78% 30%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 88% 15%, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1.3px 1.3px at 20% 38%, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1.1px 1.1px at 54% 42%, rgba(255,255,255,0.7), transparent),
+    radial-gradient(1.4px 1.4px at 70% 50%, rgba(255,255,255,0.75), transparent);
+  animation: twinkle 5.5s ease-in-out infinite;
+}
+.sky.dawn .sky-stars { opacity: 0.4; }
+@keyframes twinkle { 0%, 100% { opacity: 0.95; } 50% { opacity: 0.55; } }
+
+/* 구름 — 아주 천천히 흘러감 */
+.sky-cloud {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  filter: blur(9px);
+}
+.sky-cloud.c1 { width: 86px; height: 20px; left: -20%; top: 24%; animation: drift 44s linear infinite; }
+.sky-cloud.c2 { width: 58px; height: 15px; left: -20%; top: 42%; opacity: 0.6; animation: drift 66s linear infinite 8s; }
+.sky.dusk .sky-cloud { background: rgba(255, 214, 178, 0.6); }
+@keyframes drift { from { transform: translateX(0); } to { transform: translateX(340px); } }
+
+/* 처마 SVG */
+.sky-roof {
+  position: absolute; left: -4%; bottom: -1%;
+  width: 112%; height: auto;
+}
+.roof-slope { fill: var(--roof-2); }
+.roof-eave { fill: var(--roof); }
+.roof-tiles circle { fill: var(--tile); }
+.roof-dancheong { stroke: var(--dancheong); stroke-width: 2.5; }
+
+/* 풍경 — 처마 끝에서 천천히 좌우로 */
+.sky-bell {
+  transform-box: view-box;
+  transform-origin: 248px 139px;
+  animation: bell-sway 4.6s ease-in-out infinite;
+}
+.sky-bell line { stroke: var(--roof); stroke-width: 1.6; }
+.sky-bell .bell-body, .sky-bell .bell-rim { fill: var(--roof); }
+.sky-bell .bell-fish path { fill: var(--roof); }
+.sky.night .sky-bell line { stroke: #2b3350; }
+.sky.night .sky-bell .bell-body, .sky.night .sky-bell .bell-rim, .sky.night .sky-bell .bell-fish path { fill: #2b3350; }
+@keyframes bell-sway {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50% { transform: rotate(3.5deg); }
+}
+
+/* 현재 시각 · 시간대 라벨 */
+.sky-time {
+  position: absolute; top: 12px; left: 14px;
+  font-family: var(--font-computer);
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(4px);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+.sky.morning .sky-time, .sky.day .sky-time { background: rgba(20, 30, 50, 0.32); }
 
 /* ══ 다크 트래블 카드 (버킷·먹킷·위시 공용) ══
    레퍼런스: 라운지 조명 아래 놓인 다크 카드 — 사진 + 컬러 아이콘 타이틀 +
