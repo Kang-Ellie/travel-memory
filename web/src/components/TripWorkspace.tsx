@@ -585,7 +585,7 @@ function EventCard({
               {/* 티켓(항공·발렛·숙소)은 "방문지"가 아니라 예약 서류라서, 방문 시간·꼭 해봐야 하는 것·
                   버킷리스트·리뷰·참고 링크 같은 방문 기록용 필드는 아예 숨긴다. 메모(실용 정보)만 유지. */}
               {!isTicket && (
-                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--pink-soft)' }}>
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
                   <div className="field" style={{ width: '100%', marginBottom: 2 }}>
                     <strong>🎫 예약 정보 (예약했다면 입력 — 카드에 점선 예약 티켓으로 나와요)</strong>
                   </div>
@@ -1140,8 +1140,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               return (
                 <div key={ev.id} className="tl-item">
                   <div className="tl-rail">
-                    <div className="tl-time">{railTime || '·'}</div>
-                    <span className="tl-dot" />
+                    {railTime && <div className="tl-time">{railTime}</div>}
+                    <span className={`tl-dot ${ev.flight || ev.lodging || ev.valet ? 'ticket' : ''}`} />
                   </div>
                   <div className="tl-body">
                     <EventCard

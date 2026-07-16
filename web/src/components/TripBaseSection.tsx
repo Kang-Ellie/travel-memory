@@ -70,6 +70,7 @@ function BaseListCard({
     e.target.value = "";
     if (!file) return;
     await api.bucket.uploadPhoto(item.id, file);
+    if (!item.done) await api.bucket.update(item.id, { done: true });
     onChanged();
   };
   const removePhoto = async () => {
@@ -96,13 +97,14 @@ function BaseListCard({
   return (
     <>
       <div className={`card bucket-row ${item.done ? "done" : ""}`} onClick={() => setOpen(true)}>
-        <input
-          type="checkbox"
-          checked={item.done}
-          onClick={(e) => e.stopPropagation()}
-          onChange={toggleDone}
+        <button
+          type="button"
+          className="check-stamp"
+          onClick={(e) => { e.stopPropagation(); toggleDone(); }}
           title={item.done ? "미완료로 표시" : "완료로 표시"}
-        />
+        >
+          <span className="mark">DONE</span>
+        </button>
         {coverPhoto && <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" />}
         <div className="grow" style={{ minWidth: 0 }}>
           <div
@@ -294,36 +296,23 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      <div className="fids-board" style={{ marginBottom: collapsed ? 0 : 12 }}>
-        <div className="fids-board-top">
-          <span className="fids-board-title">✈ DEPARTURES · 이번엔 어디?</span>
-          <span className="fids-board-count">{tripCityRecords.length} DEST</span>
-          <button className="fids-board-toggle" onClick={() => setCollapsed((v) => !v)}>
-            {collapsed ? "▾ 펼치기" : "▴ 접기"}
-          </button>
-        </div>
-        <div className="fids-rows">
-          <div className="fids-row fids-row-head">
-            <span className="fids-flag" />
-            <span className="fids-dest">DESTINATION</span>
-            <span className="fids-country">COUNTRY</span>
-            <span className="fids-status">STATUS</span>
-          </div>
-          {tripCityRecords.map((c) => {
-            const co = countries.find((x) => x.id === c.countryId);
-            const ready = !!(c.flightDuration || c.timeDiff || c.caution);
-            return (
-              <div key={c.id} className="fids-row">
-                <span className="fids-flag">{flagEmoji(co?.code)}</span>
-                <span className="fids-dest">{c.name}</span>
-                <span className="fids-country">{co?.name ?? "—"}</span>
-                <span className={`fids-status ${ready ? "go" : "wait"}`}>
-                  {ready ? (c.timeDiff || c.flightDuration || "READY") : "정보 없음"}
+      <div className="base-where-head" style={{ marginBottom: collapsed ? 0 : 12 }}>
+        <div className="base-where-title">
+          <strong>🧭 이번엔 어디?</strong>
+          <div className="base-where-dests">
+            {tripCityRecords.map((c) => {
+              const co = countries.find((x) => x.id === c.countryId);
+              return (
+                <span key={c.id} className="base-where-chip">
+                  {flagEmoji(co?.code)} {c.name}
                 </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
+        <button className="btn small ghost" onClick={() => setCollapsed((v) => !v)}>
+          {collapsed ? "펼치기" : "접기"}
+        </button>
       </div>
       {!collapsed && (
         <>

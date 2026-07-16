@@ -1306,9 +1306,10 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .bucket-photo-card.done .bucket-done-toggle { background: var(--stamp-green); color: #fff; }
 .bucket-done-stamp {
-  position: absolute; top: 46px; right: 12px; z-index: 2;
-  background: rgba(255, 255, 255, 0.85);
-  transform: rotate(10deg);
+  position: absolute; top: 50%; left: 50%; z-index: 2;
+  transform: translate(-50%, -50%) rotate(-11deg);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 50%;
 }
 .bucket-photo-foot {
   padding: 10px 12px;
@@ -1508,10 +1509,18 @@ input[type='checkbox'] {
   transition: border-color 0.12s;
 }
 .bucket-row:hover { border-color: var(--line-strong); }
-.bucket-row.done { opacity: 0.5; }
+.bucket-row.done { opacity: 0.72; }
 .bucket-row-thumb {
   width: 38px; height: 38px; border-radius: 7px;
   object-fit: cover; flex-shrink: 0; display: block;
+}
+/* 여행 버킷·먹킷·위시: 체크 = 도장 쿵 */
+.bucket-row .check-stamp { background: none; cursor: pointer; padding: 0; }
+.bucket-row:hover .check-stamp { border-color: var(--stamp-green); }
+.bucket-row.done .check-stamp {
+  border-style: solid; border-color: var(--stamp-green); color: var(--stamp-green);
+  transform: rotate(-9deg);
+  animation: stamp-punch 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
 }
 
 .checklist-row {
@@ -1561,17 +1570,18 @@ input[type='checkbox'] {
   position: relative; z-index: 1;
   font-family: var(--font-computer);
   font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
-  color: var(--pink-deep);
+  color: var(--ink);
   background: var(--paper);
   padding: 0 2px 4px;
   text-align: center;
 }
 .tl-dot {
-  position: relative; z-index: 1;
-  width: 11px; height: 11px; border-radius: 50%;
-  background: #fff; border: 2.5px solid var(--pink);
+  position: relative; z-index: 1; margin-top: 4px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: #fff; border: 2.5px solid var(--line-strong);
   box-shadow: 0 0 0 3px var(--paper);
 }
+.tl-dot.ticket { border-color: var(--ink); background: var(--ink); }
 .tl-body { flex: 1; min-width: 0; }
 @media (max-width: 640px) {
   .tl-rail { width: 40px; }
@@ -2290,76 +2300,15 @@ input[type='checkbox'] {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   FIDS 전광판 (BASE '이번엔 어디?' 목적지 보드)
-   다크 배경 + 발광 앰버 고정폭 폰트 + 스캔라인
-   ══════════════════════════════════════════════════════════════════ */
-.fids-board {
-  border-radius: 14px;
-  overflow: hidden;
-  background:
-    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.02) 3px 4px),
-    var(--board-bg);
-  box-shadow: var(--shadow-md);
-  animation: bpass-in 0.4s ease both;
-}
-.fids-board-top {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-.fids-board-title {
-  font-family: var(--font-computer);
-  font-weight: 700; font-size: 13px; letter-spacing: 0.08em;
-  color: var(--board-amber); text-shadow: 0 0 10px var(--board-glow);
-  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fids-board-count {
-  font-family: var(--font-computer);
-  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-  color: var(--board-dim); flex-shrink: 0;
-}
-.fids-board-toggle {
-  flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.08); border: none; cursor: pointer;
-  color: rgba(255, 255, 255, 0.75);
-  font-family: var(--font-computer); font-size: 11px; font-weight: 700;
-  padding: 4px 9px; border-radius: 7px;
-}
-.fids-board-toggle:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
-.fids-rows { padding: 4px 0; }
-.fids-row {
-  display: grid;
-  grid-template-columns: 28px 1fr 1fr auto;
-  align-items: center; gap: 10px;
-  padding: 8px 14px;
-  font-family: var(--font-computer);
-}
-.fids-row + .fids-row { border-top: 1px dashed rgba(255, 255, 255, 0.06); }
-.fids-row-head {
-  font-size: 8.5px; letter-spacing: 0.2em; color: var(--board-dim);
-  padding-top: 4px; padding-bottom: 4px;
-}
-.fids-row-head + .fids-row { border-top: none; }
-.fids-flag { font-size: 18px; line-height: 1; }
-.fids-dest {
-  font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
-  color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fids-country {
-  font-size: 12px; color: rgba(255, 255, 255, 0.6);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.fids-status {
-  justify-self: end;
-  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
-  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
-}
-.fids-status.go { color: #7fce93; background: rgba(127, 206, 147, 0.14); }
-.fids-status.wait { color: var(--board-dim); background: rgba(255, 255, 255, 0.06); }
-@media (max-width: 560px) {
-  .fids-row { grid-template-columns: 24px 1fr auto; }
-  .fids-row .fids-country { display: none; }
+/* ── BASE '이번엔 어디?' 헤더 (목적지 요약 칩) ── */
+.base-where-head { display: flex; align-items: flex-start; gap: 10px; }
+.base-where-title { flex: 1; min-width: 0; }
+.base-where-title > strong { display: block; font-size: 16px; margin-bottom: 7px; }
+.base-where-dests { display: flex; flex-wrap: wrap; gap: 6px; }
+.base-where-chip {
+  font-size: 12px; font-weight: 700;
+  background: var(--card); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px 11px; white-space: nowrap;
 }
 
 /* ── 예약 티켓 (맛집·카페 등 예약한 장소 아래 점선 티켓) ── */
@@ -2375,7 +2324,7 @@ input[type='checkbox'] {
 .resv-ticket-eyebrow {
   font-family: var(--font-computer);
   font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
-  color: var(--pink-deep); margin-bottom: 8px;
+  color: var(--ink); margin-bottom: 8px;
 }
 .resv-ticket-main { display: flex; flex-wrap: wrap; gap: 9px 22px; }
 .resv-ticket .resv-field { display: flex; flex-direction: column; gap: 1px; }
