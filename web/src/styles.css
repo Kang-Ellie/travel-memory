@@ -40,6 +40,15 @@
   --gold: #d9c68f;
   --gold-dim: rgba(217, 198, 143, 0.55);
 
+  /* 단청 악센트 — "출발지=한국" 정체성용 절제된 포인트 컬러 (레퍼런스 팔레트) */
+  --dan-green: #11584b;
+  --dan-red: #b41a23;
+  --dan-tan: #de8f65;
+  /* 단청 3색 얇은 띠 (제목 밑 악센트) */
+  --dancheong-bar: linear-gradient(90deg, var(--dan-green) 0 34%, var(--dan-red) 34% 67%, var(--dan-tan) 67% 100%);
+  /* 은은한 태극 워터마크 (여권 속지 느낌) */
+  --taegeuk-svg: url("data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%20100%20100'%3E%3Cpath%20d='M50%205%20A45%2045%200%200%201%2050%2095%20A22.5%2022.5%200%200%201%2050%2050%20A22.5%2022.5%200%200%200%2050%205%20Z'%20fill='%23b41a23'/%3E%3Cpath%20d='M50%205%20A45%2045%200%200%200%2050%2095%20A22.5%2022.5%200%200%200%2050%2050%20A22.5%2022.5%200%200%201%2050%205%20Z'%20fill='%232a49c5'/%3E%3C/svg%3E");
+
   /* 공항 출발 전광판(FIDS) — 다크 배경 + 발광 모노 타이포 */
   --board-bg: #10131f;
   --board-amber: #ffb547;
@@ -84,8 +93,27 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 
 /* ── 대시보드 상단 헤더 ────────────────── */
 .dash-hero {
+  position: relative;
   margin-bottom: 18px;
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+/* 은은한 태극 워터마크 — 제목과 알림 벨 사이 빈 공간에 옅게 */
+.dash-hero::before {
+  content: "";
+  position: absolute; z-index: 0;
+  top: -8px; right: 72px;
+  width: 96px; height: 96px;
+  background: var(--taegeuk-svg) center / contain no-repeat;
+  opacity: 0.06; transform: rotate(-8deg);
+  pointer-events: none;
+}
+.dash-hero > * { position: relative; z-index: 1; }
+/* 제목 밑 단청 3색 악센트 띠 */
+.dash-hero-title::after {
+  content: "";
+  display: block; margin-top: 9px;
+  width: 66px; height: 4px; border-radius: 999px;
+  background: var(--dancheong-bar);
 }
 
 /* 우상단 알림 벨 + 최근 활동 드롭다운 */
@@ -2317,9 +2345,25 @@ input[type='checkbox'] {
 }
 
 /* ── BASE '이번엔 어디?' 헤더 (목적지 요약 칩) ── */
-.base-where-head { display: flex; align-items: flex-start; gap: 10px; }
+.base-where-head { position: relative; display: flex; align-items: flex-start; gap: 10px; }
+.base-where-head::before {
+  content: "";
+  position: absolute; z-index: 0;
+  top: -2px; right: 64px;
+  width: 58px; height: 58px;
+  background: var(--taegeuk-svg) center / contain no-repeat;
+  opacity: 0.06; transform: rotate(-8deg);
+  pointer-events: none;
+}
+.base-where-head > * { position: relative; z-index: 1; }
 .base-where-title { flex: 1; min-width: 0; }
-.base-where-title > strong { display: block; font-size: 16px; margin-bottom: 7px; }
+.base-where-title > strong { display: block; font-size: 16px; margin-bottom: 6px; }
+.base-where-title > strong::after {
+  content: "";
+  display: block; margin-top: 6px;
+  width: 46px; height: 3px; border-radius: 999px;
+  background: var(--dancheong-bar);
+}
 .base-where-dests { display: flex; flex-wrap: wrap; gap: 6px; }
 .base-where-chip {
   font-size: 12px; font-weight: 700;
