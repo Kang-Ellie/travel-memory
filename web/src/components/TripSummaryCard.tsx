@@ -23,6 +23,11 @@ export default function TripSummaryCard({ trip }: { trip: Trip }) {
   const status = tripStatus(trip)
   const unassignedCount = events.filter((e) => e.dayNumber == null).length
 
+  const spanDays = Math.round(
+    (new Date(trip.endDate + 'T00:00:00').getTime() - new Date(trip.startDate + 'T00:00:00').getTime()) / 86_400_000,
+  ) + 1
+  const nights = trip.nights != null ? trip.nights : Math.max(0, spanDays - 1)
+
   let todayDay: number | null = null
   if (status === 'ongoing') {
     const start = new Date(trip.startDate + 'T00:00:00')
@@ -44,6 +49,23 @@ export default function TripSummaryCard({ trip }: { trip: Trip }) {
         <div className="trip-summary-label">상태</div>
         <div className="trip-summary-value">{dday(trip)}</div>
       </div>
+
+      <div className="trip-summary-item">
+        <div className="trip-summary-label">일정</div>
+        <div className="trip-summary-value">{nights}박 {spanDays}일</div>
+      </div>
+
+      {participants.length > 0 && (
+        <div className="trip-summary-item">
+          <div className="trip-summary-label">동행자</div>
+          <div className="trip-summary-value">
+            {participants.map((p) => `${p.emoji ? p.emoji + ' ' : ''}${p.name}`).join(', ')}
+            <span className="muted" style={{ fontWeight: 400, fontSize: 12, marginLeft: 4 }}>
+              {participants.length}명
+            </span>
+          </div>
+        </div>
+      )}
 
       {trip.budget > 0 && (
         <div className="trip-summary-item">

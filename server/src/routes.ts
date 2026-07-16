@@ -68,7 +68,7 @@ const uploader = makeUploader()
 // ── 행 매핑 (snake_case DB → camelCase API) ──────────────
 const mapTrip = (r: any) => ({
   id: r.id, title: r.title, startDate: r.start_date, endDate: r.end_date,
-  budget: Number(r.budget), createdAt: r.created_at,
+  budget: Number(r.budget), nights: r.nights != null ? Number(r.nights) : null, createdAt: r.created_at,
   cities: (r.cities ?? []) as Array<{ id: string; name: string; countryName: string; countryCode: string | null }>,
 })
 const mapMember = (r: any) => ({ id: r.id, name: r.name, emoji: r.emoji ?? null })
@@ -272,12 +272,12 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/trips', async (req, res) => {
-    const { title, startDate, endDate, budget, memberIds, cityIds } = req.body as {
-      title: string; startDate: string; endDate: string; budget: number; memberIds: string[]; cityIds: string[]
+    const { title, startDate, endDate, budget, nights, memberIds, cityIds } = req.body as {
+      title: string; startDate: string; endDate: string; budget: number; nights?: number | null; memberIds: string[]; cityIds: string[]
     }
     const tripId = id()
-    await pool.query('INSERT INTO trips (id, title, start_date, end_date, budget) VALUES ($1,$2,$3,$4,$5)',
-      [tripId, title, startDate, endDate, budget ?? 0])
+    await pool.query('INSERT INTO trips (id, title, start_date, end_date, budget, nights) VALUES ($1,$2,$3,$4,$5,$6)',
+      [tripId, title, startDate, endDate, budget ?? 0, nights ?? null])
     for (const m of memberIds ?? []) {
       await pool.query('INSERT INTO trip_members (trip_id, member_id) VALUES ($1,$2)', [tripId, m])
     }
@@ -290,11 +290,11 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.put('/api/trips/:id', async (req, res) => {
-    const { title, startDate, endDate, budget, cityIds } = req.body as {
-      title: string; startDate: string; endDate: string; budget: number; cityIds: string[]
+    const { title, startDate, endDate, budget, nights, cityIds } = req.body as {
+      title: string; startDate: string; endDate: string; budget: number; nights?: number | null; cityIds: string[]
     }
-    await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4 WHERE id=$5',
-      [title, startDate, endDate, budget ?? 0, req.params.id])
+    await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4, nights=$5 WHERE id=$6',
+      [title, startDate, endDate, budget ?? 0, nights ?? null, req.params.id])
     await setTripCities(req.params.id, cityIds)
     res.json({ ok: true })
   })

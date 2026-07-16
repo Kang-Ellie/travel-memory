@@ -53,6 +53,7 @@ export default function TripsScreen({
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [budget, setBudget] = useState('')
+  const [nights, setNights] = useState('')
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
   const [showAddMember, setShowAddMember] = useState(false)
@@ -75,9 +76,10 @@ export default function TripsScreen({
     }
     await api.trips.create({
       title: title.trim(), startDate, endDate,
-      budget: parseFloat(budget) || 0, memberIds: [...selMembers], cityIds: [...selCityIds],
+      budget: parseFloat(budget) || 0, nights: nights.trim() ? parseInt(nights) : null,
+      memberIds: [...selMembers], cityIds: [...selCityIds],
     })
-    setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setSelMembers(new Set())
+    setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setNights(''); setSelMembers(new Set())
     setSelCountryIds(new Set()); setSelCityIds(new Set()); setCreating(false)
     refresh()
   }
@@ -137,7 +139,20 @@ export default function TripsScreen({
               <input type="number" value={budget} min={0} placeholder="예: 1500000"
                 onChange={(e) => setBudget(e.target.value)} />
             </div>
+            <div className="field" style={{ maxWidth: 130 }}>
+              <label>몇 박 (선택)</label>
+              <input type="number" value={nights} min={0}
+                placeholder={
+                  startDate && endDate && endDate >= startDate
+                    ? `기본 ${Math.round((new Date(endDate + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) / 86_400_000)}박`
+                    : '예: 2'
+                }
+                onChange={(e) => setNights(e.target.value)} />
+            </div>
           </div>
+          <p className="muted" style={{ margin: '2px 0 0' }}>
+            날짜 기준이 아니라 실제 숙박 수예요. 같은 4일이라도 밤도깨비(무박)·마지막날 심야 출발이면 2박으로 적어두면 정확하게 표시돼요.
+          </p>
           <div className="field" style={{ marginTop: 12 }}>
             <label>어디로? (국가 · 도시, 선택)</label>
             <TripCountryCityPicker

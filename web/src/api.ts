@@ -45,10 +45,10 @@ export const api = {
   trips: {
     list: () => req<Trip[]>('GET', '/api/trips'),
     create: (data: {
-      title: string; startDate: string; endDate: string; budget: number; memberIds: string[]; cityIds: string[]
+      title: string; startDate: string; endDate: string; budget: number; nights?: number | null; memberIds: string[]; cityIds: string[]
     }) => req<Trip>('POST', '/api/trips', data),
     update: (id: string, data: {
-      title: string; startDate: string; endDate: string; budget: number; cityIds: string[]
+      title: string; startDate: string; endDate: string; budget: number; nights?: number | null; cityIds: string[]
     }) => req<void>('PUT', `/api/trips/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/trips/${id}`),
   },

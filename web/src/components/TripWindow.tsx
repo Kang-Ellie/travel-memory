@@ -45,6 +45,7 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const [startDate, setStartDate] = useState(trip.startDate)
   const [endDate, setEndDate] = useState(trip.endDate)
   const [budget, setBudget] = useState(String(trip.budget || ''))
+  const [nights, setNights] = useState(trip.nights != null ? String(trip.nights) : '')
   const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set(trip.cities.map((c) => c.id)))
 
@@ -55,7 +56,7 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
 
   const startEdit = () => {
     setTitle(trip.title); setStartDate(trip.startDate); setEndDate(trip.endDate)
-    setBudget(String(trip.budget || '')); setSelCityIds(new Set(trip.cities.map((c) => c.id)))
+    setBudget(String(trip.budget || '')); setNights(trip.nights != null ? String(trip.nights) : ''); setSelCityIds(new Set(trip.cities.map((c) => c.id)))
     const tripCountryIds = new Set(
       trip.cities.map((tc) => cities.find((c) => c.id === tc.id)?.countryId).filter((id): id is string => !!id),
     )
@@ -66,7 +67,8 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const save = async () => {
     if (!title.trim() || !startDate || !endDate) return
     await api.trips.update(trip.id, {
-      title: title.trim(), startDate, endDate, budget: parseFloat(budget) || 0, cityIds: [...selCityIds],
+      title: title.trim(), startDate, endDate, budget: parseFloat(budget) || 0,
+      nights: nights.trim() ? parseInt(nights) : null, cityIds: [...selCityIds],
     })
     const fresh = await api.trips.list()
     const updated = fresh.find((t) => t.id === trip.id)
@@ -134,6 +136,16 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
             <div className="field">
               <label>예산 (원)</label>
               <input type="number" value={budget} min={0} onChange={(e) => setBudget(e.target.value)} />
+            </div>
+            <div className="field" style={{ maxWidth: 120 }}>
+              <label>몇 박</label>
+              <input type="number" value={nights} min={0}
+                placeholder={
+                  startDate && endDate && endDate >= startDate
+                    ? `기본 ${Math.round((new Date(endDate + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) / 86_400_000)}박`
+                    : '예: 2'
+                }
+                onChange={(e) => setNights(e.target.value)} />
             </div>
           </div>
           <div className="field" style={{ marginTop: 12 }}>

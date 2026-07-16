@@ -11,6 +11,7 @@ export interface Trip {
   startDate: string
   endDate: string
   budget: number
+  nights: number | null
   createdAt: string
   cities: TripCity[]
 }
