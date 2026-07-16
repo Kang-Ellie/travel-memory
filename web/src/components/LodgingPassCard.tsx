@@ -12,7 +12,7 @@ export default function LodgingPassCard({ lodging, placeName, vouchers = [] }: {
     <div className="bpass">
       <div className="bpass-main">
         <div className="bpass-head">
-          <div className="brand"><span>🏨 {placeName}</span></div>
+          <div className="brand"><span title={placeName}>🏨 {placeName}</span></div>
           <div className="gate">
             <div className="gate-label">Stay</div>
             <div className="gate-val">HOTEL</div>
@@ -45,7 +45,7 @@ export default function LodgingPassCard({ lodging, placeName, vouchers = [] }: {
           <div className="bpass-badges">
             {lodging.breakfastIncluded && <span className="chip yellow">🍳 조식 포함</span>}
             {lodging.voucherId && (voucher ? (
-              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {lodging.voucherTitle ?? voucher.title}</a>
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기" onClick={(e) => e.stopPropagation()}>🎫 {lodging.voucherTitle ?? voucher.title}</a>
             ) : (
               <span className="chip green" title={lodging.voucherTitle ?? ''}>🎫 {lodging.voucherTitle}</span>
             ))}

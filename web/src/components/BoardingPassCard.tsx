@@ -44,7 +44,7 @@ export default function BoardingPassCard({ flight, fromName, participants = [], 
         <div className="bpass-route">
           <div className="bpass-endpoint from">
             <div className="kicker">From</div>
-            <div className="code">{fromName}</div>
+            <div className="code" title={fromName}>{fromName}</div>
             <div className="time">{dep.date} {dep.time}</div>
           </div>
           <div className="bpass-path"><span className="line" /><span className="plane">✈</span><span className="line" /></div>
@@ -68,7 +68,7 @@ export default function BoardingPassCard({ flight, fromName, participants = [], 
         {(flight.voucherId || (!allAboard && passengerNames.length > 0)) && (
           <div className="bpass-badges">
             {flight.voucherId && (voucher ? (
-              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {flight.voucherTitle ?? voucher.title}</a>
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기" onClick={(e) => e.stopPropagation()}>🎫 {flight.voucherTitle ?? voucher.title}</a>
             ) : (
               <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>
             ))}

@@ -827,13 +827,26 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .trip-ticket-grid .boarding-pass { margin-bottom: 0; }
 
-/* 준비 탭 예약 티켓: 티켓이 1개여도 가로로 안 늘어나게 auto-fill + 상한폭 */
+/* 준비 탭 예약 티켓: 한 줄에 3개 고정 (좁아지면 2개→1개) */
 .prep-ticket-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px; align-items: start; margin-top: 8px;
 }
+@media (max-width: 980px) { .prep-ticket-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 620px) { .prep-ticket-grid { grid-template-columns: 1fr; } }
 .prep-ticket-grid .bpass { margin-bottom: 0; }
+
+/* 준비 탭 섹션 헤더 (버킷리스트 헤더처럼: 영문 라벨 + 제목 + 카운트 + ＋추가) */
+.prep-sec { margin-top: 22px; }
+.prep-sec-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.prep-sec-head > strong { font-size: 15px; }
+.prep-sec-empty { text-align: center; padding: 16px 4px; }
+
+/* 티켓(영수증) 카드 자체를 눌러서 수정 */
+.ticket-clickable { cursor: pointer; border-radius: 14px; transition: transform 0.12s; }
+.ticket-clickable:hover { transform: translateY(-2px); }
+.ticket-clickable:hover .bpass { box-shadow: var(--shadow-lg); }
 
 /* 카테고리 도넛 (지출) */
 .donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }

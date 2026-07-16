@@ -64,14 +64,43 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const stays = events.filter((e) => e.place.category === '숙소').sort(byDay)
   const standalonePrebooked = expenses.filter((e) => e.eventId === null && e.isPrebooked)
 
-  // 티켓은 "그냥 티켓만" 보여준다. 티켓 위엔 얇은 툴바(미배정이면 배치 컨트롤 + ✏️ 수정)만.
-  // (결제 금액은 [💸 지출]·정산에서 관리하므로 티켓 위에 다시 얹지 않는다.)
-  const ticketHeader = (kind: TicketKind, ev: TimelineEvent) => (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-      {ev.dayNumber == null && <DayAssignRow trip={trip} ev={ev} onAssigned={refresh} />}
-      <button className="btn small ghost" style={{ marginLeft: 'auto' }} onClick={() => setEditTicket({ kind, event: ev })}>
-        ✏️ 수정
-      </button>
+  // 티켓 카드(영수증 모양) 자체를 누르면 수정. 미배정이면 위에 배치 컨트롤만.
+  const ticketCell = (kind: TicketKind, ev: TimelineEvent, pass: React.ReactNode, emptyLabel: string) => (
+    <div key={ev.id}>
+      {ev.dayNumber == null && (
+        <div style={{ marginBottom: 4 }}><DayAssignRow trip={trip} ev={ev} onAssigned={refresh} /></div>
+      )}
+      {pass ? (
+        <div className="ticket-clickable" role="button" title="눌러서 수정" onClick={() => setEditTicket({ kind, event: ev })}>
+          {pass}
+        </div>
+      ) : (
+        <button className="btn small primary" style={{ width: '100%' }} onClick={() => setEditTicket({ kind, event: ev })}>
+          ＋ {emptyLabel}
+        </button>
+      )}
+    </div>
+  )
+
+  const ticketSection = (
+    kind: TicketKind, eng: string, label: string, items: TimelineEvent[],
+    renderPass: (ev: TimelineEvent) => React.ReactNode, emptyLabel: string,
+  ) => (
+    <div className="prep-sec">
+      <div className="base-list-eng">{eng}</div>
+      <div className="prep-sec-head">
+        <strong>{label}</strong>
+        {items.length > 0 && <span className="chip">{items.length}</span>}
+        <span className="grow" />
+        <button className="btn small ghost" onClick={() => setTicketKind(kind)}>＋ 추가</button>
+      </div>
+      {items.length === 0 ? (
+        <div className="muted prep-sec-empty">아직 없어요. 오른쪽 [＋ 추가]로 남겨보세요.</div>
+      ) : (
+        <div className="prep-ticket-grid">
+          {items.map((ev) => ticketCell(kind, ev, renderPass(ev), emptyLabel))}
+        </div>
+      )}
     </div>
   )
 
@@ -89,18 +118,8 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
         <div>
           <p className="muted" style={{ marginTop: 0 }}>
             발렛·항공·숙소처럼 여행 초반에 미리 예약하는 것들을 한 눈에 모아뒀어요. 일차가 아직 정해지지 않았어도 예약 정보부터
-            바로 티켓으로 남겨두고, 나중에 일정에 배치할 수 있어요.
+            바로 티켓으로 남겨두고, 나중에 일정에 배치할 수 있어요. 티켓을 누르면 수정할 수 있어요.
           </p>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-            <button className="btn primary small" onClick={() => setTicketKind('발렛')}>＋ 발렛 티켓</button>
-            <button className="btn primary small" onClick={() => setTicketKind('항공')}>＋ 항공 티켓</button>
-            <button className="btn primary small" onClick={() => setTicketKind('숙소')}>＋ 숙소 티켓</button>
-            {participants.length > 0 ? (
-              <button className="btn small" onClick={() => setShowAddPrebooked(true)}>＋ 사전예약 지출 추가</button>
-            ) : (
-              <span className="muted">[💸 지출] 탭에서 참여자를 먼저 추가하면 사전예약 지출도 추가할 수 있어요.</span>
-            )}
-          </div>
           {ticketKind && (
             <TicketQuickAdd
               tripId={trip.id}
@@ -134,10 +153,40 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               onAdded={() => { setShowAddPrebooked(false); refresh() }}
             />
           )}
-          {standalonePrebooked.length > 0 && (
-            <div className="section-gap">
-              <strong>📌 일정과 상관없는 사전예약 지출</strong>
-              {standalonePrebooked.map((e) => (
+          {ticketSection('항공', 'FLIGHT', '✈️ 항공', flights,
+            (ev) => ev.flight
+              ? <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
+              : null,
+            '항공 상세정보 입력')}
+
+          {ticketSection('숙소', 'STAY', '🏨 숙소', stays,
+            (ev) => ev.lodging
+              ? <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} vouchers={vouchers} />
+              : null,
+            '숙소 상세정보 입력')}
+
+          {ticketSection('발렛', 'VALET', '🚗 발렛', valets,
+            (ev) => ev.valet
+              ? <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
+              : null,
+            '발렛 상세정보 입력')}
+
+          <div className="prep-sec">
+            <div className="base-list-eng">PREBOOKED</div>
+            <div className="prep-sec-head">
+              <strong>📌 사전예약 지출</strong>
+              {standalonePrebooked.length > 0 && <span className="chip">{standalonePrebooked.length}</span>}
+              <span className="grow" />
+              {participants.length > 0 && (
+                <button className="btn small ghost" onClick={() => setShowAddPrebooked(true)}>＋ 추가</button>
+              )}
+            </div>
+            {participants.length === 0 ? (
+              <div className="muted prep-sec-empty">[💸 지출] 탭에서 참여자를 먼저 추가하면 사전예약 지출도 추가할 수 있어요.</div>
+            ) : standalonePrebooked.length === 0 ? (
+              <div className="muted prep-sec-empty">항공권·숙소 결제처럼 일정과 무관하게 미리 나간 지출을 여기 남겨요.</div>
+            ) : (
+              standalonePrebooked.map((e) => (
                 <div key={e.id} className="row">
                   <div className="grow">
                     <div style={{ fontWeight: 800 }}>{e.description}</div>
@@ -150,84 +199,9 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
                   <span className="chip green" style={{ fontWeight: 800 }}>{fmtMoney(e.amount, e.currency)}</span>
                   <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
                 </div>
-              ))}
-            </div>
-          )}
-          {valets.length === 0 && flights.length === 0 && stays.length === 0 ? (
-            <div className="empty">위 버튼으로 발렛·항공·숙소 티켓을 추가하면 여기 모아서 보여줘요.</div>
-          ) : (
-            <>
-              {flights.length > 0 && (
-                <div className="section-gap">
-                  <strong>✈️ 항공</strong>
-                  <div className="prep-ticket-grid">
-                    {flights.map((ev) => (
-                      <div key={ev.id}>
-                        {ticketHeader('항공', ev)}
-                        {ev.flight ? (
-                          <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
-                        ) : (
-                          <button
-                            className="btn small primary"
-                            style={{ width: '100%' }}
-                            onClick={() => setEditTicket({ kind: '항공', event: ev })}
-                          >
-                            ＋ 항공 상세정보 입력
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {stays.length > 0 && (
-                <div className="section-gap">
-                  <strong>🏨 숙소</strong>
-                  <div className="prep-ticket-grid">
-                    {stays.map((ev) => (
-                      <div key={ev.id}>
-                        {ticketHeader('숙소', ev)}
-                        {ev.lodging ? (
-                          <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} vouchers={vouchers} />
-                        ) : (
-                          <button
-                            className="btn small primary"
-                            style={{ width: '100%' }}
-                            onClick={() => setEditTicket({ kind: '숙소', event: ev })}
-                          >
-                            ＋ 숙소 상세정보 입력
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {valets.length > 0 && (
-                <div className="section-gap">
-                  <strong>🚗 발렛</strong>
-                  <div className="prep-ticket-grid">
-                    {valets.map((ev) => (
-                      <div key={ev.id}>
-                        {ticketHeader('발렛', ev)}
-                        {ev.valet ? (
-                          <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
-                        ) : (
-                          <button
-                            className="btn small primary"
-                            style={{ width: '100%' }}
-                            onClick={() => setEditTicket({ kind: '발렛', event: ev })}
-                          >
-                            ＋ 발렛 상세정보 입력
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
+              ))
+            )}
+          </div>
         </div>
       )}
 

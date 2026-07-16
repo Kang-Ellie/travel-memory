@@ -39,7 +39,7 @@ export default function ValetPassCard({ valet, placeName, vouchers = [] }: { val
         {valet.voucherId && (
           <div className="bpass-badges">
             {voucher ? (
-              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {valet.voucherTitle ?? voucher.title}</a>
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기" onClick={(e) => e.stopPropagation()}>🎫 {valet.voucherTitle ?? voucher.title}</a>
             ) : (
               <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>
             )}
