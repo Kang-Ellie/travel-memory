@@ -160,7 +160,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               {flights.length > 0 && (
                 <div className="section-gap">
                   <strong>✈️ 항공</strong>
-                  <div className="trip-ticket-grid">
+                  <div className="prep-ticket-grid">
                     {flights.map((ev) => (
                       <div key={ev.id}>
                         {ticketHeader('항공', ev)}
@@ -183,7 +183,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               {stays.length > 0 && (
                 <div className="section-gap">
                   <strong>🏨 숙소</strong>
-                  <div className="trip-ticket-grid">
+                  <div className="prep-ticket-grid">
                     {stays.map((ev) => (
                       <div key={ev.id}>
                         {ticketHeader('숙소', ev)}
@@ -206,7 +206,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               {valets.length > 0 && (
                 <div className="section-gap">
                   <strong>🚗 발렛</strong>
-                  <div className="trip-ticket-grid">
+                  <div className="prep-ticket-grid">
                     {valets.map((ev) => (
                       <div key={ev.id}>
                         {ticketHeader('발렛', ev)}
@@ -231,10 +231,10 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
         </div>
       )}
 
-      {/* 체크리스트 — 티켓·바우처 아래로 내림 */}
-      <div style={{ borderTop: '1.5px solid var(--line)', marginTop: 24, paddingTop: 18 }}>
-        <strong style={{ fontSize: 15 }}>✅ 체크리스트</strong>
-        <div className="prep-split" style={{ marginTop: 10 }}>
+      {/* 체크리스트 — 티켓·바우처 아래로 내림 (구분선/제목 대신 단청 악센트 띠) */}
+      <div style={{ marginTop: 26 }}>
+        <div className="dancheong-divider" />
+        <div className="prep-split" style={{ marginTop: 16 }}>
           <ChecklistPanel
             tripId={trip.id}
             scope="predeparture"

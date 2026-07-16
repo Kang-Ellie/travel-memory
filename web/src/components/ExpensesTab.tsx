@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
 import { api } from '../api'
-import { fmtMoney } from '../settlement'
+import { fmtMoney, computeCategoryTotals } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
 import AddExpenseModal from './AddExpenseModal'
 import BudgetBar from './BudgetBar'
+import CategoryDonut from './CategoryDonut'
 
 // "7/15 (화)" — 장부의 날짜 헤더용
 function dateLabel(date: string): string {
@@ -157,6 +158,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
         ) : (
           [...byDate.entries()].map(([date, list]) => {
             const dayNum = dayNumberOf(date)
+            const dayCats = computeCategoryTotals(list, rates)
             return (
               <div key={date} className="ledger-day">
                 <div className="ledger-day-head">
@@ -164,6 +166,11 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                   <span className="muted">{list.length}건</span>
                   <span className="ledger-day-total">{dayTotalLabel(list)}</span>
                 </div>
+                {dayCats.length >= 2 && (
+                  <div className="ledger-day-chart">
+                    <CategoryDonut categories={dayCats} size={64} compact centerLabel={null} />
+                  </div>
+                )}
                 {list.map((e) => (
                   <div key={e.id} className="ledger-row">
                     <span className="legend-dot" style={{ background: CATEGORY_COLOR[e.category as keyof typeof CATEGORY_COLOR] ?? '#999' }} />

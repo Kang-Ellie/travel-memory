@@ -827,6 +827,41 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .trip-ticket-grid .boarding-pass { margin-bottom: 0; }
 
+/* 준비 탭 예약 티켓: 티켓이 1개여도 가로로 안 늘어나게 auto-fill + 상한폭 */
+.prep-ticket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 360px));
+  gap: 14px; align-items: start; margin-top: 8px;
+}
+.prep-ticket-grid .bpass { margin-bottom: 0; }
+
+/* 카테고리 도넛 (지출) */
+.donut-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.donut-wrap.compact { gap: 12px; }
+.donut { position: relative; border-radius: 50%; flex-shrink: 0; box-shadow: var(--shadow-xs); }
+.donut-hole {
+  position: absolute; background: var(--card); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  font-weight: 800; font-size: 13px; line-height: 1.25; color: var(--ink);
+}
+.donut-hole-eyebrow {
+  font-family: var(--font-computer);
+  font-size: 8.5px; font-weight: 700; letter-spacing: 0.18em;
+  color: rgba(45, 42, 62, 0.5); text-transform: uppercase; margin-bottom: 1px;
+}
+.donut-legend { display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; font-weight: 700; }
+.donut-legend.compact { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+.donut-legend .legend-item { display: flex; align-items: center; gap: 6px; }
+.donut-legend-pct { margin-left: auto; color: var(--ink); font-weight: 800; }
+.donut-legend.compact .donut-legend-pct { margin-left: 3px; }
+.ledger-day-chart { padding: 8px 0 4px; }
+
+/* 단청 3색 악센트 띠 — 섹션 구분용 (선/제목 대신) */
+.dancheong-divider {
+  width: 72px; height: 4px; border-radius: 999px;
+  background: var(--dancheong-bar);
+}
+
 /* 일정(동선) 안의 항공·숙소·발렛 티켓은 바깥 카드 박스 없이 티켓만 보이게 */
 .event-card.ticket-bare {
   background: none;

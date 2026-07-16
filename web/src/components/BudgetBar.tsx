@@ -1,6 +1,6 @@
 import type { Trip, Expense, CurrencyRate } from '../../shared/types'
 import { computeBudgetSummary, computeCategoryTotals, fmtMoney } from '../settlement'
-import { CATEGORY_COLOR } from '../categories'
+import CategoryDonut from './CategoryDonut'
 
 const TRACK = '#e7ecf3' // 블루 램프의 옅은 단계 (미터 트랙)
 const WARN = '#fab219'
@@ -49,24 +49,18 @@ export default function BudgetBar({ trip, expenses, rates }: { trip: Trip; expen
       )}
 
       {categories.length > 0 && (
-        <>
-          <div className="stacked-bar">
-            {categories.map((c) => (
-              <div
-                key={c.category}
-                style={{ width: `${(c.amount / total) * 100}%`, background: CATEGORY_COLOR[c.category as keyof typeof CATEGORY_COLOR] }}
-              />
-            ))}
-          </div>
-          <div className="category-legend">
-            {categories.map((c) => (
-              <span key={c.category} className="legend-item">
-                <span className="legend-dot" style={{ background: CATEGORY_COLOR[c.category as keyof typeof CATEGORY_COLOR] }} />
-                {c.category} {fmtMoney(c.amount, 'KRW')}
-              </span>
-            ))}
-          </div>
-        </>
+        <div style={{ marginTop: 14 }}>
+          <CategoryDonut
+            categories={categories}
+            size={132}
+            centerLabel={
+              <div>
+                <div className="donut-hole-eyebrow">지출</div>
+                <div>{fmtMoney(total, 'KRW')}</div>
+              </div>
+            }
+          />
+        </div>
       )}
       <div className="muted" style={{ marginTop: 4 }}>
         💡 예산·진행률은 원화(KRW) 환산 지출 기준이에요.
