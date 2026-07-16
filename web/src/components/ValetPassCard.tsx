@@ -6,42 +6,49 @@ export default function ValetPassCard({ valet, placeName }: { valet: ValetDetail
   const hasInfo = valet.bookingRef || valet.bookedVia
 
   return (
-    <div className="boarding-pass">
-      <div className="boarding-pass-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontWeight: 800 }}>🚗 {valet.company || '발렛'}</span>
+    <div className="bpass">
+      <div className="bpass-main">
+        <div className="bpass-head">
+          <div className="brand"><span>🚗 {valet.company || '발렛'}</span></div>
+          {valet.location && (
+            <div className="gate">
+              <div className="gate-label">위치</div>
+              <div className="gate-val">{valet.location}</div>
+            </div>
+          )}
         </div>
-        {valet.location && (
-          <div style={{ textAlign: 'right' }}>
-            <div className="muted" style={{ fontSize: 10, letterSpacing: '0.06em' }}>위치</div>
-            <div style={{ fontWeight: 800 }}>{valet.location}</div>
+
+        <div className="bpass-route">
+          <div className="bpass-endpoint from">
+            <div className="kicker">Valet</div>
+            <div className="code">{placeName}</div>
+            <div className="time">{at.date} {at.time}</div>
+          </div>
+          <div className="bpass-path"><span className="line" /><span className="plane">🅿</span></div>
+        </div>
+
+        {hasInfo && (
+          <div className="bpass-info">
+            {valet.bookingRef && <div><div className="k">예약번호</div><div className="v">{valet.bookingRef}</div></div>}
+            {valet.bookedVia && <div><div className="k">예약처</div><div className="v">{valet.bookedVia}</div></div>}
+          </div>
+        )}
+
+        {valet.voucherId && (
+          <div className="bpass-badges">
+            <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>
           </div>
         )}
       </div>
-      <div className="boarding-pass-route">
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{placeName}</div>
-          <div className="muted">{at.date} {at.time}</div>
-        </div>
+
+      <div className="bpass-stub">
+        <div className="stub-label">Valet</div>
+        <div className="bpass-barcode" />
+        <div className="stub-code">{valet.bookingRef || 'CAR'}</div>
       </div>
-      {hasInfo && (
-        <>
-          <div className="boarding-pass-divider" />
-          <div className="boarding-pass-info">
-            {valet.bookingRef && (
-              <div><div className="muted" style={{ fontSize: 10 }}>예약번호</div><div style={{ fontWeight: 700 }}>{valet.bookingRef}</div></div>
-            )}
-            {valet.bookedVia && (
-              <div><div className="muted" style={{ fontSize: 10 }}>예약처</div><div style={{ fontWeight: 700 }}>{valet.bookedVia}</div></div>
-            )}
-          </div>
-        </>
-      )}
-      {(valet.confirmed || valet.voucherId) && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 14px' }}>
-          {valet.confirmed && <span className="chip green">✅ 예약 확정</span>}
-          {valet.voucherId && <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>}
-        </div>
+
+      {valet.confirmed && (
+        <div className="stamp green small bpass-confirm"><span className="stamp-text">OK</span></div>
       )}
     </div>
   )

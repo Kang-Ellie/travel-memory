@@ -45,6 +45,16 @@
   --board-amber: #ffb547;
   --board-glow: rgba(255, 181, 71, 0.4);
   --board-dim: rgba(255, 255, 255, 0.38);
+
+  /* 다크 카드 (버킷·먹킷·위시) — 라운지 조명 아래 놓인 카드 느낌 */
+  --card-dark: #1f1f22;
+  --card-dark-2: #26262a;
+  --card-dark-line: rgba(255, 255, 255, 0.12);
+  --card-dark-text: #f3f1ec;
+  --card-dark-dim: rgba(243, 241, 236, 0.55);
+  --kind-bucket: #f5c451;
+  --kind-food: #ff7a4d;
+  --kind-wish: #6fa8ff;
 }
 
 * { box-sizing: border-box; }
@@ -1012,6 +1022,167 @@ textarea { resize: vertical; min-height: 70px; }
   text-align: right;
 }
 
+/* ══ 다크 트래블 카드 (버킷·먹킷·위시 공용) ══
+   레퍼런스: 라운지 조명 아래 놓인 다크 카드 — 사진 + 컬러 아이콘 타이틀 +
+   ✦ 불릿 + 점선 구분 + "❝ 추천 전문점 ❞" 섹션 + 밑줄 링크. */
+.tcard {
+  background: var(--card-dark);
+  border-radius: 16px;
+  color: var(--card-dark-text);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-md);
+  animation: fade-up 0.32s ease both;
+  transition: transform 0.14s, box-shadow 0.14s;
+  --kind-color: var(--kind-bucket);
+}
+.tcard:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); }
+.tcard.food { --kind-color: var(--kind-food); }
+.tcard.wish { --kind-color: var(--kind-wish); }
+.tcard.done { opacity: 0.55; }
+.tcard-photo-wrap { position: relative; aspect-ratio: 4 / 3; background: var(--card-dark-2); }
+.tcard-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.tcard.done .tcard-photo { filter: grayscale(0.7); }
+.tcard-photo-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; opacity: 0.5;
+}
+.tcard-body { padding: 15px 15px 16px; display: flex; flex-direction: column; gap: 10px; }
+.tcard-head { display: flex; align-items: flex-start; gap: 9px; }
+.tcard-icon { color: var(--kind-color); font-size: 15px; line-height: 1.45; flex-shrink: 0; }
+.tcard-title {
+  font-weight: 800; font-size: 15.5px; line-height: 1.45;
+  word-break: keep-all; flex: 1; min-width: 0;
+}
+.tcard.done .tcard-title { text-decoration: line-through; }
+.tcard-menu .event-menu-trigger { color: var(--card-dark-dim); }
+.tcard-menu .event-menu-trigger:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.tcard-bullets { display: flex; flex-direction: column; gap: 5px; }
+.tcard-bullet {
+  display: flex; gap: 7px;
+  font-size: 12.5px; line-height: 1.55;
+  color: rgba(243, 241, 236, 0.86);
+}
+.tcard-bullet::before { content: '✦'; color: var(--kind-color); flex-shrink: 0; opacity: 0.9; }
+.tcard-divider {
+  border-top: 1px dashed var(--card-dark-line);
+  margin: 3px 0 1px;
+}
+.tcard-section {
+  text-align: center;
+  font-size: 10.5px; font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--card-dark-dim);
+}
+.tcard-links { display: flex; flex-direction: column; gap: 6px; }
+.tcard-link {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12.5px; font-weight: 700;
+  color: var(--card-dark-text);
+}
+.tcard-link .u { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--card-dark-dim); }
+.tcard-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tcard-tag {
+  border: 1px solid var(--card-dark-line);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 10.5px; font-weight: 700;
+  color: var(--card-dark-dim);
+}
+.tcard-tag.kind { color: var(--kind-color); border-color: color-mix(in srgb, var(--kind-color) 45%, transparent); }
+.tcard-check {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--card-dark-line);
+  background: transparent;
+  color: var(--card-dark-dim);
+  font-size: 14px; font-weight: 800; line-height: 1;
+  cursor: pointer;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+.tcard-check:hover { border-color: var(--kind-color); color: var(--kind-color); }
+.tcard.done .tcard-check {
+  background: var(--stamp-green); border-color: var(--stamp-green); color: #fff;
+}
+.tcard-foot {
+  border-top: 1px solid var(--card-dark-line);
+  padding: 10px 15px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+/* 다크 카드 안의 폼 요소는 어두운 배경에 맞춰 반전 */
+.tcard-foot .cselect-trigger {
+  background: var(--card-dark-2); border-color: var(--card-dark-line); color: var(--card-dark-text);
+}
+.tcard-foot .btn { background: var(--card-dark-2); border-color: var(--card-dark-line); color: var(--card-dark-text); }
+.tcard-foot .btn.primary { background: var(--pink); border-color: var(--pink); color: #fff; }
+.tcard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+/* ── 러기지 태그 (체크리스트 분류 헤더) — 아이렛 구멍 + 잘린 모서리 ── */
+.luggage-tag {
+  position: relative;
+  display: inline-flex; align-items: center; gap: 7px;
+  background: var(--ink);
+  color: #fff;
+  padding: 6px 14px 6px 22px;
+  border-radius: 5px 12px 12px 5px;
+  font-size: 11.5px; font-weight: 800;
+  letter-spacing: 0.04em;
+}
+.luggage-tag::before {
+  content: '';
+  position: absolute; left: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.3);
+}
+.luggage-tag .tag-count {
+  font-family: var(--font-computer);
+  color: var(--board-amber);
+  font-weight: 700;
+}
+.luggage-tag.done { background: var(--stamp-green); }
+.luggage-tag.done .tag-count { color: #fff; }
+
+/* ── 애니메이션 ─────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+/* 전광판 글자가 탁 뒤집히며 나타나는 스플릿플랩 느낌 */
+@keyframes flip-in {
+  from { opacity: 0; transform: perspective(400px) rotateX(-72deg); }
+  to { opacity: 1; transform: perspective(400px) rotateX(0); }
+}
+/* 도장이 '쿵' 찍히는 순간 */
+@keyframes stamp-punch {
+  0% { opacity: 0; transform: scale(2.4) rotate(-24deg); }
+  65% { opacity: 1; transform: scale(0.92) rotate(-11deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-12deg); }
+}
+.fids-row { animation: flip-in 0.4s ease both; transform-origin: top center; }
+.fids-row:nth-child(2) { animation-delay: 0.04s; }
+.fids-row:nth-child(3) { animation-delay: 0.08s; }
+.fids-row:nth-child(4) { animation-delay: 0.12s; }
+.fids-row:nth-child(5) { animation-delay: 0.16s; }
+.fids-row:nth-child(n+6) { animation-delay: 0.2s; }
+.stamp { animation: stamp-punch 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both; }
+.trip-ticket, .bucket-photo-card { animation: fade-up 0.3s ease both; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
 /* ── 버킷리스트: 풀블리드 사진 카드 (하단 그라데이션 오버레이 + 흰 타이틀) ── */
 .bucket-photo-grid {
   display: grid;
@@ -1886,5 +2057,230 @@ input[type='checkbox'] {
 @media (hover: none) {
   .checklist-row .btn, .checklist-row .x-btn,
   .ledger-row .x-btn,
+  .check-item .x-btn,
   .photo-del { opacity: 1; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   예약 티켓 = 진짜 보딩패스 (항공·숙소·발렛 공용, .bpass)
+   게이트 전광판 헤더 + FROM✈TO 루트 + 절취선 스텁 + 세로 바코드 + 확정 도장
+   ══════════════════════════════════════════════════════════════════ */
+.bpass {
+  position: relative;
+  display: flex;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  margin-bottom: 10px;
+  animation: bpass-in 0.42s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  transition: transform 0.14s, box-shadow 0.14s;
+}
+.bpass:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.bpass-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* 상단 게이트 전광판 헤더 (다크 + 발광 앰버) */
+.bpass-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 16px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.02) 3px 4px),
+    var(--board-bg);
+  color: var(--board-amber);
+}
+.bpass-head .brand {
+  display: flex; align-items: center; gap: 8px;
+  font-weight: 800; font-size: 14px; letter-spacing: 0.01em;
+  color: #fff; min-width: 0;
+}
+.bpass-head .brand > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bpass-head img { height: 20px; object-fit: contain; background: #fff; border-radius: 4px; padding: 1px 3px; }
+.bpass-head .sub {
+  font-family: var(--font-computer); font-size: 11px; font-weight: 700;
+  letter-spacing: 0.08em; color: var(--board-dim); flex-shrink: 0;
+}
+.bpass-head .gate { text-align: right; flex-shrink: 0; }
+.bpass-head .gate-label {
+  font-family: var(--font-computer);
+  font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--board-dim);
+}
+.bpass-head .gate-val {
+  font-family: var(--font-computer);
+  font-weight: 700; font-size: 15px; color: var(--board-amber);
+  text-shadow: 0 0 10px var(--board-glow);
+}
+
+/* 루트 (출발 ✈ 도착) */
+.bpass-route {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 16px 18px 12px;
+}
+.bpass-endpoint { min-width: 0; }
+.bpass-endpoint.to { text-align: right; }
+.bpass-endpoint .code {
+  font-weight: 800; font-size: 21px; line-height: 1.15;
+  letter-spacing: -0.01em; word-break: keep-all;
+}
+.bpass-endpoint .time {
+  font-family: var(--font-computer);
+  font-size: 12px; font-weight: 700; color: rgba(45, 42, 62, 0.6); margin-top: 3px;
+}
+.bpass-endpoint .kicker {
+  font-family: var(--font-computer);
+  font-size: 8.5px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(45, 42, 62, 0.45); margin-bottom: 2px;
+}
+.bpass-path {
+  flex: 1; display: flex; align-items: center; gap: 5px;
+  color: var(--pink-deep); min-width: 34px;
+}
+.bpass-path .line { flex: 1; border-top: 2px dotted var(--line-strong); }
+.bpass-path .plane { font-size: 15px; line-height: 1; }
+
+/* 상세 정보 그리드 */
+.bpass-info {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 9px 16px;
+  padding: 11px 18px 13px; border-top: 1px dashed var(--line);
+}
+.bpass-info .k {
+  font-family: var(--font-computer);
+  font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(45, 42, 62, 0.5);
+}
+.bpass-info .v { font-weight: 800; font-size: 13px; margin-top: 2px; word-break: break-word; }
+
+/* 뱃지 줄 */
+.bpass-badges { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 18px 14px; }
+
+/* 오른쪽 스텁 = 절취선 + 세로 바코드 */
+.bpass-stub {
+  position: relative; flex-shrink: 0;
+  width: 80px;
+  border-left: 2px dashed var(--line-strong);
+  background: var(--paper2);
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+  padding: 14px 8px 12px;
+}
+.bpass-stub::before, .bpass-stub::after {
+  content: ''; position: absolute; left: -10px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--paper); border: 1px solid var(--line);
+}
+.bpass-stub::before { top: -10px; }
+.bpass-stub::after { bottom: -10px; }
+.bpass-stub .stub-label {
+  font-family: var(--font-computer);
+  font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(45, 42, 62, 0.5);
+}
+.bpass-barcode {
+  flex: 1; width: 36px; margin: 10px 0; align-self: center;
+  background: repeating-linear-gradient(0deg,
+    var(--ink) 0 2px, transparent 2px 5px,
+    var(--ink) 5px 6px, transparent 6px 10px,
+    var(--ink) 10px 13px, transparent 13px 15px,
+    var(--ink) 15px 16px, transparent 16px 20px);
+  opacity: 0.8;
+}
+.bpass-stub .stub-code {
+  font-family: var(--font-computer);
+  font-size: 10px; font-weight: 700; color: var(--ink);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: center;
+}
+/* 예약 확정 = 초록 도장 쿵 */
+.bpass-confirm {
+  position: absolute; right: 92px; bottom: 12px; z-index: 3;
+  pointer-events: none;
+}
+@media (max-width: 560px) {
+  .bpass-endpoint .code { font-size: 18px; }
+  .bpass-stub { width: 64px; }
+  .bpass-confirm { right: 74px; }
+}
+
+@keyframes bpass-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   체크리스트 = 탑승 전 확인 (도장 체크, .checklist-doc)
+   게이트 전광판 헤더 + 탑승 진행바 + 러기지태그 그룹 + 도장 쿵 체크
+   ══════════════════════════════════════════════════════════════════ */
+.checklist-doc {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.checklist-doc-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 11px 15px;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.02) 3px 4px),
+    var(--board-bg);
+  color: #fff;
+}
+.checklist-doc-title { display: flex; align-items: center; gap: 7px; font-weight: 800; font-size: 14.5px; min-width: 0; }
+.checklist-doc-title > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.checklist-gate { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.checklist-gate-track {
+  width: 82px; height: 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.14); overflow: hidden;
+}
+.checklist-gate-fill {
+  height: 100%; border-radius: 999px;
+  background: var(--board-amber); box-shadow: 0 0 8px var(--board-glow);
+  transition: width 0.45s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+.checklist-gate-count {
+  font-family: var(--font-computer);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--board-amber); text-shadow: 0 0 8px var(--board-glow);
+  min-width: 34px; text-align: right;
+}
+.checklist-gate-count.done { color: #7fce93; text-shadow: none; }
+.checklist-doc-head .btn { padding: 4px 9px; box-shadow: none; }
+.checklist-doc-head .event-menu-trigger { color: rgba(255, 255, 255, 0.7); }
+.checklist-doc-head .event-menu-trigger:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+.checklist-doc-head .muted { color: rgba(255, 255, 255, 0.55); }
+
+.checklist-doc-body { padding: 12px 15px 8px; }
+.checklist-doc-body .checklist-cols {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0 18px;
+}
+.checklist-group { margin-bottom: 12px; }
+.checklist-group-head { margin-bottom: 4px; }
+
+.check-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 8px 4px;
+  border-bottom: 1px dashed var(--line);
+  cursor: pointer;
+}
+.check-item:last-child { border-bottom: none; }
+.check-stamp {
+  position: relative; flex-shrink: 0;
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px dashed var(--line-strong);
+  display: flex; align-items: center; justify-content: center;
+  color: transparent;
+  transition: border-color 0.14s, color 0.14s;
+}
+.check-item:hover .check-stamp { border-color: var(--stamp-green); }
+.check-stamp .mark {
+  font-family: var(--font-stamp);
+  font-size: 9px; font-weight: 800; letter-spacing: 0.02em;
+}
+.check-item.done .check-stamp {
+  border-style: solid; border-color: var(--stamp-green); color: var(--stamp-green);
+  transform: rotate(-9deg);
+  animation: stamp-punch 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+.check-item-text { flex: 1; min-width: 0; font-weight: 700; word-break: keep-all; }
+.check-item.done .check-item-text { text-decoration: line-through; color: rgba(45, 42, 62, 0.4); }
+.check-item .x-btn { margin-left: auto; opacity: 0; }
+.check-item:hover .x-btn { opacity: 1; }
+.checklist-empty { padding: 14px 4px; color: rgba(45, 42, 62, 0.5); font-weight: 700; }

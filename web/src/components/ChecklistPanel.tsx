@@ -8,9 +8,6 @@ import DropdownMenu from './DropdownMenu'
 
 const PACKING_CATEGORIES = Object.keys(PACKING_PRESETS)
 const SEEDABLE_SCOPES = new Set<ChecklistScope>(['predeparture', 'packing'])
-const CATEGORY_COLOR: Record<string, string> = {
-  필수: 'var(--blue-soft)', 선택: 'var(--purple-soft)', 당일준비물: 'var(--yellow-soft)',
-}
 
 export default function ChecklistPanel({
   tripId, scope, dayNumber, title, addPlaceholder,
@@ -58,60 +55,75 @@ export default function ChecklistPanel({
   }
 
   const renderRow = (item: ChecklistItem) => (
-    <label key={item.id} className="checklist-row">
-      <input type="checkbox" checked={item.done} onChange={() => toggle(item)} />
-      <span className={item.done ? 'checklist-done' : ''}>{item.text}</span>
-      <button className="x-btn" onClick={() => remove(item.id)}>×</button>
-    </label>
+    <div
+      key={item.id}
+      className={`check-item ${item.done ? 'done' : ''}`}
+      onClick={() => toggle(item)}
+    >
+      <span className="check-stamp"><span className="mark">OK</span></span>
+      <span className="check-item-text">{item.text}</span>
+      <button className="x-btn" onClick={(e) => { e.stopPropagation(); remove(item.id) }}>×</button>
+    </div>
   )
 
+  const renderGroup = (cat: string, inCat: ChecklistItem[]) => {
+    const catDone = inCat.filter((i) => i.done).length
+    return (
+      <div key={cat} className="checklist-group">
+        <div className="checklist-group-head">
+          <span className={`luggage-tag ${catDone === inCat.length ? 'done' : ''}`}>
+            {cat}<span className="tag-count">{catDone}/{inCat.length}</span>
+          </span>
+        </div>
+        {inCat.map(renderRow)}
+      </div>
+    )
+  }
+
   const doneCount = items.filter((i) => i.done).length
+  const allDone = items.length > 0 && doneCount === items.length
+  const pct = items.length ? Math.round((doneCount / items.length) * 100) : 0
+  const extraCats = [...new Set(items.map((i) => i.category))]
+    .filter((c): c is string => !!c && !PACKING_CATEGORIES.includes(c))
+  const uncategorized = items.filter((i) => !i.category)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <strong>{title}</strong>
-        {items.length > 0 && (
-          <span className={`chip ${doneCount === items.length ? 'green' : 'yellow'}`}>
-            {doneCount === items.length && <img src="/할일목록 v.png" alt="" className="done-check-icon" />}
-            {doneCount}/{items.length}
-          </span>
-        )}
-        <span className="grow" />
-        {seeding && <span className="muted">불러오는 중…</span>}
-        <button className="btn small ghost" onClick={() => setShowAdd(true)}>＋ 추가</button>
-        {SEEDABLE_SCOPES.has(scope) && (
-          <DropdownMenu actions={[{ label: '✨ 프리셋 불러오기', onClick: loadPresets }]} />
+    <div className="checklist-doc">
+      <div className="checklist-doc-head">
+        <div className="checklist-doc-title"><span>{title}</span></div>
+        <div className="checklist-gate">
+          {items.length > 0 && (
+            <>
+              <div className="checklist-gate-track">
+                <div className="checklist-gate-fill" style={{ width: `${pct}%` }} />
+              </div>
+              <span className={`checklist-gate-count ${allDone ? 'done' : ''}`}>{doneCount}/{items.length}</span>
+            </>
+          )}
+          {seeding && <span className="muted">불러오는 중…</span>}
+          <button className="btn small ghost" onClick={() => setShowAdd(true)}>＋</button>
+          {SEEDABLE_SCOPES.has(scope) && (
+            <DropdownMenu actions={[{ label: '✨ 프리셋 불러오기', onClick: loadPresets }]} />
+          )}
+        </div>
+      </div>
+
+      <div className="checklist-doc-body">
+        {items.length === 0 ? (
+          <div className="checklist-empty">아직 항목이 없어요. ＋로 추가하거나 프리셋을 불러오세요.</div>
+        ) : usesCategory ? (
+          <div className="checklist-cols">
+            {[...PACKING_CATEGORIES, ...extraCats].map((cat) => {
+              const inCat = items.filter((i) => i.category === cat)
+              return inCat.length ? renderGroup(cat, inCat) : null
+            })}
+            {uncategorized.length > 0 && renderGroup('기타', uncategorized)}
+          </div>
+        ) : (
+          <div>{items.map(renderRow)}</div>
         )}
       </div>
-      {items.length === 0 ? (
-        <div className="muted" style={{ margin: '6px 0' }}>아직 항목이 없어요.</div>
-      ) : usesCategory ? (
-        <div style={{
-          margin: '6px 0', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0 16px',
-        }}>
-          {[...PACKING_CATEGORIES, ...[...new Set(items.map((i) => i.category))].filter((c): c is string => !!c && !PACKING_CATEGORIES.includes(c))]
-            .map((cat) => {
-              const inCat = items.filter((i) => i.category === cat)
-              if (inCat.length === 0) return null
-              return (
-                <div key={cat} style={{
-                  marginBottom: 10, padding: '10px 12px', borderRadius: 10,
-                  background: CATEGORY_COLOR[cat] ?? 'rgba(45,42,62,0.06)',
-                  border: '1.5px solid rgba(45,42,62,0.15)',
-                }}>
-                  <div style={{ fontWeight: 800, marginBottom: 6 }}>{cat}</div>
-                  {inCat.map(renderRow)}
-                </div>
-              )
-            })}
-          {items.filter((i) => !i.category).length > 0 && items.filter((i) => !i.category).map(renderRow)}
-        </div>
-      ) : (
-        <div style={{ margin: '6px 0' }}>
-          {items.map(renderRow)}
-        </div>
-      )}
+
       {showAdd && (
         <Modal title={`${title} — 항목 추가`} onClose={() => setShowAdd(false)}>
           <div className="form-row" style={{ alignItems: 'flex-end', marginBottom: 16 }}>

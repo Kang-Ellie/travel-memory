@@ -21,64 +21,67 @@ export default function BoardingPassCard({ flight, fromName, participants = [] }
   const allAboard = participants.length > 0 && passengerNames.length === participants.length
 
   return (
-    <div className="boarding-pass">
-      <div className="boarding-pass-head">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {flight.airlineLogoPath ? (
-            <img src={fileUrl(flight.airlineLogoPath)} alt="" style={{ height: 22, objectFit: 'contain' }} />
-          ) : (
-            <span style={{ fontWeight: 800 }}>{flight.airline || '✈️ 항공사 미입력'}</span>
+    <div className="bpass">
+      <div className="bpass-main">
+        <div className="bpass-head">
+          <div className="brand">
+            {flight.airlineLogoPath ? (
+              <img src={fileUrl(flight.airlineLogoPath)} alt="" />
+            ) : (
+              <span>✈️ {flight.airline || '항공사 미입력'}</span>
+            )}
+            {flight.flightNo && <span className="sub">{flight.flightNo}</span>}
+          </div>
+          {flight.gate && (
+            <div className="gate">
+              <div className="gate-label">GATE</div>
+              <div className="gate-val">{flight.gate}</div>
+            </div>
           )}
-          {flight.flightNo && <span className="muted">{flight.flightNo}</span>}
         </div>
-        {flight.gate && (
-          <div style={{ textAlign: 'right' }}>
-            <div className="muted" style={{ fontSize: 10, letterSpacing: '0.06em' }}>GATE</div>
-            <div style={{ fontWeight: 800 }}>{flight.gate}</div>
+
+        <div className="bpass-route">
+          <div className="bpass-endpoint from">
+            <div className="kicker">From</div>
+            <div className="code">{fromName}</div>
+            <div className="time">{dep.date} {dep.time}</div>
+          </div>
+          <div className="bpass-path"><span className="line" /><span className="plane">✈</span><span className="line" /></div>
+          <div className="bpass-endpoint to">
+            <div className="kicker">To</div>
+            <div className="code">{flight.destination || '?'}</div>
+            <div className="time">{arr.date} {arr.time}</div>
+          </div>
+        </div>
+
+        {hasInfo && (
+          <div className="bpass-info">
+            {flight.departureLocation && <div><div className="k">출발장소</div><div className="v">{flight.departureLocation}</div></div>}
+            {flight.durationMinutes != null && <div><div className="k">소요시간</div><div className="v">{formatDuration(flight.durationMinutes)}</div></div>}
+            {flight.bookingRef && <div><div className="k">예약번호</div><div className="v">{flight.bookingRef}</div></div>}
+            {flight.seat && <div><div className="k">Seat</div><div className="v">{flight.seat}</div></div>}
+            {flight.bookedVia && <div><div className="k">예약처</div><div className="v">{flight.bookedVia}</div></div>}
+          </div>
+        )}
+
+        {(flight.voucherId || (!allAboard && passengerNames.length > 0)) && (
+          <div className="bpass-badges">
+            {flight.voucherId && <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>}
+            {!allAboard && passengerNames.length > 0 && (
+              <span className="chip purple">🧑‍🤝‍🧑 {passengerNames.join(', ')}</span>
+            )}
           </div>
         )}
       </div>
-      <div className="boarding-pass-route">
-        <div>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{fromName}</div>
-          <div className="muted">{dep.date} {dep.time}</div>
-        </div>
-        <div style={{ fontSize: 20 }}>✈️</div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontWeight: 800, fontSize: 20 }}>{flight.destination || '?'}</div>
-          <div className="muted">{arr.date} {arr.time}</div>
-        </div>
+
+      <div className="bpass-stub">
+        <div className="stub-label">Boarding</div>
+        <div className="bpass-barcode" />
+        <div className="stub-code">{flight.bookingRef || flight.flightNo || 'TKT'}</div>
       </div>
-      {hasInfo && (
-        <>
-          <div className="boarding-pass-divider" />
-          <div className="boarding-pass-info">
-            {flight.departureLocation && (
-              <div><div className="muted" style={{ fontSize: 10 }}>출발장소</div><div style={{ fontWeight: 700 }}>{flight.departureLocation}</div></div>
-            )}
-            {flight.durationMinutes != null && (
-              <div><div className="muted" style={{ fontSize: 10 }}>소요시간</div><div style={{ fontWeight: 700 }}>{formatDuration(flight.durationMinutes)}</div></div>
-            )}
-            {flight.bookingRef && (
-              <div><div className="muted" style={{ fontSize: 10 }}>예약번호</div><div style={{ fontWeight: 700 }}>{flight.bookingRef}</div></div>
-            )}
-            {flight.seat && (
-              <div><div className="muted" style={{ fontSize: 10 }}>SEAT</div><div style={{ fontWeight: 700 }}>{flight.seat}</div></div>
-            )}
-            {flight.bookedVia && (
-              <div><div className="muted" style={{ fontSize: 10 }}>예약처</div><div style={{ fontWeight: 700 }}>{flight.bookedVia}</div></div>
-            )}
-          </div>
-        </>
-      )}
-      {(flight.confirmed || flight.voucherId || (!allAboard && passengerNames.length > 0)) && (
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 14px' }}>
-          {flight.confirmed && <span className="chip green">✅ 예약 확정</span>}
-          {flight.voucherId && <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>}
-          {!allAboard && passengerNames.length > 0 && (
-            <span className="chip purple">🧑‍🤝‍🧑 {passengerNames.join(', ')}</span>
-          )}
-        </div>
+
+      {flight.confirmed && (
+        <div className="stamp green small bpass-confirm"><span className="stamp-text">OK</span></div>
       )}
     </div>
   )
