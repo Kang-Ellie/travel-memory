@@ -38,6 +38,7 @@ function BaseListCard({
   onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [linkingPlace, setLinkingPlace] = useState(false);
   const [placeId, setPlaceId] = useState("");
   const [memo, setMemo] = useState(item.memo ?? "");
@@ -46,7 +47,7 @@ function BaseListCard({
 
   const saveNotes = async () => {
     await api.bucket.update(item.id, { memo: memo.trim() || null, tip: tip.trim() || null });
-    setOpen(false);
+    setEditing(false);
     onChanged();
   };
   const linkedPlace = item.linkedPlaceId
@@ -127,15 +128,18 @@ function BaseListCard({
             {item.title}
           </div>
           {linkedPlace && (
-            <div className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <div style={{ color: "var(--ink)", fontSize: 12.5, marginTop: 2 }}>
               {placeLine()}
             </div>
           )}
-          {(item.tip || item.memo) && (
-            <div className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
-              {item.tip && `💡 ${item.tip}`}
-              {item.tip && item.memo && "  "}
-              {item.memo && `📝 ${item.memo}`}
+          {item.tip && (
+            <div style={{ color: "var(--ink)", fontSize: 12.5, marginTop: 3, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+              💡 {item.tip}
+            </div>
+          )}
+          {item.memo && (
+            <div style={{ color: "var(--ink)", fontSize: 12.5, marginTop: 3, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+              📝 {item.memo}
             </div>
           )}
         </div>
@@ -143,10 +147,14 @@ function BaseListCard({
       {open && (
         <Modal
           title={`${KIND_EMOJI[kind]} ${item.title}`}
-          onClose={() => setOpen(false)}
+          onClose={() => { setOpen(false); setEditing(false); }}
           headerActions={
             <DropdownMenu
               actions={[
+                {
+                  label: editing ? "👁 보기로 전환" : "✏️ 수정",
+                  onClick: () => setEditing((v) => !v),
+                },
                 {
                   label: item.done ? "🔲 미완료로 표시" : "✅ 완료로 표시",
                   onClick: toggleDone,
@@ -212,64 +220,95 @@ function BaseListCard({
               📷 사진 추가
             </button>
           )}
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>
-              {kind === "food" ? "📍 추천 전문점" : kind === "wish" ? "🛍 구매 가능 장소" : "📍 어디서 할 수 있나요"}
-            </label>
-            {linkedPlace ? (
-              <div className="row" style={{ border: "none", padding: 0, gap: 8, alignItems: "center" }}>
-                <span className="grow">{placeLine()}</span>
-                <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+          {editing ? (
+            <>
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label>
+                  {kind === "food" ? "📍 추천 전문점" : kind === "wish" ? "🛍 구매 가능 장소" : "📍 어디서 할 수 있나요"}
+                </label>
+                {linkedPlace ? (
+                  <div className="row" style={{ border: "none", padding: 0, gap: 8, alignItems: "center" }}>
+                    <span className="grow">{placeLine()}</span>
+                    <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+                  </div>
+                ) : linkingPlace ? (
+                  <div className="row" style={{ border: "none", padding: 0 }}>
+                    <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+                      <option value="">— 장소 선택 —</option>
+                      {places.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          [{p.category}] {p.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <button className="btn small primary" onClick={linkPlace}>연결</button>
+                    <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+                  </div>
+                ) : (
+                  <button className="btn small" onClick={() => setLinkingPlace(true)}>
+                    📍 장소 족보와 연결
+                  </button>
+                )}
               </div>
-            ) : linkingPlace ? (
-              <div className="row" style={{ border: "none", padding: 0 }}>
-                <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
-                  <option value="">— 장소 선택 —</option>
-                  {places.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      [{p.category}] {p.name}
-                    </option>
-                  ))}
-                </Select>
-                <button className="btn small primary" onClick={linkPlace}>연결</button>
-                <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+
+              <div className="field" style={{ marginBottom: 12 }}>
+                <label>{kind === "food" ? "💡 특징 · 알아야 할 TIP" : "💡 알아야 할 TIP"}</label>
+                <textarea
+                  value={tip}
+                  onChange={(e) => setTip(e.target.value)}
+                  placeholder={
+                    kind === "food"
+                      ? "예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수"
+                      : kind === "wish"
+                      ? "예: 면세 되는지 확인 · 공항보다 시내가 쌈"
+                      : "예: 오전에 가야 한산함 · 예약 필요"
+                  }
+                  rows={3}
+                  style={{ width: "100%" }}
+                />
               </div>
-            ) : (
-              <button className="btn small" onClick={() => setLinkingPlace(true)}>
-                📍 장소 족보와 연결
-              </button>
-            )}
-          </div>
 
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>{kind === "food" ? "💡 특징 · 알아야 할 TIP" : "💡 알아야 할 TIP"}</label>
-            <textarea
-              value={tip}
-              onChange={(e) => setTip(e.target.value)}
-              placeholder={
-                kind === "food"
-                  ? "예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수"
-                  : kind === "wish"
-                  ? "예: 면세 되는지 확인 · 공항보다 시내가 쌈"
-                  : "예: 오전에 가야 한산함 · 예약 필요"
-              }
-              rows={2}
-              style={{ width: "100%" }}
-            />
-          </div>
+              <div className="field" style={{ marginBottom: 14 }}>
+                <label>📝 느낀점</label>
+                <textarea
+                  value={memo}
+                  onChange={(e) => setMemo(e.target.value)}
+                  placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
+                  rows={3}
+                  style={{ width: "100%" }}
+                />
+              </div>
 
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>📝 느낀점</label>
-            <textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
-              rows={2}
-              style={{ width: "100%" }}
-            />
-          </div>
-
-          <button className="btn primary" onClick={saveNotes}>저장</button>
+              <button className="btn primary" onClick={saveNotes}>저장</button>
+              <button className="btn" style={{ marginLeft: 6 }} onClick={() => { setEditing(false); setMemo(item.memo ?? ""); setTip(item.tip ?? ""); }}>취소</button>
+            </>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div>
+                <div className="detail-label">
+                  {kind === "food" ? "📍 추천 전문점" : kind === "wish" ? "🛍 구매 가능 장소" : "📍 어디서 할 수 있나요"}
+                </div>
+                <div className="detail-text">
+                  {linkedPlace ? placeLine() : <span className="muted">아직 연결된 장소가 없어요.</span>}
+                </div>
+              </div>
+              <div>
+                <div className="detail-label">{kind === "food" ? "💡 특징 · 알아야 할 TIP" : "💡 알아야 할 TIP"}</div>
+                <div className="detail-text">
+                  {item.tip ? item.tip : <span className="muted">아직 없어요. ⋮ 메뉴 → 수정에서 적어보세요.</span>}
+                </div>
+              </div>
+              <div>
+                <div className="detail-label">📝 느낀점</div>
+                <div className="detail-text">
+                  {item.memo ? item.memo : <span className="muted">아직 없어요. ⋮ 메뉴 → 수정에서 적어보세요.</span>}
+                </div>
+              </div>
+              <div>
+                <button className="btn small primary" onClick={() => setEditing(true)}>✏️ 수정</button>
+              </div>
+            </div>
+          )}
         </Modal>
       )}
     </>

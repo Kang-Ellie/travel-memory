@@ -794,7 +794,7 @@ textarea { resize: vertical; min-height: 70px; }
 
 /* ── 여행 BASE: 나라별 티켓을 나란히 배치 ───── */
 .trip-ticket-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
   gap: 14px; align-items: start; margin-bottom: 14px;
 }
 .trip-ticket-grid .boarding-pass { margin-bottom: 0; }
@@ -1360,6 +1360,14 @@ textarea { resize: vertical; min-height: 70px; }
   border-radius: 12px;
   padding: 14px 14px 16px;
   min-width: 0;
+}
+.detail-label {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+  color: rgba(45, 42, 62, 0.55); margin-bottom: 3px;
+}
+.detail-text {
+  color: var(--ink); font-size: 14px; line-height: 1.5;
+  white-space: pre-wrap; word-break: break-word;
 }
 .base-list-col.food { border-top-color: var(--pink); }
 .base-list-col.wish { border-top-color: var(--blue-deep); }

@@ -90,6 +90,7 @@ function BucketCard({
       : 'linear-gradient(160deg, var(--purple-soft), var(--pink-soft))'
 
   return (
+    <>
     <div className={`bucket-photo-card ${item.done ? 'done' : ''}`}>
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="bucket-photo-media">
@@ -103,7 +104,7 @@ function BucketCard({
           {subCategory && <span className="bucket-photo-chip">#{subCategory}</span>}
           <span className="bucket-photo-menu">
             <DropdownMenu actions={[
-              { label: '✏️ 메모·TIP 편집', onClick: () => setEditing(true) },
+              { label: '✏️ 수정', onClick: () => setEditing(true) },
               { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
               ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
               'divider' as const,
@@ -149,8 +150,8 @@ function BucketCard({
       </div>
       {(item.tip || item.memo || linkedPlace || linkingPlace || linking) && (
         <div className="bucket-photo-foot">
-          {item.tip && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>💡 {item.tip}</div>}
-          {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>📝 {item.memo}</div>}
+          {item.tip && <div style={{ whiteSpace: 'pre-wrap', color: 'var(--ink)', fontSize: 13, lineHeight: 1.5 }}>💡 {item.tip}</div>}
+          {item.memo && <div style={{ whiteSpace: 'pre-wrap', color: 'var(--ink)', fontSize: 13, lineHeight: 1.5 }}>📝 {item.memo}</div>}
           {linkedPlace && <PlaceMeta place={linkedPlace} />}
           {linkingPlace && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -174,38 +175,39 @@ function BucketCard({
           )}
         </div>
       )}
-      {editing && (
-        <Modal title={`${kindEmoji} ${item.title}`} onClose={() => setEditing(false)}>
-          <div className="field" style={{ marginBottom: 12 }}>
-            <label>{kind === 'food' ? '💡 특징 · 알아야 할 TIP' : '💡 알아야 할 TIP'}</label>
-            <textarea
-              value={tip}
-              onChange={(e) => setTip(e.target.value)}
-              placeholder={
-                kind === 'food'
-                  ? '예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수'
-                  : kind === 'wish'
-                    ? '예: 면세 되는지 확인 · 공항보다 시내가 쌈'
-                    : '예: 오전에 가야 한산함 · 예약 필요'
-              }
-              rows={2}
-              style={{ width: '100%' }}
-            />
-          </div>
-          <div className="field" style={{ marginBottom: 14 }}>
-            <label>📝 느낀점</label>
-            <textarea
-              value={memo}
-              onChange={(e) => setMemo(e.target.value)}
-              placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
-              rows={2}
-              style={{ width: '100%' }}
-            />
-          </div>
-          <button className="btn primary" onClick={saveNotes}>저장</button>
-        </Modal>
-      )}
     </div>
+    {editing && (
+      <Modal title={`${kindEmoji} ${item.title}`} onClose={() => setEditing(false)}>
+        <div className="field" style={{ marginBottom: 12 }}>
+          <label>{kind === 'food' ? '💡 특징 · 알아야 할 TIP' : '💡 알아야 할 TIP'}</label>
+          <textarea
+            value={tip}
+            onChange={(e) => setTip(e.target.value)}
+            placeholder={
+              kind === 'food'
+                ? '예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수'
+                : kind === 'wish'
+                  ? '예: 면세 되는지 확인 · 공항보다 시내가 쌈'
+                  : '예: 오전에 가야 한산함 · 예약 필요'
+            }
+            rows={3}
+            style={{ width: '100%' }}
+          />
+        </div>
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label>📝 느낀점</label>
+          <textarea
+            value={memo}
+            onChange={(e) => setMemo(e.target.value)}
+            placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
+            rows={3}
+            style={{ width: '100%' }}
+          />
+        </div>
+        <button className="btn primary" onClick={saveNotes}>저장</button>
+      </Modal>
+    )}
+    </>
   )
 }
 
