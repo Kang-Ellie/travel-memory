@@ -1160,10 +1160,20 @@ textarea { resize: vertical; min-height: 70px; }
 .sky {
   position: absolute; inset: 0;
   overflow: hidden;
-  --roof: #23232a;
-  --roof-2: #2f2f38;
-  --tile: #3c3c47;
-  --dancheong: rgba(122, 190, 170, 0.5);
+  /* 단청 팔레트 (기본: 낮·아침) */
+  --tile: #2f3d63;         /* 기와 */
+  --tile-line: #465888;    /* 기와 골 */
+  --mak: #26314f;          /* 막새 */
+  --mak-flower: #6274ab;
+  --danc-green: #4a7d55;   /* 단청 초록 바탕 */
+  --danc-red: #d24f3c;     /* 단청 주홍 띠 */
+  --danc-brown: #6d4b39;   /* 서까래 */
+  --flower: #ef5f3c;       /* 꽃문양 */
+  --flower-core: #f6c750;
+  --mtn-back: #a6b6ce;
+  --mtn-front: #74869f;
+  --bell: #c07a3a;
+  --cloud: rgba(255, 255, 255, 0.92);
 }
 .sky-photo {
   position: absolute; inset: 0;
@@ -1178,41 +1188,35 @@ textarea { resize: vertical; min-height: 70px; }
 .sky.day .sky-grad { background: linear-gradient(#3f97d8, #8ac6ee 55%, #d6ebfa); }
 .sky.dusk .sky-grad { background: linear-gradient(#37356a, #9c5484 44%, #ee7f4c 76%, #ffbf78); }
 .sky.night .sky-grad { background: linear-gradient(#060a18, #0f1938 55%, #1b2a4e); }
-.sky.night { --roof: #0a0d1a; --roof-2: #111529; --tile: #191e35; --dancheong: rgba(122, 190, 170, 0.3); }
-.sky.dusk { --roof: #1a1723; --roof-2: #241f30; --tile: #2d2739; }
 
-/* 해 / 달 */
-.sky-orb { position: absolute; border-radius: 50%; }
-.sky.dawn .sky-orb {
-  width: 46px; height: 46px; right: 16%; bottom: 24%;
-  background: radial-gradient(circle at 35% 35%, #fff2dc, #ffb17c);
-  box-shadow: 0 0 36px rgba(255, 177, 124, 0.75);
+/* 밤 — 단청이 달빛에 가라앉은 색조 */
+.sky.night {
+  --tile: #1a2340; --tile-line: #2b3b66; --mak: #141c34; --mak-flower: #3d4f83;
+  --danc-green: #2f5439; --danc-red: #8d3629; --danc-brown: #453120;
+  --flower: #a24329; --flower-core: #a5863a;
+  --mtn-back: #2c3654; --mtn-front: #1c2542;
+  --bell: #7d4e27;
 }
-.sky.morning .sky-orb {
-  width: 42px; height: 42px; right: 14%; top: 20%;
-  background: radial-gradient(circle at 35% 35%, #fffdf0, #ffdf85);
-  box-shadow: 0 0 40px rgba(255, 223, 133, 0.8);
+/* 노을·새벽 — 붉은 빛이 도는 중간 색조 */
+.sky.dusk, .sky.dawn {
+  --tile: #263050; --tile-line: #3c4a75; --mak: #1e2740; --mak-flower: #4f6191;
+  --danc-green: #3d6647; --danc-red: #b34432; --danc-brown: #593c2e;
+  --flower: #d4522f; --flower-core: #dfa844;
+  --mtn-back: #7b7398; --mtn-front: #524d75;
+  --bell: #a5652f;
+  --cloud: rgba(255, 226, 200, 0.85);
 }
-.sky.day .sky-orb {
-  width: 38px; height: 38px; right: 16%; top: 10%;
-  background: radial-gradient(circle at 35% 35%, #ffffff, #ffe89a);
-  box-shadow: 0 0 44px rgba(255, 232, 154, 0.85);
-}
-.sky.dusk .sky-orb {
-  width: 52px; height: 52px; right: 14%; bottom: 26%;
-  background: radial-gradient(circle at 35% 35%, #fff0cf, #ff8a4c);
-  box-shadow: 0 0 46px rgba(255, 138, 76, 0.7);
-}
-/* 보름달 — 옅은 크레이터까지 */
-.sky.night .sky-orb {
-  width: 58px; height: 58px; right: 13%; top: 12%;
-  background:
-    radial-gradient(circle at 62% 38%, rgba(190, 196, 220, 0.5) 0 7px, transparent 8px),
-    radial-gradient(circle at 40% 62%, rgba(190, 196, 220, 0.42) 0 5px, transparent 6px),
-    radial-gradient(circle at 30% 32%, rgba(190, 196, 220, 0.35) 0 3.5px, transparent 4px),
-    radial-gradient(circle at 38% 36%, #ffffff, #dfe3ef 70%, #c3c9dc);
-  box-shadow: 0 0 46px rgba(214, 224, 255, 0.6), 0 0 90px rgba(160, 180, 255, 0.3);
-}
+
+/* 해 / 달 — 전통 회화처럼 납작한 원 (SVG) */
+.sky-art { position: absolute; inset: 0; width: 100%; height: 100%; }
+.orb-sun .orb { fill: #ee5233; }
+.orb-sun .orb-glow { fill: #ff7a45; opacity: 0.5; }
+.sky.morning .orb-sun .orb, .sky.day .orb-sun .orb { fill: #f2603a; }
+.sky.dawn .orb-sun .orb, .sky.dusk .orb-sun .orb { fill: #e83c2a; }
+.sky.dawn .orb-sun .orb-glow, .sky.dusk .orb-sun .orb-glow { fill: #ff6a3a; opacity: 0.65; }
+.orb-moon .orb { fill: #f4f2e9; }
+.orb-moon .orb-glow { fill: #cfd8f5; opacity: 0.5; }
+.orb-moon .crater { fill: #d9d6c8; }
 
 /* 별 — 밤·새벽에만, 천천히 반짝임 */
 .sky-stars {
@@ -1232,39 +1236,40 @@ textarea { resize: vertical; min-height: 70px; }
 .sky.dawn .sky-stars { opacity: 0.4; }
 @keyframes twinkle { 0%, 100% { opacity: 0.95; } 50% { opacity: 0.55; } }
 
-/* 구름 — 아주 천천히 흘러감 */
-.sky-cloud {
-  position: absolute;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
-  filter: blur(9px);
+/* 서운(상서구름) — 아주 천천히 떠다님 */
+.cloud path { fill: var(--cloud); }
+.cloud .cloud-curl { stroke: rgba(120, 140, 175, 0.5); stroke-width: 2.4; fill: none; }
+.sky .cloud { animation: cloud-float 34s ease-in-out infinite; }
+.sky .cloud.c2 { animation-duration: 52s; animation-delay: -8s; }
+@keyframes cloud-float {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(18px); }
 }
-.sky-cloud.c1 { width: 86px; height: 20px; left: -20%; top: 24%; animation: drift 44s linear infinite; }
-.sky-cloud.c2 { width: 58px; height: 15px; left: -20%; top: 42%; opacity: 0.6; animation: drift 66s linear infinite 8s; }
-.sky.dusk .sky-cloud { background: rgba(255, 214, 178, 0.6); }
-@keyframes drift { from { transform: translateX(0); } to { transform: translateX(340px); } }
 
-/* 처마 SVG */
-.sky-roof {
-  position: absolute; left: -4%; bottom: -1%;
-  width: 112%; height: auto;
-}
-.roof-slope { fill: var(--roof-2); }
-.roof-eave { fill: var(--roof); }
-.roof-tiles circle { fill: var(--tile); }
-.roof-dancheong { stroke: var(--dancheong); stroke-width: 2.5; }
+/* 산 */
+.mtn.back { fill: var(--mtn-back); }
+.mtn.front { fill: var(--mtn-front); }
+
+/* 처마 — 단청 띠 4겹 */
+.roof-tile { fill: var(--tile); }
+.roof-tile-line line { stroke: var(--tile-line); stroke-width: 2; opacity: 0.8; }
+.roof-green { fill: var(--danc-green); }
+.roof-red { fill: var(--danc-red); }
+.roof-brown { fill: var(--danc-brown); }
+.mak-disc { fill: var(--mak); }
+.mak-flower { fill: var(--mak-flower); }
+.flower-petal { fill: var(--flower); }
+.flower-core { fill: var(--flower-core); }
 
 /* 풍경 — 처마 끝에서 천천히 좌우로 */
 .sky-bell {
   transform-box: view-box;
-  transform-origin: 248px 139px;
+  transform-origin: 100px 185px;
   animation: bell-sway 4.6s ease-in-out infinite;
 }
-.sky-bell line { stroke: var(--roof); stroke-width: 1.6; }
-.sky-bell .bell-body, .sky-bell .bell-rim { fill: var(--roof); }
-.sky-bell .bell-fish path { fill: var(--roof); }
-.sky.night .sky-bell line { stroke: #2b3350; }
-.sky.night .sky-bell .bell-body, .sky.night .sky-bell .bell-rim, .sky.night .sky-bell .bell-fish path { fill: #2b3350; }
+.bell-string { stroke: var(--danc-brown); stroke-width: 1.4; }
+.sky-bell .bell-body { fill: var(--bell); }
+.sky-bell .bell-fish path { fill: var(--flower-core); }
 @keyframes bell-sway {
   0%, 100% { transform: rotate(-3.5deg); }
   50% { transform: rotate(3.5deg); }
