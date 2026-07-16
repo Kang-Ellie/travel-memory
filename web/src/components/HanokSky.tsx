@@ -62,6 +62,22 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
       <div className="sky-grad" />
       {starry && <div className="sky-stars" />}
 
+      {/* 기와담 — 화면 전체 폭으로 바닥에 깔린다 (가운데 대문과 별개 층) */}
+      <div className="sky-ground">
+        <div className="sky-ground-cap" />
+      </div>
+
+      {/* 나뭇가지 — 화면 왼쪽 끝에서 뻗어나온다 (넓어질수록 길어짐) */}
+      <svg className="sky-branch-layer" viewBox="0 0 170 130" preserveAspectRatio="xMinYMid meet" aria-hidden="true">
+        <path className="hk-branch" d="M -4 40 C 40 38, 78 46, 120 30 M 66 41 C 72 26, 84 19, 98 18 M 96 36 C 104 25, 116 21, 130 22" />
+        <g className="hk-leaf">
+          <ellipse cx="99" cy="17" rx="6" ry="3" transform="rotate(-32 99 17)" />
+          <ellipse cx="131" cy="22" rx="6" ry="3" transform="rotate(-10 131 22)" />
+          <ellipse cx="122" cy="29" rx="6" ry="3" transform="rotate(-16 122 29)" />
+          <ellipse cx="118" cy="31" rx="5.4" ry="2.7" transform="rotate(6 118 31)" />
+        </g>
+      </svg>
+
       <svg className="sky-art" viewBox="0 0 300 340" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
         <defs>
           <filter id="hk-glow" x="-70%" y="-70%" width="240%" height="240%">
@@ -110,31 +126,14 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
           </>
         )}
 
-        {/* 나뭇가지 — 왼쪽에서 뻗어 나옴 */}
-        <g className="sky-branch">
-          <path className="hk-branch" d="M -4 150 C 30 148, 54 152, 78 140 M 40 150 C 44 138, 52 132, 62 130 M 60 145 C 66 137, 74 134, 84 135" />
-          <g className="hk-leaf">
-            <ellipse cx="63" cy="129" rx="4.5" ry="2.3" transform="rotate(-32 63 129)" />
-            <ellipse cx="85" cy="135" rx="4.5" ry="2.3" transform="rotate(-12 85 135)" />
-            <ellipse cx="79" cy="140" rx="4.5" ry="2.3" transform="rotate(-18 79 140)" />
-          </g>
-        </g>
-
-        {/* ── 기와담(담장) — 맨 뒤 바닥 ── */}
-        <rect className="hk-wallplaster" x="0" y="316" width="300" height="24" />
-        <rect className="hk-wallcap" x="0" y="306" width="300" height="12" />
-        {Array.from({ length: 20 }, (_, i) => (
-          <rect key={`w${i}`} className="hk-wall" x={i * 15.6} y="306" width="9" height="12" rx="2" />
-        ))}
-
         {/* ── 대문 ── */}
         {/* 좌우 벽(회벽) */}
-        <rect className="hk-plaster" x="84" y="266" width="34" height="52" />
-        <rect className="hk-plaster" x="182" y="266" width="34" height="52" />
+        <rect className="hk-plaster" x="84" y="266" width="34" height="70" />
+        <rect className="hk-plaster" x="182" y="266" width="34" height="70" />
         {/* 대문 널판 */}
-        <rect className="hk-door" x={DOOR_L} y="262" width={DOOR_R - DOOR_L} height="56" />
+        <rect className="hk-door" x={DOOR_L} y="262" width={DOOR_R - DOOR_L} height="74" />
         {PLANK_XS.map((x) => (
-          <line key={`p${x}`} className="hk-doorline" x1={x} y1="264" x2={x} y2="318" />
+          <line key={`p${x}`} className="hk-doorline" x1={x} y1="264" x2={x} y2="336" />
         ))}
         {/* 문고리 */}
         <circle className="hk-stud" cx="141" cy="292" r="3.4" />

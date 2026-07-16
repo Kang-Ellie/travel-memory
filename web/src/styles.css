@@ -1257,9 +1257,28 @@ textarea { resize: vertical; min-height: 70px; }
   100% { transform: translate(60px, -34px); opacity: 0; }
 }
 
-/* 나뭇가지 */
-.hk-branch { stroke: var(--branch); stroke-width: 3; fill: none; stroke-linecap: round; }
+/* 나뭇가지 — 화면 왼쪽 끝에서 뻗어나오는 별도 층 (넓어질수록 길어짐) */
+.sky-branch-layer {
+  position: absolute; left: 0; top: 30%;
+  width: 48%; max-width: 300px; height: auto;
+}
+.hk-branch { stroke: var(--branch); stroke-width: 4; fill: none; stroke-linecap: round; }
 .hk-leaf { fill: var(--leaf); }
+
+/* 기와담 — 화면 전체 폭 바닥 층 */
+.sky-ground {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 22%; min-height: 50px;
+  background: var(--plaster);
+}
+.sky-ground-cap {
+  position: absolute; left: 0; right: 0; top: 0;
+  height: 15px;
+  background: repeating-linear-gradient(90deg,
+    var(--roof) 0 10px, var(--roof-ridge) 10px 12px);
+  border-top: 2px solid var(--roof-ridge);
+  border-bottom: 2px solid var(--roof-ridge);
+}
 
 /* 플랫 한옥 구조 */
 .hk-roof { fill: var(--roof); }
