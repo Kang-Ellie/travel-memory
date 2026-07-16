@@ -25,10 +25,10 @@
 
 ### A-1. 쿼리 (가장 효과 큰 영역)
 
-- [ ] **N+1: 타임라인 로드** — `routes.ts:743-765` `loadEvents()`가 이벤트마다 place·photos·flight·valet·lodging·reservation 6쿼리를 순차 실행. 일정 50개면 **요청 1번에 300+ 쿼리** (Neon은 왕복 지연이 커서 더 아픔). → 이벤트 id 목록을 뽑은 뒤 각 상세 테이블을 `WHERE event_id = ANY($1)` 한 방씩(총 7쿼리 고정)으로 가져와 JS에서 매핑하거나, LEFT JOIN + `json_agg`로 단일 쿼리화.
-- [ ] **N+1: 장소 상세** — `routes.ts:444-480` `/api/places/:id/detail`도 방문 이벤트마다 동일한 5쿼리 루프. 같은 방식으로 배치화.
-- [ ] **N+1: 지출 목록** — `routes.ts:1007-1018` 지출마다 `expense_splits` 1쿼리. → `LEFT JOIN expense_splits ... GROUP BY` + `array_agg(member_id)` 단일 쿼리.
-- [ ] **인덱스 전무** — `db.ts`에 `CREATE INDEX`가 하나도 없음. 지금은 데이터가 적어 못 느끼지만 사진·지출이 쌓이면 전부 풀스캔. 최소 세트:
+- [x] **N+1: 타임라인 로드** ✅ 2026-07-16 완료 — `routes.ts:743-765` `loadEvents()`가 이벤트마다 place·photos·flight·valet·lodging·reservation 6쿼리를 순차 실행. 일정 50개면 **요청 1번에 300+ 쿼리** (Neon은 왕복 지연이 커서 더 아픔). → 이벤트 id 목록을 뽑은 뒤 각 상세 테이블을 `WHERE event_id = ANY($1)` 한 방씩(총 7쿼리 고정)으로 가져와 JS에서 매핑하거나, LEFT JOIN + `json_agg`로 단일 쿼리화.
+- [x] **N+1: 장소 상세** ✅ 2026-07-16 완료 — `routes.ts:444-480` `/api/places/:id/detail`도 방문 이벤트마다 동일한 5쿼리 루프. 같은 방식으로 배치화.
+- [x] **N+1: 지출 목록** ✅ 2026-07-16 완료 — `routes.ts:1007-1018` 지출마다 `expense_splits` 1쿼리. → `LEFT JOIN expense_splits ... GROUP BY` + `array_agg(member_id)` 단일 쿼리.
+- [x] **인덱스 전무** ✅ 2026-07-16 완료 — `db.ts`에 `CREATE INDEX`가 하나도 없음. 지금은 데이터가 적어 못 느끼지만 사진·지출이 쌓이면 전부 풀스캔. 최소 세트:
   ```sql
   CREATE INDEX IF NOT EXISTS idx_events_trip_day ON timeline_events (trip_id, day_number, sequence);
   CREATE INDEX IF NOT EXISTS idx_events_place    ON timeline_events (place_id);
@@ -61,7 +61,7 @@
 
 ### A-3. 서버 구성
 
-- [ ] **응답 압축 없음** — `index.ts`에 compression 미들웨어 없음. 타임라인/장소 JSON은 수백 KB까지 커질 수 있고 텍스트라 gzip 효율이 큼. → `compression` 패키지 한 줄 (이미지 스트리밍 라우트는 제외).
+- [x] **응답 압축 없음** ✅ 2026-07-16 완료 — `index.ts`에 compression 미들웨어 없음. 타임라인/장소 JSON은 수백 KB까지 커질 수 있고 텍스트라 gzip 효율이 큼. → `compression` 패키지 한 줄 (이미지 스트리밍 라우트는 제외).
 - [ ] **initSchema가 기동마다 400줄 DDL 재실행** — `db.ts:8-409`. ALTER/UPDATE 수십 개가 Railway 재배포·재시작마다 Neon에 순차 실행되어 콜드스타트를 늘림. → node-pg-migrate 등으로 이관하고 적용된 마이그레이션은 스킵.
 - [ ] **pg Pool 기본 설정** — `db.ts:3-6`. Neon은 동시 커넥션 제한이 있고 유휴 비용도 있음. → `max`(Railway 단일 인스턴스면 5~10), `idleTimeoutMillis`, `connectionTimeoutMillis` 명시. Neon의 pooled connection string(`-pooler`) 사용 검토. `rejectUnauthorized: false`도 Neon CA 검증으로 바꾸는 것 권장(보안).
 - [ ] **프로덕션을 tsx로 구동** — `server/package.json` `start: tsx src/index.ts`. 기동 시간·메모리 오버헤드. → `tsc`로 빌드 후 `node dist/index.js`.
@@ -78,13 +78,13 @@
 
 ### B-1. 정적 자산 (즉효)
 
-- [ ] **미사용 20.7MB 동영상 배포 중** — `web/public/109821-685694725.mp4`. 코드 어디서도 참조 안 함(전수 grep 확인). 배포 아티팩트만 키움. → 삭제.
-- [ ] **미사용/중복 이미지 정리** — `file.png`(203KB), `연차계획.png`(77KB), `대지 1_13.png`(131KB), `Purple_..._1_-removebg-preview.png`(171KB), `2.플래너.png`, `3.투두리스트.png`, 웹p 시안들 — 참조되는 것은 `할일목록 v.png` 하나뿐(`TripBaseSection.tsx:501`). → 쓰는 것만 남기고 삭제, 남기는 PNG는 webp로 변환.
+- [x] **미사용 20.7MB 동영상 배포 중** ✅ 2026-07-16 완료 — `web/public/109821-685694725.mp4`. 코드 어디서도 참조 안 함(전수 grep 확인). 배포 아티팩트만 키움. → 삭제.
+- [x] **미사용/중복 이미지 정리** ✅ 2026-07-16 완료 — `file.png`(203KB), `연차계획.png`(77KB), `대지 1_13.png`(131KB), `Purple_..._1_-removebg-preview.png`(171KB), `2.플래너.png`, `3.투두리스트.png`, 웹p 시안들 — 참조되는 것은 `할일목록 v.png` 하나뿐(`TripBaseSection.tsx:501`). → 쓰는 것만 남기고 삭제, 남기는 PNG는 webp로 변환.
 - [ ] **폰트 로딩** — `index.html:12` 구글 폰트 CSS가 렌더 블로킹, `main.tsx:3` typeface-nanum-barun-gothic 전체 웨이트 로드. → `display=swap` 확인, 실제 쓰는 웨이트만 남기기, 한글 서브셋 woff2 self-host + `<link rel="preload">` 검토.
 
 ### B-2. 이미지 렌더링
 
-- [ ] **`loading="lazy"` 사용 0곳** (전수 grep 확인) — 대시보드 갤러리·캘린더, 타임라인 사진, 보관함, 장소 카드의 모든 `<img>`가 즉시 로드. → 목록/그리드 이미지 전부에 `loading="lazy" decoding="async"` 추가. 1시간짜리 작업으로 초기 로드 체감이 가장 크게 바뀌는 항목 중 하나.
+- [x] **`loading="lazy"` 사용 0곳** ✅ 2026-07-16 완료 — (전수 grep 확인) — 대시보드 갤러리·캘린더, 타임라인 사진, 보관함, 장소 카드의 모든 `<img>`가 즉시 로드. → 목록/그리드 이미지 전부에 `loading="lazy" decoding="async"` 추가. 1시간짜리 작업으로 초기 로드 체감이 가장 크게 바뀌는 항목 중 하나.
 - [ ] **원본 크기 이미지를 그리드에 사용** — A-4 썸네일 항목과 짝. 서버 썸네일이 생기면 `fileUrl()`에 variant 파라미터를 추가해 목록 UI에서 사용.
 - [ ] **라이트박스 프리로드** — 현재는 열 때 원본 로드. 이전/다음 이미지 1장씩 미리 로드하면 넘김이 부드러워짐 (소규모).
 

@@ -27,7 +27,7 @@ export default function BoardingPassCard({ flight, fromName, participants = [], 
         <div className="bpass-head">
           <div className="brand">
             {flight.airlineLogoPath ? (
-              <img src={fileUrl(flight.airlineLogoPath)} alt="" />
+              <img src={fileUrl(flight.airlineLogoPath)} alt="" loading="lazy" decoding="async" />
             ) : (
               <span>✈️ {flight.airline || '항공사 미입력'}</span>
             )}

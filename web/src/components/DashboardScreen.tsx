@@ -223,7 +223,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                     className={`dash-calendar-cell ${photo ? 'has-photo' : ''}`}
                     onClick={() => photo && setCalendarLightbox(photo)}
                   >
-                    {photo && <img src={fileUrl(photo)} alt="" />}
+                    {photo && <img src={fileUrl(photo)} alt="" loading="lazy" decoding="async" />}
                     {day != null && <span className="dash-calendar-daynum">{day}</span>}
                   </div>
                 )
@@ -240,7 +240,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
             <div className="dash-gallery-grid">
               {gallery.slice(0, visibleCount).map((g, i) => (
                 <div key={g.id} className="dash-gallery-item" onClick={() => setGalleryLightbox(i)}>
-                  <img src={fileUrl(g.filePath)} alt="" />
+                  <img src={fileUrl(g.filePath)} alt="" loading="lazy" decoding="async" />
                   {g.caption && <div className="dash-gallery-caption">{g.caption}</div>}
                 </div>
               ))}

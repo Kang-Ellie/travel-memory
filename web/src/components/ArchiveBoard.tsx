@@ -27,7 +27,7 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
         }}>×</button>
       </div>
       {item.kind === 'image' && item.filePath && (
-        <img src={fileUrl(item.filePath)} alt="" onClick={() => setLightbox(true)} />
+        <img src={fileUrl(item.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightbox(true)} />
       )}
       {item.kind === 'link' && item.body && (
         <div className="archive-card-body">🔗 {item.body}</div>

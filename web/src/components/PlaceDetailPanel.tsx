@@ -48,7 +48,7 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
             {v.review && <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{v.review}</div>}
             {v.photos.length > 0 && (
               <div className="photo-strip">
-                {v.photos.map((p) => <img key={p.id} src={fileUrl(p.filePath)} alt=""
+                {v.photos.map((p) => <img key={p.id} src={fileUrl(p.filePath)} alt="" loading="lazy" decoding="async"
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--ink)' }} />)}
               </div>
             )}

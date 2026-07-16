@@ -95,7 +95,7 @@ function BucketCard({
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="bucket-photo-media">
         {coverPhoto ? (
-          <img src={fileUrl(coverPhoto)} alt="" />
+          <img src={fileUrl(coverPhoto)} alt="" loading="lazy" decoding="async" />
         ) : (
           <div className="bucket-photo-media-empty" style={{ background: kindPastel }}>{kindEmoji}</div>
         )}
