@@ -294,21 +294,36 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: collapsed ? 0 : 10,
-        }}
-      >
-        <strong className="grow">🧭 이번엔 어디?</strong>
-        <button
-          className="btn small ghost"
-          onClick={() => setCollapsed((v) => !v)}
-        >
-          {collapsed ? "펼치기" : "접기"}
-        </button>
+      <div className="fids-board" style={{ marginBottom: collapsed ? 0 : 12 }}>
+        <div className="fids-board-top">
+          <span className="fids-board-title">✈ DEPARTURES · 이번엔 어디?</span>
+          <span className="fids-board-count">{tripCityRecords.length} DEST</span>
+          <button className="fids-board-toggle" onClick={() => setCollapsed((v) => !v)}>
+            {collapsed ? "▾ 펼치기" : "▴ 접기"}
+          </button>
+        </div>
+        <div className="fids-rows">
+          <div className="fids-row fids-row-head">
+            <span className="fids-flag" />
+            <span className="fids-dest">DESTINATION</span>
+            <span className="fids-country">COUNTRY</span>
+            <span className="fids-status">STATUS</span>
+          </div>
+          {tripCityRecords.map((c) => {
+            const co = countries.find((x) => x.id === c.countryId);
+            const ready = !!(c.flightDuration || c.timeDiff || c.caution);
+            return (
+              <div key={c.id} className="fids-row">
+                <span className="fids-flag">{flagEmoji(co?.code)}</span>
+                <span className="fids-dest">{c.name}</span>
+                <span className="fids-country">{co?.name ?? "—"}</span>
+                <span className={`fids-status ${ready ? "go" : "wait"}`}>
+                  {ready ? (c.timeDiff || c.flightDuration || "READY") : "정보 없음"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
       </div>
       {!collapsed && (
         <>

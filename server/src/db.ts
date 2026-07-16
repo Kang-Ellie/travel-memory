@@ -314,6 +314,18 @@ export async function initSchema(): Promise<void> {
       note         TEXT
     );
 
+    -- 예약 상세 (맛집·카페 등 일반 장소 이벤트 1:1) — 예약 시간·인원·예약번호 등
+    CREATE TABLE IF NOT EXISTS reservation_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      reserved_at  TEXT,
+      party_size   INT,
+      booking_ref  TEXT,
+      booked_via   TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
     -- 장소 족보 보강: 발렛사/예약 채널(발렛), 성급/가는 법(숙소), 영아 픽 메뉴(맛집·카페·숙소), 추천 여부
     ALTER TABLE places ADD COLUMN IF NOT EXISTS valet_company TEXT;
     ALTER TABLE places ADD COLUMN IF NOT EXISTS booking_channel TEXT;

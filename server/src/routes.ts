@@ -124,6 +124,16 @@ const LODGING_SELECT = `
   LEFT JOIN vouchers v ON v.id = ld.voucher_id
   WHERE ld.event_id = $1
 `
+const mapReservationDetail = (r: any) => ({
+  reservedAt: r.reserved_at, partySize: r.party_size != null ? Number(r.party_size) : null,
+  bookingRef: r.booking_ref, bookedVia: r.booked_via, confirmed: !!r.confirmed,
+  voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null, note: r.note,
+})
+const RESERVATION_SELECT = `
+  SELECT rd.*, v.title AS voucher_title FROM reservation_details rd
+  LEFT JOIN vouchers v ON v.id = rd.voucher_id
+  WHERE rd.event_id = $1
+`
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
   plannedTime: r.planned_time, rating: r.rating != null ? Number(r.rating) : null,
@@ -447,11 +457,13 @@ export function registerRoutes(app: ExpressApp): void {
       const flight = await pool.query(FLIGHT_SELECT, [ev.id])
       const valet = await pool.query(VALET_SELECT, [ev.id])
       const lodging = await pool.query(LODGING_SELECT, [ev.id])
+      const reservation = await pool.query(RESERVATION_SELECT, [ev.id])
       visits.push({
         ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
         valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
         lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
+        reservation: reservation.rows[0] ? mapReservationDetail(reservation.rows[0]) : null,
       })
     }
 
@@ -740,11 +752,13 @@ export function registerRoutes(app: ExpressApp): void {
       const flight = await pool.query(FLIGHT_SELECT, [ev.id])
       const valet = await pool.query(VALET_SELECT, [ev.id])
       const lodging = await pool.query(LODGING_SELECT, [ev.id])
+      const reservation = await pool.query(RESERVATION_SELECT, [ev.id])
       out.push({
         ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto),
         flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
         valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
         lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
+        reservation: reservation.rows[0] ? mapReservationDetail(reservation.rows[0]) : null,
       })
     }
     return out
@@ -910,6 +924,30 @@ export function registerRoutes(app: ExpressApp): void {
          breakfast_included = excluded.breakfast_included, room_type = excluded.room_type`,
       [req.params.id, checkInAt, checkOutAt, bookingRef?.trim() || null, bookedVia?.trim() || null,
         !!confirmed, voucherId || null, note?.trim() || null, !!breakfastIncluded, roomType?.trim() || null])
+    res.json({ ok: true })
+  })
+
+  // ── 예약 상세 (맛집·카페 등 일반 장소 이벤트 1:1) ──────
+  app.put('/api/events/:id/reservation', async (req, res) => {
+    const { reservedAt, partySize, bookingRef, bookedVia, confirmed, voucherId, note } = req.body as {
+      reservedAt: string | null; partySize: number | null
+      bookingRef: string | null; bookedVia: string | null; confirmed: boolean
+      voucherId: string | null; note: string | null
+    }
+    await pool.query(
+      `INSERT INTO reservation_details (event_id, reserved_at, party_size, booking_ref, booked_via, confirmed, voucher_id, note)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+       ON CONFLICT (event_id) DO UPDATE SET
+         reserved_at = excluded.reserved_at, party_size = excluded.party_size,
+         booking_ref = excluded.booking_ref, booked_via = excluded.booked_via, confirmed = excluded.confirmed,
+         voucher_id = excluded.voucher_id, note = excluded.note`,
+      [req.params.id, reservedAt || null, partySize ?? null, bookingRef?.trim() || null,
+        bookedVia?.trim() || null, !!confirmed, voucherId || null, note?.trim() || null])
+    res.json({ ok: true })
+  })
+
+  app.delete('/api/events/:id/reservation', async (req, res) => {
+    await pool.query('DELETE FROM reservation_details WHERE event_id = $1', [req.params.id])
     res.json({ ok: true })
   })
 

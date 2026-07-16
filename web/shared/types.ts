@@ -152,6 +152,18 @@ export interface LodgingDetail {
   roomType: string | null
 }
 
+// 맛집·카페 등 일반 장소의 예약 정보 (예약한 장소에만 붙는 점선 예약 티켓)
+export interface ReservationDetail {
+  reservedAt: string | null
+  partySize: number | null
+  bookingRef: string | null
+  bookedVia: string | null
+  confirmed: boolean
+  voucherId: string | null
+  voucherTitle: string | null
+  note: string | null
+}
+
 export interface TimelineEvent {
   id: string
   tripId: string
@@ -170,6 +182,7 @@ export interface TimelineEvent {
   flight: FlightDetail | null
   valet: ValetDetail | null
   lodging: LodgingDetail | null
+  reservation: ReservationDetail | null
   bucketItemId: string | null
   bucketItemTitle: string | null
 }

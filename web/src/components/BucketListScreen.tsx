@@ -59,6 +59,8 @@ function BucketCard({
     e.target.value = ''
     if (!file) return
     await api.bucket.uploadPhoto(item.id, file)
+    // 사진을 올렸다 = 실제로 다녀왔다는 뜻 → 도장 찍히며 자동 완료 처리
+    if (!item.done) await api.bucket.update(item.id, { done: true })
     onChanged()
   }
   const removePhoto = async () => {

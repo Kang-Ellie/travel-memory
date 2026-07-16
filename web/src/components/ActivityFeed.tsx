@@ -25,10 +25,12 @@ function timeAgo(iso: string): string {
 
 // 가족이 같이 쓰는 앱이라 "방금 뭐가 추가됐는지" 훑어보는 피드. 공용 비밀번호 로그인이라
 // "누가"는 알 수 없어서 "무엇을·언제"만 보여준다.
-export default function ActivityFeed() {
-  const [items, setItems] = useState<ActivityLogEntry[]>([])
+export default function ActivityFeed({ items: itemsProp }: { items?: ActivityLogEntry[] } = {}) {
+  const [itemsState, setItems] = useState<ActivityLogEntry[]>([])
 
-  useEffect(() => { api.activity.list(20).then(setItems) }, [])
+  useEffect(() => { if (!itemsProp) api.activity.list(20).then(setItems) }, [itemsProp])
+
+  const items = itemsProp ?? itemsState
 
   if (items.length === 0) {
     return <div className="empty">아직 활동 기록이 없어요.</div>

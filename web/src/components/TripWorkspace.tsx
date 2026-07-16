@@ -5,7 +5,7 @@ import type {
 import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
-import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
+import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji, fmtDateTime } from '../categories'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
@@ -20,6 +20,7 @@ import PlaceMeta from './PlaceMeta'
 import BoardingPassCard from './BoardingPassCard'
 import ValetPassCard from './ValetPassCard'
 import LodgingPassCard from './LodgingPassCard'
+import ReservationPassCard from './ReservationPassCard'
 import DateTimePicker from './DateTimePicker'
 import TimePicker from './TimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
@@ -255,6 +256,8 @@ function EventCard({
   const [checkOutAt, setCheckOutAt] = useState(ev.lodging?.checkOutAt ?? '')
   const [breakfastIncluded, setBreakfastIncluded] = useState(ev.lodging?.breakfastIncluded ?? false)
   const [roomType, setRoomType] = useState(ev.lodging?.roomType ?? '')
+  const [reservedAt, setReservedAt] = useState(ev.reservation?.reservedAt ?? '')
+  const [partySize, setPartySize] = useState(ev.reservation?.partySize != null ? String(ev.reservation.partySize) : '')
   const logoInput = useRef<HTMLInputElement>(null)
   const [qe, setQe] = useState<QuickExpenseState>({
     amount: '', currency: 'KRW', category: '맛집', purchaseItems: '', paymentMethod: '',
@@ -282,6 +285,11 @@ function EventCard({
     setBreakfastIncluded(ev.lodging?.breakfastIncluded ?? false); setRoomType(ev.lodging?.roomType ?? '')
     if (isValet) { setBookingRef(ev.valet?.bookingRef ?? ''); setBookedVia(ev.valet?.bookedVia ?? ''); setConfirmed(ev.valet?.confirmed ?? false); setVoucherId(ev.valet?.voucherId ?? '') }
     if (isLodging) { setBookingRef(ev.lodging?.bookingRef ?? ''); setBookedVia(ev.lodging?.bookedVia ?? ''); setConfirmed(ev.lodging?.confirmed ?? false); setVoucherId(ev.lodging?.voucherId ?? '') }
+    if (!isTicket) {
+      setReservedAt(ev.reservation?.reservedAt ?? ''); setPartySize(ev.reservation?.partySize != null ? String(ev.reservation.partySize) : '')
+      setBookingRef(ev.reservation?.bookingRef ?? ''); setBookedVia(ev.reservation?.bookedVia ?? '')
+      setConfirmed(ev.reservation?.confirmed ?? false); setVoucherId(ev.reservation?.voucherId ?? '')
+    }
     setEditing(true)
   }
   const setRating = async (n: number) => {
@@ -325,6 +333,19 @@ function EventCard({
         confirmed, voucherId: voucherId || null, voucherTitle: null, note: null,
         breakfastIncluded, roomType: roomType.trim() || null,
       })
+    }
+    if (!isTicket) {
+      const hasReservation = reservedAt.trim() || partySize.trim() || bookingRef.trim() || bookedVia.trim() || confirmed || voucherId
+      if (hasReservation) {
+        await api.events.setReservation(ev.id, {
+          reservedAt: reservedAt.trim() || null,
+          partySize: partySize.trim() ? Number(partySize) : null,
+          bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
+          confirmed, voucherId: voucherId || null, voucherTitle: null, note: null,
+        })
+      } else if (ev.reservation) {
+        await api.events.deleteReservation(ev.id)
+      }
     }
     setEditing(false)
     onChanged()
@@ -372,13 +393,15 @@ function EventCard({
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => { e.preventDefault(); onDrop() }}
     >
-      <div className="event-head">
-        {displaySeq != null && <span className="seq-badge">{displaySeq}</span>}
-        <span className="event-place" style={{ cursor: 'pointer' }} onClick={() => setPlaceDetailOpen(true)} title="장소 족보에서 상세 정보 보기">
-          {ev.place.name}
-        </span>
-        <span className="chip blue">{ev.place.category}</span>
-        {ev.plannedTime && !editing && <span className="chip yellow">🕒 {ev.plannedTime}</span>}
+      <div className={`event-head ${isTicket ? 'ticket-only' : ''}`}>
+        {!isTicket && displaySeq != null && <span className="seq-badge">{displaySeq}</span>}
+        {!isTicket && (
+          <span className="event-place" style={{ cursor: 'pointer' }} onClick={() => setPlaceDetailOpen(true)} title="장소 족보에서 상세 정보 보기">
+            {ev.place.name}
+          </span>
+        )}
+        {!isTicket && <span className="chip blue">{ev.place.category}</span>}
+        {!isTicket && ev.plannedTime && !editing && <span className="chip yellow">🕒 {ev.plannedTime}</span>}
         {!isTicket && (
           <span className="stars">
             {[1, 2, 3, 4, 5].map((n) => (
@@ -562,6 +585,30 @@ function EventCard({
               {/* 티켓(항공·발렛·숙소)은 "방문지"가 아니라 예약 서류라서, 방문 시간·꼭 해봐야 하는 것·
                   버킷리스트·리뷰·참고 링크 같은 방문 기록용 필드는 아예 숨긴다. 메모(실용 정보)만 유지. */}
               {!isTicket && (
+                <div className="row" style={{ flexWrap: 'wrap', background: 'var(--pink-soft)' }}>
+                  <div className="field" style={{ width: '100%', marginBottom: 2 }}>
+                    <strong>🎫 예약 정보 (예약했다면 입력 — 카드에 점선 예약 티켓으로 나와요)</strong>
+                  </div>
+                  <div className="field"><label>예약 일시</label>
+                    <DateTimePicker value={reservedAt} onChange={(e) => setReservedAt(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 90 }}><label>인원</label>
+                    <input type="number" value={partySize} placeholder="2" onChange={(e) => setPartySize(e.target.value)} /></div>
+                  <div className="field"><label>예약번호</label>
+                    <input type="text" value={bookingRef} onChange={(e) => setBookingRef(e.target.value)} /></div>
+                  <div className="field grow"><label>예약처</label>
+                    <input type="text" value={bookedVia} placeholder="예: 캐치테이블, 전화" onChange={(e) => setBookedVia(e.target.value)} /></div>
+                  <div className="field"><label>🎫 바우처 연결</label>
+                    <Select value={voucherId} onChange={(e) => setVoucherId(e.target.value)}>
+                      <option value="">— 선택 안함 —</option>
+                      {vouchers.map((v) => <option key={v.id} value={v.id}>{v.title}</option>)}
+                    </Select></div>
+                  <label className="row" style={{ border: 'none', padding: 0, gap: 6, alignItems: 'center', width: 'auto' }}>
+                    <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+                    ✅ 예약 확정
+                  </label>
+                </div>
+              )}
+              {!isTicket && (
                 <div className="field" style={{ marginBottom: 6 }}>
                   <label>방문 시간 (선택)</label>
                   <TimePicker value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
@@ -604,6 +651,11 @@ function EventCard({
           )}
           {!editing && (
             <>
+              {!isTicket && ev.reservation && (
+                <div style={{ marginBottom: 8 }}>
+                  <ReservationPassCard reservation={ev.reservation} />
+                </div>
+              )}
               {isAirport && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) ? (
@@ -662,9 +714,9 @@ function EventCard({
         </div>
       </div>
 
-      {eventExpenses.length > 0 && (
+      {eventExpenses.filter((e) => !e.isPrebooked).length > 0 && (
         <div className="quick-expense-row">
-          {eventExpenses.map((exp) => (
+          {eventExpenses.filter((e) => !e.isPrebooked).map((exp) => (
             <span key={exp.id} className="event-expense-chip" title={exp.purchaseItems ?? undefined}>
               <span
                 className={`dot ${exp.isShared ? 'shared' : 'personal'}`}
@@ -1064,12 +1116,10 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
             />
           </div>
         )}
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', background: 'var(--yellow-soft)' }}>
-          <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
-        </div>
+        <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
 
           <div
-            className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
+            className={`drop-zone timeline-axis ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
             style={{ marginTop: 12 }}
             onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(ARCHIVE_DRAG_TYPE)) setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
@@ -1081,25 +1131,38 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               </div>
             )}
             {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-            {dayEvents.map((ev, idx) => (
-              <div key={ev.id}>
-                <EventCard
-                  ev={ev}
-                  participants={members}
-                  eventExpenses={expensesByEvent.get(ev.id) ?? []}
-                  bucketItems={bucketItems}
-                  vouchers={vouchers}
-                  dragIndex={idx}
-                  onDragStart={(i) => { dragFrom.current = i }}
-                  onDrop={() => reorder(idx)}
-                  onChanged={refresh}
-                  isToday={todayNum != null && day === todayNum}
-                  displaySeq={displaySeqById.get(ev.id) ?? null}
-                  spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
-                />
-                {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-              </div>
-            ))}
+            {dayEvents.map((ev, idx) => {
+              const railTime = ev.plannedTime
+                || (ev.flight?.departAt ? fmtDateTime(ev.flight.departAt).time
+                  : ev.lodging?.checkInAt ? fmtDateTime(ev.lodging.checkInAt).time
+                    : ev.valet?.scheduledAt ? fmtDateTime(ev.valet.scheduledAt).time
+                      : ev.reservation?.reservedAt ? fmtDateTime(ev.reservation.reservedAt).time : '')
+              return (
+                <div key={ev.id} className="tl-item">
+                  <div className="tl-rail">
+                    <div className="tl-time">{railTime || '·'}</div>
+                    <span className="tl-dot" />
+                  </div>
+                  <div className="tl-body">
+                    <EventCard
+                      ev={ev}
+                      participants={members}
+                      eventExpenses={expensesByEvent.get(ev.id) ?? []}
+                      bucketItems={bucketItems}
+                      vouchers={vouchers}
+                      dragIndex={idx}
+                      onDragStart={(i) => { dragFrom.current = i }}
+                      onDrop={() => reorder(idx)}
+                      onChanged={refresh}
+                      isToday={todayNum != null && day === todayNum}
+                      displaySeq={displaySeqById.get(ev.id) ?? null}
+                      spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
+                    />
+                    {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           <div className="row" style={{ flexWrap: 'wrap', marginTop: 14 }}>

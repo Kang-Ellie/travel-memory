@@ -83,7 +83,54 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 }
 
 /* ── 대시보드 상단 헤더 ────────────────── */
-.dash-hero { margin-bottom: 18px; }
+.dash-hero {
+  margin-bottom: 18px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+
+/* 우상단 알림 벨 + 최근 활동 드롭다운 */
+.dash-notif { position: relative; flex-shrink: 0; }
+.dash-notif-btn {
+  position: relative;
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-size: 20px; line-height: 1; cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.dash-notif-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+.dash-notif-btn:active { transform: scale(0.96); }
+.dash-notif-dot {
+  position: absolute; top: 8px; right: 9px;
+  width: 9px; height: 9px; border-radius: 50%;
+  background: var(--pink); border: 1.5px solid #fff;
+}
+.dash-notif-backdrop { position: fixed; inset: 0; z-index: 90; }
+.dash-notif-panel {
+  position: absolute; top: 52px; right: 0; z-index: 100;
+  width: 340px; max-width: 86vw; max-height: 60vh;
+  display: flex; flex-direction: column;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  animation: notif-in 0.16s ease both;
+}
+.dash-notif-head {
+  padding: 12px 16px; font-weight: 800; font-size: 14px;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid var(--pink-deep);
+}
+.dash-notif-body { padding: 12px 16px; overflow-y: auto; }
+@keyframes notif-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 640px) {
+  .dash-notif-panel { position: fixed; top: auto; right: 12px; left: 12px; width: auto; }
+}
 .dash-hero-sub {
   font-family: var(--font-computer);
   font-size: 13px;
@@ -819,6 +866,8 @@ textarea { resize: vertical; min-height: 70px; }
   flex-shrink: 0;
 }
 .event-place { font-weight: 800; font-size: 15px; }
+/* 티켓(항공·숙소·발렛) 일정은 카드 헤더 없이 "티켓만" — 상단엔 ⋮ 메뉴만 얇게 */
+.event-head.ticket-only { margin-bottom: 2px; min-height: 24px; }
 
 .stars { display: inline-flex; gap: 2px; }
 .star { background: none; border: none; font-size: 20px; cursor: pointer; color: #d9d4e8; padding: 0 1px; }
@@ -1490,6 +1539,44 @@ input[type='checkbox'] {
 
 .event-card[draggable='true'] { cursor: grab; }
 .event-card.dragging { opacity: 0.4; }
+
+/* ── 일정 타임라인: 세로 시간축 (09:00 ─● 카드) ── */
+.timeline-axis .tl-item { display: flex; gap: 12px; align-items: stretch; }
+.tl-rail {
+  position: relative; flex-shrink: 0;
+  width: 50px;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 15px;
+}
+/* 카드들을 잇는 세로 선 */
+.tl-rail::before {
+  content: ''; position: absolute;
+  top: 0; bottom: -14px; left: 50%;
+  width: 2px; margin-left: -1px;
+  background: var(--line);
+}
+.timeline-axis .tl-item:first-child .tl-rail::before { top: 15px; }
+.timeline-axis .tl-item:last-child .tl-rail::before { bottom: auto; height: 15px; }
+.tl-time {
+  position: relative; z-index: 1;
+  font-family: var(--font-computer);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--pink-deep);
+  background: var(--paper);
+  padding: 0 2px 4px;
+  text-align: center;
+}
+.tl-dot {
+  position: relative; z-index: 1;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; border: 2.5px solid var(--pink);
+  box-shadow: 0 0 0 3px var(--paper);
+}
+.tl-body { flex: 1; min-width: 0; }
+@media (max-width: 640px) {
+  .tl-rail { width: 40px; }
+  .timeline-axis .tl-item { gap: 8px; }
+}
 
 .quick-expense-row {
   display: flex;
@@ -2202,6 +2289,103 @@ input[type='checkbox'] {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   FIDS 전광판 (BASE '이번엔 어디?' 목적지 보드)
+   다크 배경 + 발광 앰버 고정폭 폰트 + 스캔라인
+   ══════════════════════════════════════════════════════════════════ */
+.fids-board {
+  border-radius: 14px;
+  overflow: hidden;
+  background:
+    repeating-linear-gradient(0deg, transparent 0 3px, rgba(255, 255, 255, 0.02) 3px 4px),
+    var(--board-bg);
+  box-shadow: var(--shadow-md);
+  animation: bpass-in 0.4s ease both;
+}
+.fids-board-top {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.fids-board-title {
+  font-family: var(--font-computer);
+  font-weight: 700; font-size: 13px; letter-spacing: 0.08em;
+  color: var(--board-amber); text-shadow: 0 0 10px var(--board-glow);
+  flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fids-board-count {
+  font-family: var(--font-computer);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  color: var(--board-dim); flex-shrink: 0;
+}
+.fids-board-toggle {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08); border: none; cursor: pointer;
+  color: rgba(255, 255, 255, 0.75);
+  font-family: var(--font-computer); font-size: 11px; font-weight: 700;
+  padding: 4px 9px; border-radius: 7px;
+}
+.fids-board-toggle:hover { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.fids-rows { padding: 4px 0; }
+.fids-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 8px 14px;
+  font-family: var(--font-computer);
+}
+.fids-row + .fids-row { border-top: 1px dashed rgba(255, 255, 255, 0.06); }
+.fids-row-head {
+  font-size: 8.5px; letter-spacing: 0.2em; color: var(--board-dim);
+  padding-top: 4px; padding-bottom: 4px;
+}
+.fids-row-head + .fids-row { border-top: none; }
+.fids-flag { font-size: 18px; line-height: 1; }
+.fids-dest {
+  font-weight: 700; font-size: 15px; letter-spacing: 0.02em;
+  color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fids-country {
+  font-size: 12px; color: rgba(255, 255, 255, 0.6);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.fids-status {
+  justify-self: end;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+}
+.fids-status.go { color: #7fce93; background: rgba(127, 206, 147, 0.14); }
+.fids-status.wait { color: var(--board-dim); background: rgba(255, 255, 255, 0.06); }
+@media (max-width: 560px) {
+  .fids-row { grid-template-columns: 24px 1fr auto; }
+  .fids-row .fids-country { display: none; }
+}
+
+/* ── 예약 티켓 (맛집·카페 등 예약한 장소 아래 점선 티켓) ── */
+.resv-ticket {
+  position: relative;
+  margin: 2px 0 8px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--paper);
+  padding: 11px 14px;
+  animation: bpass-in 0.32s ease both;
+}
+.resv-ticket-eyebrow {
+  font-family: var(--font-computer);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--pink-deep); margin-bottom: 8px;
+}
+.resv-ticket-main { display: flex; flex-wrap: wrap; gap: 9px 22px; }
+.resv-ticket .resv-field { display: flex; flex-direction: column; gap: 1px; }
+.resv-ticket .resv-field .k {
+  font-family: var(--font-computer);
+  font-size: 8.5px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(45, 42, 62, 0.5);
+}
+.resv-ticket .resv-field .v { font-weight: 800; font-size: 13px; }
+.resv-ticket-note { margin-top: 8px; font-size: 12px; color: rgba(45, 42, 62, 0.7); white-space: pre-wrap; }
+.resv-ticket-stamp { position: absolute; top: 8px; right: 10px; }
 
 /* ══════════════════════════════════════════════════════════════════
    체크리스트 = 탑승 전 확인 (도장 체크, .checklist-doc)

@@ -18,41 +18,47 @@ const NAME_LABEL: Record<TicketKind, string> = { 발렛: '발렛 맡기는 곳 �
 const VOUCHER_CATEGORY_FOR_KIND: Record<TicketKind, VoucherCategory> = { 발렛: '티켓', 항공: '항공권', 숙소: '숙소' }
 
 export default function TicketQuickAdd({
-  tripId, kind, places, participants, existingFlights = [], onClose, onCreated,
+  tripId, kind, places, participants, existingFlights = [], editEvent, onClose, onCreated,
 }: {
   tripId: string; kind: TicketKind; places: Place[]; participants: Member[]; existingFlights?: TimelineEvent[]
-  onClose: () => void; onCreated: () => void
+  editEvent?: TimelineEvent; onClose: () => void; onCreated: () => void
 }) {
+  const isEdit = !!editEvent
+  const f = editEvent?.flight
+  const va = editEvent?.valet
+  const lo = editEvent?.lodging
   const candidatePlaces = places.filter((p) => p.category === CATEGORY_FOR_KIND[kind])
   const copyableFlights = existingFlights.filter((e) => e.flight)
-  const [placeId, setPlaceId] = useState('')
+  const [placeId, setPlaceId] = useState(editEvent?.placeId ?? '')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
 
-  const [scheduledAt, setScheduledAt] = useState('')
-  const [location, setLocation] = useState('')
-  const [company, setCompany] = useState('')
+  const [scheduledAt, setScheduledAt] = useState(va?.scheduledAt ?? '')
+  const [location, setLocation] = useState(va?.location ?? '')
+  const [company, setCompany] = useState(va?.company ?? '')
 
-  const [departAt, setDepartAt] = useState('')
-  const [arriveAt, setArriveAt] = useState('')
-  const [departureLocation, setDepartureLocation] = useState('')
-  const [destination, setDestination] = useState('')
-  const [airline, setAirline] = useState('')
-  const [flightNo, setFlightNo] = useState('')
-  const [passengerIds, setPassengerIds] = useState<Set<string>>(new Set(participants.map((p) => p.id)))
+  const [departAt, setDepartAt] = useState(f?.departAt ?? '')
+  const [arriveAt, setArriveAt] = useState(f?.arriveAt ?? '')
+  const [departureLocation, setDepartureLocation] = useState(f?.departureLocation ?? '')
+  const [destination, setDestination] = useState(f?.destination ?? '')
+  const [airline, setAirline] = useState(f?.airline ?? '')
+  const [flightNo, setFlightNo] = useState(f?.flightNo ?? '')
+  const [passengerIds, setPassengerIds] = useState<Set<string>>(
+    new Set(f?.passengerIds?.length ? f.passengerIds : participants.map((p) => p.id)),
+  )
 
-  const [checkInAt, setCheckInAt] = useState('')
-  const [checkOutAt, setCheckOutAt] = useState('')
-  const [breakfastIncluded, setBreakfastIncluded] = useState(false)
-  const [roomType, setRoomType] = useState('')
+  const [checkInAt, setCheckInAt] = useState(lo?.checkInAt ?? '')
+  const [checkOutAt, setCheckOutAt] = useState(lo?.checkOutAt ?? '')
+  const [breakfastIncluded, setBreakfastIncluded] = useState(lo?.breakfastIncluded ?? false)
+  const [roomType, setRoomType] = useState(lo?.roomType ?? '')
 
-  const [bookingRef, setBookingRef] = useState('')
-  const [bookedVia, setBookedVia] = useState('')
-  const [confirmed, setConfirmed] = useState(false)
+  const [bookingRef, setBookingRef] = useState(f?.bookingRef ?? va?.bookingRef ?? lo?.bookingRef ?? '')
+  const [bookedVia, setBookedVia] = useState(f?.bookedVia ?? va?.bookedVia ?? lo?.bookedVia ?? '')
+  const [confirmed, setConfirmed] = useState(f?.confirmed ?? va?.confirmed ?? lo?.confirmed ?? false)
   const [saving, setSaving] = useState(false)
   const [voucherFile, setVoucherFile] = useState<File | null>(null)
   const voucherInput = useRef<HTMLInputElement>(null)
-  const [showDetail, setShowDetail] = useState(false)
+  const [showDetail, setShowDetail] = useState(isEdit)
 
   // 가족이 같은 비행기를 따로 예약했을 때: 이미 등록된 항공편에서 시간·출발지·도착지·항공사 정보를 그대로 가져오고,
   // 탑승자는 그 항공편에 이미 들어간 사람을 뺀 나머지로 기본 선택해준다(따로 산 사람들이니까).
@@ -71,41 +77,43 @@ export default function TicketQuickAdd({
 
   const submit = async () => {
     let resolvedPlaceId = placeId
-    if (!resolvedPlaceId) {
+    if (!isEdit && !resolvedPlaceId) {
       if (!newName.trim()) return
       const p = await api.places.create({ name: newName.trim(), address: newAddress.trim(), category: CATEGORY_FOR_KIND[kind] })
       resolvedPlaceId = p.id
     }
     setSaving(true)
-    let voucherId: string | null = null
-    let voucherTitle: string | null = null
+    // 수정 모드: 새 파일을 안 올렸으면 기존 바우처 연결을 그대로 유지한다.
+    let voucherId: string | null = isEdit ? (f?.voucherId ?? va?.voucherId ?? lo?.voucherId ?? null) : null
+    let voucherTitle: string | null = isEdit ? (f?.voucherTitle ?? va?.voucherTitle ?? lo?.voucherTitle ?? null) : null
     if (voucherFile) {
       const [voucher] = await api.vouchers.add(tripId, [voucherFile], VOUCHER_CATEGORY_FOR_KIND[kind])
       voucherId = voucher.id
       voucherTitle = voucher.title
     }
-    const { id: eventId } = await api.events.create({ tripId, placeId: resolvedPlaceId, dayNumber: null })
+    const eventId = isEdit ? editEvent!.id : (await api.events.create({ tripId, placeId: resolvedPlaceId, dayNumber: null })).id
     if (kind === '발렛') {
       await api.events.setValet(eventId, {
         scheduledAt: scheduledAt || null, location: location.trim() || null, company: company.trim() || null,
         bookedVia: bookedVia.trim() || null, bookingRef: bookingRef.trim() || null, confirmed,
-        voucherId, voucherTitle, note: null,
+        voucherId, voucherTitle, note: va?.note ?? null,
       })
     } else if (kind === '항공') {
       await api.events.setFlight(eventId, {
-        departAt: departAt || null, arriveAt: arriveAt || null, durationMinutes: null,
+        // 이 폼에 없는 필드(소요시간·게이트·좌석·로고)는 수정 모드에서 기존 값 보존
+        departAt: departAt || null, arriveAt: arriveAt || null, durationMinutes: f?.durationMinutes ?? null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
         departureLocation: departureLocation.trim() || null, confirmed,
         voucherId, voucherTitle,
-        airline: airline.trim() || null, airlineLogoPath: null, flightNo: flightNo.trim() || null,
-        destination: destination.trim() || null, gate: null, seat: null,
+        airline: airline.trim() || null, airlineLogoPath: f?.airlineLogoPath ?? null, flightNo: flightNo.trim() || null,
+        destination: destination.trim() || null, gate: f?.gate ?? null, seat: f?.seat ?? null,
         passengerIds: [...passengerIds],
       })
     } else {
       await api.events.setLodging(eventId, {
         checkInAt: checkInAt || null, checkOutAt: checkOutAt || null,
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null, confirmed,
-        voucherId, voucherTitle, note: null,
+        voucherId, voucherTitle, note: lo?.note ?? null,
         breakfastIncluded, roomType: roomType.trim() || null,
       })
     }
@@ -143,31 +151,39 @@ export default function TicketQuickAdd({
   )
 
   return (
-    <Modal title={`${TICKET_ICON[kind]} ${kind} 티켓 추가`} onClose={onClose}>
-      <p className="muted" style={{ marginTop: 0 }}>
-        아직 몇 일차인지 몰라도 먼저 예약 정보부터 기록해두고, 나중에 일정에 배치할 수 있어요.
-      </p>
-      <div className="form-row">
-        <div className="field grow">
-          <label>장소</label>
-          <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
-            <option value="">✚ 새 장소 바로 등록</option>
-            {candidatePlaces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </Select>
-        </div>
-        {!placeId && (
-          <>
+    <Modal title={`${TICKET_ICON[kind]} ${kind} 티켓 ${isEdit ? '수정' : '추가'}`} onClose={onClose}>
+      {isEdit ? (
+        <p className="muted" style={{ marginTop: 0 }}>
+          <strong>{editEvent!.place.name}</strong> 티켓의 예약 정보를 수정해요.
+        </p>
+      ) : (
+        <>
+          <p className="muted" style={{ marginTop: 0 }}>
+            아직 몇 일차인지 몰라도 먼저 예약 정보부터 기록해두고, 나중에 일정에 배치할 수 있어요.
+          </p>
+          <div className="form-row">
             <div className="field grow">
-              <label>{NAME_LABEL[kind]}</label>
-              <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={`예: ${kind === '항공' ? '인천국제공항 제1여객터미널' : kind === '숙소' ? '호텔명' : '인천공항 T1 단기주차장'}`} />
+              <label>장소</label>
+              <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+                <option value="">✚ 새 장소 바로 등록</option>
+                {candidatePlaces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </Select>
             </div>
-            <div className="field grow">
-              <label>주소 (선택)</label>
-              <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="주소" />
-            </div>
-          </>
-        )}
-      </div>
+            {!placeId && (
+              <>
+                <div className="field grow">
+                  <label>{NAME_LABEL[kind]}</label>
+                  <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={`예: ${kind === '항공' ? '인천국제공항 제1여객터미널' : kind === '숙소' ? '호텔명' : '인천공항 T1 단기주차장'}`} />
+                </div>
+                <div className="field grow">
+                  <label>주소 (선택)</label>
+                  <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="주소" />
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {kind === '발렛' && (
         <div className="form-row">
@@ -266,7 +282,7 @@ export default function TicketQuickAdd({
 
       <div style={{ marginTop: 12 }}>
         <button className="btn primary" onClick={submit} disabled={saving}>
-          {saving ? '저장 중…' : `＋ ${kind} 티켓 추가`}
+          {saving ? '저장 중…' : isEdit ? '저장' : `＋ ${kind} 티켓 추가`}
         </button>
       </div>
     </Modal>

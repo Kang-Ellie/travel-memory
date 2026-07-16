@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Trip, DashboardData } from '../../shared/types'
+import type { Trip, DashboardData, ActivityLogEntry } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney } from '../settlement'
 import { tripCitiesLabel } from '../categories'
@@ -30,10 +30,13 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const [calendarLightbox, setCalendarLightbox] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(GALLERY_PAGE)
   const [bottomView, setBottomView] = useState<'calendar' | 'gallery'>('calendar')
+  const [activity, setActivity] = useState<ActivityLogEntry[]>([])
+  const [showActivity, setShowActivity] = useState(false)
 
   useEffect(() => {
     api.trips.list().then(setTrips)
     api.dashboard.get().then(setData)
+    api.activity.list(20).then(setActivity)
   }, [])
 
   const shiftMonth = (delta: number) => {
@@ -84,8 +87,32 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   return (
     <div>
       <div className="dash-hero">
-        <div className="dash-hero-sub">NOW, HERE</div>
-        <div className="dash-hero-title">지금, 여기</div>
+        <div>
+          <div className="dash-hero-sub">NOW, HERE</div>
+          <div className="dash-hero-title">지금, 여기</div>
+        </div>
+        <div className="dash-notif">
+          <button
+            type="button"
+            className="dash-notif-btn"
+            title="최근 활동"
+            onClick={() => setShowActivity((v) => !v)}
+          >
+            🔔
+            {activity.length > 0 && <span className="dash-notif-dot" />}
+          </button>
+          {showActivity && (
+            <>
+              <div className="dash-notif-backdrop" onClick={() => setShowActivity(false)} />
+              <div className="dash-notif-panel">
+                <div className="dash-notif-head">🔔 최근 활동</div>
+                <div className="dash-notif-body">
+                  <ActivityFeed items={activity} />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {heroTrip && (
@@ -135,12 +162,6 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                 )}
               </div>
             )}
-          </Window>
-        </div>
-
-        <div style={{ flex: '1 1 280px' }}>
-          <Window title="RECENT_ACTIVITY.EXE" color="yellow">
-            <ActivityFeed />
           </Window>
         </div>
 

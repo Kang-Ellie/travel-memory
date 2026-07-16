@@ -1,6 +1,6 @@
 import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
-  ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, CurrencyRate,
+  ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, ReservationDetail, CurrencyRate,
   DashboardData, ActivityLogEntry,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment, CityPlaceSummary,
 } from '../shared/types'
@@ -135,6 +135,8 @@ export const api = {
     deleteFlight: (id: string) => req<void>('DELETE', `/api/events/${id}/flight`),
     setValet: (id: string, data: ValetDetail) => req<void>('PUT', `/api/events/${id}/valet`, data),
     setLodging: (id: string, data: LodgingDetail) => req<void>('PUT', `/api/events/${id}/lodging`, data),
+    setReservation: (id: string, data: ReservationDetail) => req<void>('PUT', `/api/events/${id}/reservation`, data),
+    deleteReservation: (id: string) => req<void>('DELETE', `/api/events/${id}/reservation`),
   },
 
   transit: {

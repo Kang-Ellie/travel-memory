@@ -18,9 +18,6 @@ const PREP_SECTIONS: Array<{ key: PrepSection; label: string }> = [
   { key: 'vouchers', label: '🎫 바우처' },
 ]
 
-// 티켓 카테고리 → 지출 분류 기본값 (결제 기록하기 모달용)
-const TICKET_EXPENSE_CATEGORY: Record<string, string> = { 발렛: '교통', 공항: '교통', 숙소: '숙소' }
-
 function DayAssignRow({ trip, ev, onAssigned }: { trip: Trip; ev: TimelineEvent; onAssigned: () => void }) {
   const [day, setDay] = useState('1')
   const assign = async () => {
@@ -28,9 +25,8 @@ function DayAssignRow({ trip, ev, onAssigned }: { trip: Trip; ev: TimelineEvent;
     onAssigned()
   }
   return (
-    <div className="row" style={{ marginBottom: 6, background: 'var(--yellow-soft)' }}>
-      <span className="chip yellow">📌 일차 미배정</span>
-      <span className="grow" />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 6px', flexWrap: 'wrap' }}>
+      <span className="muted" style={{ fontWeight: 700 }}>📌 아직 일정에 배치 안 됨</span>
       <Select value={day} onChange={(e) => setDay(e.target.value)} style={{ width: 90 }}>
         {Array.from({ length: dayCount(trip) }, (_, i) => i + 1).map((d) => (
           <option key={d} value={d}>{d}일차</option>
@@ -48,9 +44,8 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [places, setPlaces] = useState<Place[]>([])
   const [showAddPrebooked, setShowAddPrebooked] = useState(false)
   const [ticketKind, setTicketKind] = useState<TicketKind | null>(null)
+  const [editTicket, setEditTicket] = useState<{ kind: TicketKind; event: TimelineEvent } | null>(null)
   const [section, setSection] = useState<PrepSection>('tickets')
-  // "결제 기록하기"를 누른 티켓 — 모달이 이 일정에 지출을 연결한다.
-  const [expenseForEvent, setExpenseForEvent] = useState<TimelineEvent | null>(null)
 
   const refresh = () => {
     api.events.list(trip.id).then(setEvents)
@@ -65,30 +60,18 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const valets = events.filter((e) => e.place.category === '발렛').sort(byDay)
   const flights = events.filter((e) => e.place.category === '공항').sort(byDay)
   const stays = events.filter((e) => e.place.category === '숙소').sort(byDay)
-  const prebookedOf = (eventId: string) => expenses.filter((e) => e.eventId === eventId && e.isPrebooked)
   const standalonePrebooked = expenses.filter((e) => e.eventId === null && e.isPrebooked)
 
-  // 티켓 헤더 줄 — 일차 배지 + 결제 상태. 미기록이면 바로 기록할 수 있는 버튼을 준다
-  // (예전엔 "결제 미기록" 칩만 있고 기록하려면 다른 데로 가야 했음).
-  const ticketStatusRow = (ev: TimelineEvent) => {
-    if (ev.dayNumber == null) return <DayAssignRow trip={trip} ev={ev} onAssigned={refresh} />
-    const paid = prebookedOf(ev.id)
-    return (
-      <div className="row" style={{ marginBottom: 6 }}>
-        <span className="chip blue">{ev.dayNumber}일차</span>
-        <span className="grow" />
-        {paid.length > 0 ? (
-          <span className="chip green">
-            💳 결제 기록됨 · {paid.map((e) => fmtMoney(e.amount, e.currency)).join(' · ')}
-          </span>
-        ) : participants.length > 0 ? (
-          <button className="btn small primary" onClick={() => setExpenseForEvent(ev)}>💳 결제 기록하기</button>
-        ) : (
-          <span className="chip yellow" title="[💸 지출] 탭에서 참여자를 먼저 추가해주세요">결제 미기록</span>
-        )}
-      </div>
-    )
-  }
+  // 티켓은 "그냥 티켓만" 보여준다. 티켓 위엔 얇은 툴바(미배정이면 배치 컨트롤 + ✏️ 수정)만.
+  // (결제 금액은 [💸 지출]·정산에서 관리하므로 티켓 위에 다시 얹지 않는다.)
+  const ticketHeader = (kind: TicketKind, ev: TimelineEvent) => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+      {ev.dayNumber == null && <DayAssignRow trip={trip} ev={ev} onAssigned={refresh} />}
+      <button className="btn small ghost" style={{ marginLeft: 'auto' }} onClick={() => setEditTicket({ kind, event: ev })}>
+        ✏️ 수정
+      </button>
+    </div>
+  )
 
   return (
     <div>
@@ -144,6 +127,17 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               onCreated={refresh}
             />
           )}
+          {editTicket && (
+            <TicketQuickAdd
+              tripId={trip.id}
+              kind={editTicket.kind}
+              places={places}
+              participants={participants}
+              editEvent={editTicket.event}
+              onClose={() => setEditTicket(null)}
+              onCreated={refresh}
+            />
+          )}
           {showAddPrebooked && (
             <AddExpenseModal
               trip={trip}
@@ -153,19 +147,6 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               defaultPrebooked
               onClose={() => setShowAddPrebooked(false)}
               onAdded={() => { setShowAddPrebooked(false); refresh() }}
-            />
-          )}
-          {expenseForEvent && (
-            <AddExpenseModal
-              trip={trip}
-              participants={participants}
-              title={`💳 ${expenseForEvent.place.name} 결제 기록`}
-              defaultCategory={TICKET_EXPENSE_CATEGORY[expenseForEvent.place.category] ?? '기타'}
-              defaultDescription={expenseForEvent.place.name}
-              defaultPrebooked
-              eventId={expenseForEvent.id}
-              onClose={() => setExpenseForEvent(null)}
-              onAdded={() => { setExpenseForEvent(null); refresh() }}
             />
           )}
           {standalonePrebooked.length > 0 && (
@@ -196,7 +177,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
                   <strong>🚗 발렛</strong>
                   {valets.map((ev) => (
                     <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketStatusRow(ev)}
+                      {ticketHeader('발렛', ev)}
                       {ev.valet ? (
                         <ValetPassCard valet={ev.valet} placeName={ev.place.name} />
                       ) : (
@@ -211,7 +192,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
                   <strong>✈️ 항공</strong>
                   {flights.map((ev) => (
                     <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketStatusRow(ev)}
+                      {ticketHeader('항공', ev)}
                       {ev.flight ? (
                         <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} />
                       ) : (
@@ -226,7 +207,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
                   <strong>🏨 숙소</strong>
                   {stays.map((ev) => (
                     <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketStatusRow(ev)}
+                      {ticketHeader('숙소', ev)}
                       {ev.lodging ? (
                         <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} />
                       ) : (
