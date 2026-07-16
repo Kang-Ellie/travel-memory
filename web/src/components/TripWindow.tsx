@@ -5,7 +5,7 @@ import { flagEmoji } from '../categories'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
-import TripWorkspace from './TripWorkspace'
+import TripWorkspace, { dayCount } from './TripWorkspace'
 import TripBaseSection from './TripBaseSection'
 import ExpensesTab from './ExpensesTab'
 import SettlementTab from './SettlementTab'
@@ -66,10 +66,25 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
 
   const save = async () => {
     if (!title.trim() || !startDate || !endDate) return
-    await api.trips.update(trip.id, {
+    // 기간을 줄이면 범위 밖 일차의 일정이 '미배정 티켓'으로 이동한다 — 조용히 옮기지 말고
+    // 몇 개가 영향을 받는지 먼저 알려주고 확인받는다.
+    const newDays = Math.max(1, Math.round(
+      (new Date(endDate + 'T00:00:00').getTime() - new Date(startDate + 'T00:00:00').getTime()) / 86_400_000) + 1)
+    if (newDays < dayCount(trip)) {
+      const events = await api.events.list(trip.id)
+      const ghostCount = events.filter((ev) => ev.dayNumber != null && ev.dayNumber > newDays).length
+      if (ghostCount > 0 && !confirm(
+        `기간을 ${newDays}일로 줄이면 그 뒤 일차의 일정 ${ghostCount}개가 '일차 미배정'으로 이동해요.\n` +
+        `(리뷰·사진·지출은 그대로 보존되고, [🎒 여행 준비] 탭에서 다시 일차를 배정할 수 있어요)\n계속할까요?`,
+      )) return
+    }
+    const result = await api.trips.update(trip.id, {
       title: title.trim(), startDate, endDate, budget: parseFloat(budget) || 0,
       nights: nights.trim() ? parseInt(nights) : null, cityIds: [...selCityIds],
     })
+    if (result.unassignedCount > 0) {
+      alert(`일정 ${result.unassignedCount}개가 '일차 미배정'으로 이동했어요. [🎒 여행 준비] 탭에서 확인하세요.`)
+    }
     const fresh = await api.trips.list()
     const updated = fresh.find((t) => t.id === trip.id)
     if (updated) onTripChanged(updated)

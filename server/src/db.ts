@@ -405,5 +405,26 @@ export async function initSchema(): Promise<void> {
     -- 잔존 데이터를 바로잡는다('항공'은 어느 화면에서도 정식 카테고리로 선택할 수 없는 값이라
     -- 이 값이 남아있다면 100% 그 버그로 생긴 데이터).
     UPDATE places SET category = '공항' WHERE category = '항공';
+
+    -- ── 조회 인덱스 ──────────────────────────────────────
+    -- FK 컬럼에는 인덱스가 자동으로 안 생긴다. 타임라인/사진/지출처럼 "여행(이벤트)별로
+    -- 걸러 읽는" 쿼리가 대부분이라, 그 필터 컬럼들에 인덱스를 걸어 풀스캔을 막는다.
+    CREATE INDEX IF NOT EXISTS idx_events_trip_day   ON timeline_events (trip_id, day_number, sequence);
+    CREATE INDEX IF NOT EXISTS idx_events_place      ON timeline_events (place_id);
+    CREATE INDEX IF NOT EXISTS idx_photos_event      ON photos (event_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_trip     ON expenses (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_event    ON expenses (event_id);
+    CREATE INDEX IF NOT EXISTS idx_archive_trip      ON archive_items (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_checklist_trip    ON checklist_items (trip_id, scope, day_number);
+    CREATE INDEX IF NOT EXISTS idx_transit_trip_day  ON transit_segments (trip_id, day_number);
+    CREATE INDEX IF NOT EXISTS idx_daynote_photos    ON day_note_photos (trip_id, day_number);
+    CREATE INDEX IF NOT EXISTS idx_activity_time     ON activity_log (created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_places_city       ON places (city_id);
+    CREATE INDEX IF NOT EXISTS idx_places_country    ON places (country_id);
+    CREATE INDEX IF NOT EXISTS idx_cities_country    ON cities (country_id);
+    CREATE INDEX IF NOT EXISTS idx_trip_cities_city  ON trip_cities (city_id);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_trip     ON vouchers (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_bucket_trip       ON bucket_items (linked_trip_id);
+    CREATE INDEX IF NOT EXISTS idx_bucket_place      ON bucket_items (linked_place_id);
   `)
 }

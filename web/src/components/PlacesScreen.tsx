@@ -217,7 +217,7 @@ function PlaceCard({
     <div className="card place-card" onClick={() => setDetailOpen(true)}>
       {place.coverPhoto ? (
         <div className="place-card-photo-wrap">
-          <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" />
+          <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" loading="lazy" decoding="async" />
           {place.visitCount > 0 && <span className="place-visit-badge">🔁 {place.visitCount}번 방문</span>}
         </div>
       ) : (

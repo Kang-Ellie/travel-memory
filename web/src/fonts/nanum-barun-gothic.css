@@ -1,0 +1,31 @@
+/*
+ * Nanum Barun Gothic — 한글 서브셋 woff2 (self-host)
+ * 원본: NAVER Corporation, SIL Open Font License 1.1 (같은 폴더 LICENSE 참고)
+ *
+ * typeface-nanum-barun-gothic 패키지의 풀 폰트(웨이트당 woff2 1.5MB)를 그대로 쓰면
+ * 첫 방문에 폰트만 3MB를 받는다. 실사용 한글(KS X 1001 완성형 2,350자) + 라틴·문장부호로
+ * 서브셋해서 웨이트당 ~140KB로 줄였다. 서브셋에 없는 희귀 한글(옛한글 등)은 아래
+ * fallback 고딕(Apple SD Gothic Neo/Malgun)으로 렌더링된다.
+ *
+ * 재생성 방법: pip install fonttools brotli 후
+ *   pyftsubset <원본.ttf> --text-file=subset-chars.txt --flavor=woff2 \
+ *     --layout-features='*' --no-hinting --output-file=<이름>-subset.woff2
+ */
+
+@font-face {
+  font-family: 'Nanum Barun Gothic';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Nanum Barun Gothic'), local('NanumBarunGothic'),
+       url(./NanumBarunGothic-subset.woff2) format('woff2');
+}
+
+@font-face {
+  font-family: 'Nanum Barun Gothic';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Nanum Barun Gothic Bold'), local('NanumBarunGothicBold'),
+       url(./NanumBarunGothicBold-subset.woff2) format('woff2');
+}

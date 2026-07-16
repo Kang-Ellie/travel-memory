@@ -442,7 +442,7 @@ function EventCard({
         {ev.photos.length > 0 && (
           <div className="event-photo-col">
             <div className="photo-thumb">
-              <img className="main-photo" src={fileUrl(mainPhoto!.filePath)} alt="" onClick={() => setLightboxIndex(0)} />
+              <img className="main-photo" src={fileUrl(mainPhoto!.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightboxIndex(0)} />
               {ev.photos.length > 1 && (
                 <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(mainPhoto!.id).then(onChanged)}>×</button>
               )}
@@ -451,7 +451,7 @@ function EventCard({
               <div className="thumb-row">
                 {restPhotos.map((p, i) => (
                   <div key={p.id} className="photo-thumb">
-                    <img src={fileUrl(p.filePath)} alt="" onClick={() => setLightboxIndex(i + 1)} />
+                    <img src={fileUrl(p.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightboxIndex(i + 1)} />
                     <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
                   </div>
                 ))}

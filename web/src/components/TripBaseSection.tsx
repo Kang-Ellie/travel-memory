@@ -114,7 +114,7 @@ function BaseListCard({
         >
           <span className="mark">DONE</span>
         </button>
-        {coverPhoto && <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" />}
+        {coverPhoto && <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" loading="lazy" decoding="async" />}
         <div className="grow" style={{ minWidth: 0 }}>
           <div
             style={{
@@ -203,6 +203,8 @@ function BaseListCard({
             <img
               src={fileUrl(coverPhoto)}
               alt=""
+              loading="lazy"
+              decoding="async"
               style={{
                 width: "100%",
                 borderRadius: 10,

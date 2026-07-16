@@ -18,7 +18,7 @@ function PodiumSlot({ item, rank }: { item: CityPlaceSummary; rank: number }) {
     <div className="podium-slot">
       <span className="podium-medal">{RANK_MEDAL[rank]}</span>
       {item.place.coverPhoto ? (
-        <img className="podium-photo" src={fileUrl(item.place.coverPhoto)} alt="" />
+        <img className="podium-photo" src={fileUrl(item.place.coverPhoto)} alt="" loading="lazy" decoding="async" />
       ) : (
         <div className="podium-photo podium-photo-empty">{CATEGORY_EMOJI[item.place.category] ?? '📍'}</div>
       )}

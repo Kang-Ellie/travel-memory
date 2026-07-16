@@ -101,7 +101,6 @@ const mapFlightDetail = (r: any) => ({
 const FLIGHT_SELECT = `
   SELECT fd.*, v.title AS voucher_title FROM flight_details fd
   LEFT JOIN vouchers v ON v.id = fd.voucher_id
-  WHERE fd.event_id = $1
 `
 const mapValetDetail = (r: any) => ({
   scheduledAt: r.scheduled_at, location: r.location, company: r.company,
@@ -111,7 +110,6 @@ const mapValetDetail = (r: any) => ({
 const VALET_SELECT = `
   SELECT vd.*, v.title AS voucher_title FROM valet_details vd
   LEFT JOIN vouchers v ON v.id = vd.voucher_id
-  WHERE vd.event_id = $1
 `
 const mapLodgingDetail = (r: any) => ({
   checkInAt: r.check_in_at, checkOutAt: r.check_out_at,
@@ -122,7 +120,6 @@ const mapLodgingDetail = (r: any) => ({
 const LODGING_SELECT = `
   SELECT ld.*, v.title AS voucher_title FROM lodging_details ld
   LEFT JOIN vouchers v ON v.id = ld.voucher_id
-  WHERE ld.event_id = $1
 `
 const mapReservationDetail = (r: any) => ({
   reservedAt: r.reserved_at, partySize: r.party_size != null ? Number(r.party_size) : null,
@@ -132,8 +129,44 @@ const mapReservationDetail = (r: any) => ({
 const RESERVATION_SELECT = `
   SELECT rd.*, v.title AS voucher_title FROM reservation_details rd
   LEFT JOIN vouchers v ON v.id = rd.voucher_id
-  WHERE rd.event_id = $1
 `
+// 이벤트 행 목록에 장소·사진·티켓(항공/발렛/숙소/예약) 상세를 붙인다.
+// 이벤트마다 6쿼리를 날리던 N+1 패턴 대신, 이벤트 수와 무관하게 6쿼리 고정(배치 조회).
+async function attachEventDetails(eventRows: any[]) {
+  if (eventRows.length === 0) return []
+  const eventIds = eventRows.map((e) => e.id)
+  const placeIds = [...new Set(eventRows.map((e) => e.place_id))]
+  const [places, photos, flights, valets, lodgings, reservations] = await Promise.all([
+    pool.query('SELECT * FROM places WHERE id = ANY($1)', [placeIds]),
+    pool.query('SELECT * FROM photos WHERE event_id = ANY($1) ORDER BY created_at', [eventIds]),
+    pool.query(`${FLIGHT_SELECT} WHERE fd.event_id = ANY($1)`, [eventIds]),
+    pool.query(`${VALET_SELECT} WHERE vd.event_id = ANY($1)`, [eventIds]),
+    pool.query(`${LODGING_SELECT} WHERE ld.event_id = ANY($1)`, [eventIds]),
+    pool.query(`${RESERVATION_SELECT} WHERE rd.event_id = ANY($1)`, [eventIds]),
+  ])
+  const placeById = new Map(places.rows.map((p: any) => [p.id, p]))
+  const photosByEvent = new Map<string, any[]>()
+  for (const ph of photos.rows) {
+    const list = photosByEvent.get(ph.event_id) ?? []
+    list.push(ph)
+    photosByEvent.set(ph.event_id, list)
+  }
+  const byEventId = (rows: any[]) => new Map(rows.map((r: any) => [r.event_id, r]))
+  const flightBy = byEventId(flights.rows)
+  const valetBy = byEventId(valets.rows)
+  const lodgingBy = byEventId(lodgings.rows)
+  const reservationBy = byEventId(reservations.rows)
+  return eventRows.map((ev) => ({
+    ...mapEvent(ev),
+    place: mapPlace(placeById.get(ev.place_id)),
+    photos: (photosByEvent.get(ev.id) ?? []).map(mapPhoto),
+    flight: flightBy.has(ev.id) ? mapFlightDetail(flightBy.get(ev.id)) : null,
+    valet: valetBy.has(ev.id) ? mapValetDetail(valetBy.get(ev.id)) : null,
+    lodging: lodgingBy.has(ev.id) ? mapLodgingDetail(lodgingBy.get(ev.id)) : null,
+    reservation: reservationBy.has(ev.id) ? mapReservationDetail(reservationBy.get(ev.id)) : null,
+  }))
+}
+
 const mapEvent = (r: any) => ({
   id: r.id, tripId: r.trip_id, placeId: r.place_id, dayNumber: r.day_number, sequence: r.sequence,
   plannedTime: r.planned_time, rating: r.rating != null ? Number(r.rating) : null,
@@ -296,11 +329,46 @@ export function registerRoutes(app: ExpressApp): void {
     await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4, nights=$5 WHERE id=$6',
       [title, startDate, endDate, budget ?? 0, nights ?? null, req.params.id])
     await setTripCities(req.params.id, cityIds)
-    res.json({ ok: true })
+
+    // 여행 기간을 줄이면 범위 밖 일차의 일정이 DB에 남는데, 일정 화면은 1~N일차 탭만
+    // 그리므로 접근 불가능한 유령 데이터가 된다. 지우는 대신 '미배정 티켓'(day_number NULL)으로
+    // 옮겨서 리뷰·사진·지출 연결을 보존하고, 유저가 다시 일차를 배정할 수 있게 한다.
+    // 그 일차들의 이동 구간은 앞뒤 일정이 사라져 의미가 없으므로 삭제한다.
+    const s = new Date(`${startDate}T00:00:00`)
+    const e = new Date(`${endDate}T00:00:00`)
+    const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+    await pool.query('DELETE FROM transit_segments WHERE trip_id = $1 AND day_number > $2', [req.params.id, days])
+    const moved = await pool.query(
+      'UPDATE timeline_events SET day_number = NULL, sequence = 0 WHERE trip_id = $1 AND day_number > $2 RETURNING id',
+      [req.params.id, days])
+    res.json({ ok: true, unassignedCount: moved.rows.length })
   })
 
+  // 여행 삭제 시 CASCADE로 함께 지워지는 행(사진·일기 사진·바우처·보관함 이미지·항공사 로고)이
+  // 가리키던 R2 파일을 먼저 모아뒀다가, DB 삭제가 성공한 뒤 지운다. DB만 지우면 R2에
+  // 아무도 참조하지 않는 유령 파일이 영구히 쌓인다 (개별 삭제 라우트는 safeUnlink를
+  // 호출하지만 CASCADE 삭제는 코드에서 감지할 수 없으므로 여기서 직접 처리).
+  async function collectTripFilePaths(tripId: string): Promise<string[]> {
+    const [photos, dayPhotos, vouchers, archives, logos] = await Promise.all([
+      pool.query(
+        `SELECT ph.file_path FROM photos ph
+         JOIN timeline_events te ON te.id = ph.event_id WHERE te.trip_id = $1`, [tripId]),
+      pool.query('SELECT file_path FROM day_note_photos WHERE trip_id = $1', [tripId]),
+      pool.query('SELECT file_path FROM vouchers WHERE trip_id = $1', [tripId]),
+      pool.query('SELECT file_path FROM archive_items WHERE trip_id = $1 AND file_path IS NOT NULL', [tripId]),
+      pool.query(
+        `SELECT fd.airline_logo_path AS file_path FROM flight_details fd
+         JOIN timeline_events te ON te.id = fd.event_id
+         WHERE te.trip_id = $1 AND fd.airline_logo_path IS NOT NULL`, [tripId]),
+    ])
+    return [...photos.rows, ...dayPhotos.rows, ...vouchers.rows, ...archives.rows, ...logos.rows]
+      .map((r) => r.file_path as string)
+  }
+
   app.delete('/api/trips/:id', async (req, res) => {
+    const filePaths = await collectTripFilePaths(req.params.id)
     await pool.query('DELETE FROM trips WHERE id = $1', [req.params.id])
+    await Promise.all(filePaths.map((p) => safeUnlink(p)))
     res.json({ ok: true })
   })
 
@@ -451,21 +519,8 @@ export function registerRoutes(app: ExpressApp): void {
        JOIN trips t ON t.id = te.trip_id
        WHERE te.place_id = $1 ORDER BY t.start_date DESC, te.day_number, te.sequence`, [placeId])
 
-    const visits = []
-    for (const ev of events.rows) {
-      const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      const flight = await pool.query(FLIGHT_SELECT, [ev.id])
-      const valet = await pool.query(VALET_SELECT, [ev.id])
-      const lodging = await pool.query(LODGING_SELECT, [ev.id])
-      const reservation = await pool.query(RESERVATION_SELECT, [ev.id])
-      visits.push({
-        ...mapEvent(ev), tripTitle: ev.trip_title, photos: photos.rows.map(mapPhoto),
-        flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
-        valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
-        lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
-        reservation: reservation.rows[0] ? mapReservationDetail(reservation.rows[0]) : null,
-      })
-    }
+    const detailed = await attachEventDetails(events.rows)
+    const visits = detailed.map((d, i) => ({ ...d, tripTitle: events.rows[i].trip_title }))
 
     const totals = await pool.query(
       `SELECT currency, SUM(amount) AS total FROM expenses
@@ -745,23 +800,7 @@ export function registerRoutes(app: ExpressApp): void {
       `SELECT te.*, bi.title AS bucket_item_title FROM timeline_events te
        LEFT JOIN bucket_items bi ON bi.id = te.bucket_item_id
        WHERE te.trip_id = $1 ORDER BY te.day_number, te.sequence`, [tripId])
-    const out = []
-    for (const ev of events.rows) {
-      const place = await pool.query('SELECT * FROM places WHERE id = $1', [ev.place_id])
-      const photos = await pool.query('SELECT * FROM photos WHERE event_id = $1 ORDER BY created_at', [ev.id])
-      const flight = await pool.query(FLIGHT_SELECT, [ev.id])
-      const valet = await pool.query(VALET_SELECT, [ev.id])
-      const lodging = await pool.query(LODGING_SELECT, [ev.id])
-      const reservation = await pool.query(RESERVATION_SELECT, [ev.id])
-      out.push({
-        ...mapEvent(ev), place: mapPlace(place.rows[0]), photos: photos.rows.map(mapPhoto),
-        flight: flight.rows[0] ? mapFlightDetail(flight.rows[0]) : null,
-        valet: valet.rows[0] ? mapValetDetail(valet.rows[0]) : null,
-        lodging: lodging.rows[0] ? mapLodgingDetail(lodging.rows[0]) : null,
-        reservation: reservation.rows[0] ? mapReservationDetail(reservation.rows[0]) : null,
-      })
-    }
-    return out
+    return attachEventDetails(events.rows)
   }
 
   app.get('/api/trips/:tripId/events', async (req, res) => {
@@ -831,7 +870,17 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/events/:id', async (req, res) => {
+    // CASCADE로 지워지는 사진·항공사 로고의 R2 파일도 함께 정리 (여행 삭제와 같은 이유)
+    const [photos, logo] = await Promise.all([
+      pool.query('SELECT file_path FROM photos WHERE event_id = $1', [req.params.id]),
+      pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id]),
+    ])
     await pool.query('DELETE FROM timeline_events WHERE id = $1', [req.params.id])
+    const filePaths = [
+      ...photos.rows.map((r) => r.file_path as string),
+      ...(logo.rows[0]?.airline_logo_path ? [logo.rows[0].airline_logo_path as string] : []),
+    ]
+    await Promise.all(filePaths.map((p) => safeUnlink(p)))
     res.json({ ok: true })
   })
 
@@ -875,7 +924,7 @@ export function registerRoutes(app: ExpressApp): void {
       `INSERT INTO flight_details (event_id, airline_logo_path) VALUES ($1,$2)
        ON CONFLICT (event_id) DO UPDATE SET airline_logo_path = excluded.airline_logo_path`,
       [req.params.id, rel])
-    const r = await pool.query(FLIGHT_SELECT, [req.params.id])
+    const r = await pool.query(`${FLIGHT_SELECT} WHERE fd.event_id = $1`, [req.params.id])
     res.json(mapFlightDetail(r.rows[0]))
   })
 
@@ -1005,16 +1054,15 @@ export function registerRoutes(app: ExpressApp): void {
 
   // ── 가계부 ────────────────────────────────────────────
   app.get('/api/trips/:tripId/expenses', async (req, res) => {
+    // 정산 대상(splits)은 지출마다 쿼리하지 않고 array_agg 서브쿼리로 한 번에 가져온다
+    // (expense_splits PK가 (expense_id, member_id)라 인덱스 스캔으로 처리됨).
     const r = await pool.query(
-      `SELECT e.*, m.name AS payer_name FROM expenses e
+      `SELECT e.*, m.name AS payer_name,
+         COALESCE((SELECT array_agg(es.member_id) FROM expense_splits es WHERE es.expense_id = e.id), '{}') AS split_with
+       FROM expenses e
        JOIN members m ON m.id = e.paid_by
        WHERE e.trip_id = $1 ORDER BY e.spent_at DESC`, [req.params.tripId])
-    const out = []
-    for (const row of r.rows) {
-      const splits = await pool.query('SELECT member_id FROM expense_splits WHERE expense_id = $1', [row.id])
-      out.push({ ...mapExpense(row), splitWith: splits.rows.map((s) => s.member_id) })
-    }
-    res.json(out)
+    res.json(r.rows.map((row) => ({ ...mapExpense(row), splitWith: row.split_with ?? [] })))
   })
 
   app.post('/api/trips/:tripId/expenses', async (req, res) => {
