@@ -1,10 +1,12 @@
-import type { LodgingDetail } from '../../shared/types'
+import type { LodgingDetail, Voucher } from '../../shared/types'
+import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
-export default function LodgingPassCard({ lodging, placeName }: { lodging: LodgingDetail; placeName: string }) {
+export default function LodgingPassCard({ lodging, placeName, vouchers = [] }: { lodging: LodgingDetail; placeName: string; vouchers?: Voucher[] }) {
   const inAt = fmtDateTime(lodging.checkInAt)
   const outAt = fmtDateTime(lodging.checkOutAt)
   const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType
+  const voucher = lodging.voucherId ? vouchers.find((v) => v.id === lodging.voucherId) : undefined
 
   return (
     <div className="bpass">
@@ -42,7 +44,11 @@ export default function LodgingPassCard({ lodging, placeName }: { lodging: Lodgi
         {(lodging.voucherId || lodging.breakfastIncluded) && (
           <div className="bpass-badges">
             {lodging.breakfastIncluded && <span className="chip yellow">🍳 조식 포함</span>}
-            {lodging.voucherId && <span className="chip green" title={lodging.voucherTitle ?? ''}>🎫 {lodging.voucherTitle}</span>}
+            {lodging.voucherId && (voucher ? (
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {lodging.voucherTitle ?? voucher.title}</a>
+            ) : (
+              <span className="chip green" title={lodging.voucherTitle ?? ''}>🎫 {lodging.voucherTitle}</span>
+            ))}
           </div>
         )}
       </div>

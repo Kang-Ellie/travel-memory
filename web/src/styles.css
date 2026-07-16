@@ -799,6 +799,16 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .trip-ticket-grid .boarding-pass { margin-bottom: 0; }
 
+/* 일정(동선) 안의 항공·숙소·발렛 티켓은 바깥 카드 박스 없이 티켓만 보이게 */
+.event-card.ticket-bare {
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 14px;
+}
+.event-card.ticket-bare .event-head.ticket-only { margin-bottom: 6px; }
+
 /* ── 여행 준비: 여행 전 Todo(1) : 여행 준비물(2) 분할 ─── */
 .prep-split { display: grid; grid-template-columns: 1fr 2fr; gap: 24px; }
 @media (max-width: 900px) {
@@ -1342,8 +1352,6 @@ textarea { resize: vertical; min-height: 70px; }
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-top: 18px;
-  padding-top: 16px;
-  border-top: 1.5px solid var(--line);
 }
 .base-list-col {
   background: #fff;

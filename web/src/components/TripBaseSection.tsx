@@ -40,7 +40,15 @@ function BaseListCard({
   const [open, setOpen] = useState(false);
   const [linkingPlace, setLinkingPlace] = useState(false);
   const [placeId, setPlaceId] = useState("");
+  const [memo, setMemo] = useState(item.memo ?? "");
+  const [tip, setTip] = useState(item.tip ?? "");
   const photoInput = useRef<HTMLInputElement>(null);
+
+  const saveNotes = async () => {
+    await api.bucket.update(item.id, { memo: memo.trim() || null, tip: tip.trim() || null });
+    setOpen(false);
+    onChanged();
+  };
   const linkedPlace = item.linkedPlaceId
     ? places.find((p) => p.id === item.linkedPlaceId)
     : undefined;
@@ -123,6 +131,13 @@ function BaseListCard({
               {placeLine()}
             </div>
           )}
+          {(item.tip || item.memo) && (
+            <div className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12 }}>
+              {item.tip && `💡 ${item.tip}`}
+              {item.tip && item.memo && "  "}
+              {item.memo && `📝 ${item.memo}`}
+            </div>
+          )}
         </div>
       </div>
       {open && (
@@ -197,42 +212,64 @@ function BaseListCard({
               📷 사진 추가
             </button>
           )}
-          {item.memo && (
-            <p style={{ whiteSpace: "pre-wrap", marginTop: 0 }}>{item.memo}</p>
-          )}
-          {linkedPlace ? (
-            <div className="muted" style={{ marginBottom: 12 }}>
-              {placeLine()}
-            </div>
-          ) : (
-            <div className="muted" style={{ marginBottom: 12 }}>
-              오른쪽 위 메뉴(⋮)에서 장소 족보와 연결해두면, 어디서 하는지가 여기 붙어요.
-            </div>
-          )}
-          {linkingPlace && (
-            <div className="row" style={{ border: "none", padding: 0 }}>
-              <Select
-                value={placeId}
-                onChange={(e) => setPlaceId(e.target.value)}
-              >
-                <option value="">— 장소 선택 —</option>
-                {places.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    [{p.category}] {p.name}
-                  </option>
-                ))}
-              </Select>
-              <button className="btn small primary" onClick={linkPlace}>
-                연결
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>
+              {kind === "food" ? "📍 추천 전문점" : kind === "wish" ? "🛍 구매 가능 장소" : "📍 어디서 할 수 있나요"}
+            </label>
+            {linkedPlace ? (
+              <div className="row" style={{ border: "none", padding: 0, gap: 8, alignItems: "center" }}>
+                <span className="grow">{placeLine()}</span>
+                <button className="btn small ghost" onClick={unlinkPlace}>연결 해제</button>
+              </div>
+            ) : linkingPlace ? (
+              <div className="row" style={{ border: "none", padding: 0 }}>
+                <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+                  <option value="">— 장소 선택 —</option>
+                  {places.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      [{p.category}] {p.name}
+                    </option>
+                  ))}
+                </Select>
+                <button className="btn small primary" onClick={linkPlace}>연결</button>
+                <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+              </div>
+            ) : (
+              <button className="btn small" onClick={() => setLinkingPlace(true)}>
+                📍 장소 족보와 연결
               </button>
-              <button
-                className="btn small"
-                onClick={() => setLinkingPlace(false)}
-              >
-                취소
-              </button>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{kind === "food" ? "💡 특징 · 알아야 할 TIP" : "💡 알아야 할 TIP"}</label>
+            <textarea
+              value={tip}
+              onChange={(e) => setTip(e.target.value)}
+              placeholder={
+                kind === "food"
+                  ? "예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수"
+                  : kind === "wish"
+                  ? "예: 면세 되는지 확인 · 공항보다 시내가 쌈"
+                  : "예: 오전에 가야 한산함 · 예약 필요"
+              }
+              rows={2}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>📝 느낀점</label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
+              rows={2}
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <button className="btn primary" onClick={saveNotes}>저장</button>
         </Modal>
       )}
     </>
@@ -299,16 +336,6 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
       <div className="base-where-head" style={{ marginBottom: collapsed ? 0 : 12 }}>
         <div className="base-where-title">
           <strong>🧭 이번엔 어디?</strong>
-          <div className="base-where-dests">
-            {tripCityRecords.map((c) => {
-              const co = countries.find((x) => x.id === c.countryId);
-              return (
-                <span key={c.id} className="base-where-chip">
-                  {flagEmoji(co?.code)} {c.name}
-                </span>
-              );
-            })}
-          </div>
         </div>
         <button className="btn small ghost" onClick={() => setCollapsed((v) => !v)}>
           {collapsed ? "펼치기" : "접기"}
@@ -363,32 +390,19 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                       { icon: "📈", label: "물가", value: co.priceLevel },
                       { icon: "🚓", label: "경찰", value: co.emergencyPolice, emphasis: true },
                       { icon: "🚑", label: "응급", value: co.emergencyMedical, emphasis: true },
+                      { icon: "📋", label: "준비서류", value: co.prepDocs },
                     ]}
                   />
-                  {(co.prepDocs || co.prepDocsUrl) && (
-                    <div
-                      style={{
-                        fontSize: 12,
-                        marginTop: 12,
-                        fontWeight: 800,
-                        color: "var(--ink)",
-                        background: "var(--yellow-soft)",
-                        border: "1.5px solid var(--ink)",
-                        borderRadius: 10,
-                        padding: "8px 10px",
-                        display: "flex",
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        gap: 8,
-                      }}
+                  {co.prepDocsUrl && (
+                    <a
+                      className="btn small ghost"
+                      href={co.prepDocsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ marginTop: 10 }}
                     >
-                      <span>📋 준비서류 : {co.prepDocs || "—"}</span>
-                      {co.prepDocsUrl && (
-                        <a className="btn small primary" href={co.prepDocsUrl} target="_blank" rel="noreferrer">
-                          🔗 온라인 신청
-                        </a>
-                      )}
-                    </div>
+                      🔗 준비서류 온라인 신청
+                    </a>
                   )}
                 </div>
 

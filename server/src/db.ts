@@ -326,6 +326,9 @@ export async function initSchema(): Promise<void> {
       note         TEXT
     );
 
+    -- 버킷·먹킷·위시: 알아두면 좋은 TIP(느낀점=memo와 별개)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS tip TEXT;
+
     -- 장소 족보 보강: 발렛사/예약 채널(발렛), 성급/가는 법(숙소), 영아 픽 메뉴(맛집·카페·숙소), 추천 여부
     ALTER TABLE places ADD COLUMN IF NOT EXISTS valet_company TEXT;
     ALTER TABLE places ADD COLUMN IF NOT EXISTS booking_channel TEXT;

@@ -1,8 +1,10 @@
-import type { ReservationDetail } from '../../shared/types'
+import type { ReservationDetail, Voucher } from '../../shared/types'
+import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
-export default function ReservationPassCard({ reservation }: { reservation: ReservationDetail }) {
+export default function ReservationPassCard({ reservation, vouchers = [] }: { reservation: ReservationDetail; vouchers?: Voucher[] }) {
   const at = reservation.reservedAt ? fmtDateTime(reservation.reservedAt) : null
+  const voucher = reservation.voucherId ? vouchers.find((v) => v.id === reservation.voucherId) : undefined
 
   return (
     <div className="resv-ticket">
@@ -21,7 +23,11 @@ export default function ReservationPassCard({ reservation }: { reservation: Rese
           <div className="resv-field"><span className="k">예약처</span><span className="v">{reservation.bookedVia}</span></div>
         )}
         {reservation.voucherId && (
-          <div className="resv-field"><span className="k">바우처</span><span className="v">🎫 {reservation.voucherTitle ?? '연결됨'}</span></div>
+          <div className="resv-field"><span className="k">바우처</span><span className="v">
+            {voucher ? (
+              <a className="plain-link" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer">🎫 {reservation.voucherTitle ?? voucher.title}</a>
+            ) : `🎫 ${reservation.voucherTitle ?? '연결됨'}`}
+          </span></div>
         )}
       </div>
       {reservation.note && <div className="resv-ticket-note">📝 {reservation.note}</div>}

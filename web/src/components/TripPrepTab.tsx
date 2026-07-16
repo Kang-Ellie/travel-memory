@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Trip, TimelineEvent, Expense, Member, Place } from '../../shared/types'
+import type { Trip, TimelineEvent, Expense, Member, Place, Voucher } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import { dayCount } from './TripWorkspace'
@@ -42,6 +42,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [participants, setParticipants] = useState<Member[]>([])
   const [places, setPlaces] = useState<Place[]>([])
+  const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [showAddPrebooked, setShowAddPrebooked] = useState(false)
   const [ticketKind, setTicketKind] = useState<TicketKind | null>(null)
   const [editTicket, setEditTicket] = useState<{ kind: TicketKind; event: TimelineEvent } | null>(null)
@@ -52,6 +53,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
     api.expenses.list(trip.id).then(setExpenses)
     api.tripMembers.list(trip.id).then(setParticipants)
     api.places.list().then(setPlaces)
+    api.vouchers.list(trip.id).then(setVouchers)
   }
   useEffect(refresh, [trip.id])
 
@@ -75,24 +77,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
   return (
     <div>
-      {/* 체크리스트 — 여행 "준비"의 본체라 준비 탭 맨 위에 (예전엔 BASE 탭에 있었음) */}
-      <strong style={{ fontSize: 15 }}>✅ 체크리스트</strong>
-      <div className="prep-split" style={{ marginTop: 10, marginBottom: 22 }}>
-        <ChecklistPanel
-          tripId={trip.id}
-          scope="predeparture"
-          title="🛫 여행 전 Todo"
-          addPlaceholder="예: 여행자보험 가입"
-        />
-        <ChecklistPanel
-          tripId={trip.id}
-          scope="packing"
-          title="🎒 여행 준비물"
-          addPlaceholder="예: 여권, 충전기"
-        />
-      </div>
-
-      <div className="day-tabs prep-sub-tabs" style={{ borderTop: '1.5px solid var(--line)', paddingTop: 18 }}>
+      <div className="day-tabs prep-sub-tabs">
         {PREP_SECTIONS.map((s) => (
           <button key={s.key} className={`pill ${section === s.key ? 'active' : ''}`} onClick={() => setSection(s.key)}>
             {s.label}
@@ -172,60 +157,98 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
             <div className="empty">위 버튼으로 발렛·항공·숙소 티켓을 추가하면 여기 모아서 보여줘요.</div>
           ) : (
             <>
-              {valets.length > 0 && (
-                <div className="section-gap">
-                  <strong>🚗 발렛</strong>
-                  {valets.map((ev) => (
-                    <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketHeader('발렛', ev)}
-                      {ev.valet ? (
-                        <ValetPassCard valet={ev.valet} placeName={ev.place.name} />
-                      ) : (
-                        <div className="row"><span className="muted">아직 발렛 상세정보가 없어요.</span></div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
               {flights.length > 0 && (
                 <div className="section-gap">
                   <strong>✈️ 항공</strong>
-                  {flights.map((ev) => (
-                    <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketHeader('항공', ev)}
-                      {ev.flight ? (
-                        <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} />
-                      ) : (
-                        <div className="row"><span className="muted">아직 항공 상세정보가 없어요 — 동선에서 입력해주세요.</span></div>
-                      )}
-                    </div>
-                  ))}
+                  <div className="trip-ticket-grid">
+                    {flights.map((ev) => (
+                      <div key={ev.id}>
+                        {ticketHeader('항공', ev)}
+                        {ev.flight ? (
+                          <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
+                        ) : (
+                          <button
+                            className="btn small primary"
+                            style={{ width: '100%' }}
+                            onClick={() => setEditTicket({ kind: '항공', event: ev })}
+                          >
+                            ＋ 항공 상세정보 입력
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
               {stays.length > 0 && (
                 <div className="section-gap">
                   <strong>🏨 숙소</strong>
-                  {stays.map((ev) => (
-                    <div key={ev.id} style={{ marginTop: 8 }}>
-                      {ticketHeader('숙소', ev)}
-                      {ev.lodging ? (
-                        <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} />
-                      ) : (
-                        <div className="row">
-                          <div className="grow">
-                            <div style={{ fontWeight: 800 }}>{ev.place.name}</div>
-                            {ev.place.address && <div className="muted">📍 {ev.place.address}</div>}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                  <div className="trip-ticket-grid">
+                    {stays.map((ev) => (
+                      <div key={ev.id}>
+                        {ticketHeader('숙소', ev)}
+                        {ev.lodging ? (
+                          <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} vouchers={vouchers} />
+                        ) : (
+                          <button
+                            className="btn small primary"
+                            style={{ width: '100%' }}
+                            onClick={() => setEditTicket({ kind: '숙소', event: ev })}
+                          >
+                            ＋ 숙소 상세정보 입력
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {valets.length > 0 && (
+                <div className="section-gap">
+                  <strong>🚗 발렛</strong>
+                  <div className="trip-ticket-grid">
+                    {valets.map((ev) => (
+                      <div key={ev.id}>
+                        {ticketHeader('발렛', ev)}
+                        {ev.valet ? (
+                          <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
+                        ) : (
+                          <button
+                            className="btn small primary"
+                            style={{ width: '100%' }}
+                            onClick={() => setEditTicket({ kind: '발렛', event: ev })}
+                          >
+                            ＋ 발렛 상세정보 입력
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       )}
+
+      {/* 체크리스트 — 티켓·바우처 아래로 내림 */}
+      <div style={{ borderTop: '1.5px solid var(--line)', marginTop: 24, paddingTop: 18 }}>
+        <strong style={{ fontSize: 15 }}>✅ 체크리스트</strong>
+        <div className="prep-split" style={{ marginTop: 10 }}>
+          <ChecklistPanel
+            tripId={trip.id}
+            scope="predeparture"
+            title="🛫 여행 전 Todo"
+            addPlaceholder="예: 여행자보험 가입"
+          />
+          <ChecklistPanel
+            tripId={trip.id}
+            scope="packing"
+            title="🎒 여행 준비물"
+            addPlaceholder="예: 여권, 충전기"
+          />
+        </div>
+      </div>
     </div>
   )
 }

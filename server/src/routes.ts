@@ -204,7 +204,7 @@ async function seedChecklistPresets(tripId: string, scope: 'predeparture' | 'pac
   }
 }
 const mapBucket = (r: any) => ({
-  id: r.id, title: r.title, memo: r.memo,
+  id: r.id, title: r.title, memo: r.memo, tip: r.tip ?? null,
   countryIds: r.country_ids ?? [], cityIds: r.city_ids ?? [],
   category: r.category, done: r.done, linkedTripId: r.linked_trip_id,
   linkedTripTitle: r.linked_trip_title ?? null, linkedPlaceId: r.linked_place_id,
@@ -1382,28 +1382,31 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.post('/api/bucket', async (req, res) => {
-    const { title, memo, countryIds, cityIds, category, linkedPlaceId, linkedTripId } = req.body as {
-      title: string; memo: string | null; countryIds: string[]; cityIds: string[]
+    const { title, memo, tip, countryIds, cityIds, category, linkedPlaceId, linkedTripId } = req.body as {
+      title: string; memo: string | null; tip?: string | null; countryIds: string[]; cityIds: string[]
       category: string | null; linkedPlaceId?: string | null; linkedTripId?: string | null
     }
     const itemId = id()
     await pool.query(
-      'INSERT INTO bucket_items (id, title, memo, country_ids, city_ids, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
-      [itemId, title.trim(), memo, countryIds ?? [], cityIds ?? [], category, linkedPlaceId || null, linkedTripId || null])
+      'INSERT INTO bucket_items (id, title, memo, tip, country_ids, city_ids, category, linked_place_id, linked_trip_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [itemId, title.trim(), memo, tip ?? null, countryIds ?? [], cityIds ?? [], category, linkedPlaceId || null, linkedTripId || null])
     await logActivity(linkedTripId || null, 'bucket_added', title.trim())
     const r = await pool.query(`${BUCKET_SELECT} WHERE b.id = $1`, [itemId])
     res.json(mapBucket(r.rows[0]))
   })
 
   app.put('/api/bucket/:id', async (req, res) => {
-    const { done, linkedTripId, linkedPlaceId } = req.body as {
+    const { done, linkedTripId, linkedPlaceId, memo, tip } = req.body as {
       done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null
+      memo?: string | null; tip?: string | null
     }
     const sets: string[] = []
     const params: any[] = []
     if (done !== undefined) { params.push(done); sets.push(`done = $${params.length}`) }
     if (linkedTripId !== undefined) { params.push(linkedTripId); sets.push(`linked_trip_id = $${params.length}`) }
     if (linkedPlaceId !== undefined) { params.push(linkedPlaceId); sets.push(`linked_place_id = $${params.length}`) }
+    if (memo !== undefined) { params.push(memo); sets.push(`memo = $${params.length}`) }
+    if (tip !== undefined) { params.push(tip); sets.push(`tip = $${params.length}`) }
     if (sets.length === 0) { res.json({ ok: true }); return }
     params.push(req.params.id)
     await pool.query(`UPDATE bucket_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)

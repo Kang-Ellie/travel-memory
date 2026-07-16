@@ -5,7 +5,7 @@ import type {
 import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
-import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji, fmtDateTime } from '../categories'
+import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
@@ -148,23 +148,21 @@ function TransitChip({
     <div className="transit-chip">
       <span>{TRANSIT_ICON[segment.mode] ?? '➡️'} {segment.mode}{segment.durationText ? ` · ${segment.durationText}` : ''}</span>
       {segment.note && <span className="muted">· {segment.note}</span>}
-      {segment.voucherId ? (
-        <>
-          <a
-            className="chip green"
-            title={segment.voucherTitle ?? ''}
-            href={fileUrl(vouchers.find((v) => v.id === segment.voucherId)?.filePath ?? '')}
-            target="_blank"
-            rel="noreferrer"
-          >
-            📎
-          </a>
-          <button className="btn small ghost" onClick={unlink} title="바우처 연결 해제">연결 해제</button>
-        </>
-      ) : (
-        <button className="btn small ghost" onClick={() => setLinking(true)}>🎫 예약 미확인 · 연결</button>
+      {segment.voucherId && (
+        <a
+          className="chip green"
+          title={segment.voucherTitle ?? '바우처 열기'}
+          href={fileUrl(vouchers.find((v) => v.id === segment.voucherId)?.filePath ?? '')}
+          target="_blank"
+          rel="noreferrer"
+        >
+          🎫 {segment.voucherTitle ?? '바우처'}
+        </a>
       )}
       <DropdownMenu actions={[
+        segment.voucherId
+          ? { label: '🔗 바우처 연결 해제', onClick: unlink }
+          : { label: '🎫 예약 · 바우처 연결', onClick: () => setLinking(true) },
         { label: '✏️ 수정', onClick: () => setEditing(true) },
         { label: '🗑 삭제', danger: true, onClick: remove },
       ]} />
@@ -387,7 +385,7 @@ function EventCard({
 
   return (
     <div
-      className="card event-card"
+      className={isTicket ? 'event-card ticket-bare' : 'card event-card'}
       draggable
       onDragStart={() => onDragStart(dragIndex)}
       onDragOver={(e) => e.preventDefault()}
@@ -653,13 +651,13 @@ function EventCard({
             <>
               {!isTicket && ev.reservation && (
                 <div style={{ marginBottom: 8 }}>
-                  <ReservationPassCard reservation={ev.reservation} />
+                  <ReservationPassCard reservation={ev.reservation} vouchers={vouchers} />
                 </div>
               )}
               {isAirport && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) ? (
-                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} />
+                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>✈️ 탑승권 정보 입력하기</button>
                   )}
@@ -668,7 +666,7 @@ function EventCard({
               {isValet && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.valet && (ev.valet.scheduledAt || ev.valet.bookingRef || ev.valet.bookedVia) ? (
-                    <ValetPassCard valet={ev.valet} placeName={ev.place.name} />
+                    <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>🚗 발렛 티켓 정보 입력하기</button>
                   )}
@@ -677,7 +675,7 @@ function EventCard({
               {isLodging && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.lodging && (ev.lodging.checkInAt || ev.lodging.checkOutAt || ev.lodging.bookingRef) ? (
-                    <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} />
+                    <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>🏨 숙소 티켓 정보 입력하기</button>
                   )}
@@ -1119,7 +1117,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
 
           <div
-            className={`drop-zone timeline-axis ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
+            className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
             style={{ marginTop: 12 }}
             onDragOver={(e) => { e.preventDefault(); if (e.dataTransfer.types.includes(ARCHIVE_DRAG_TYPE)) setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
@@ -1131,38 +1129,25 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               </div>
             )}
             {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-            {dayEvents.map((ev, idx) => {
-              const railTime = ev.plannedTime
-                || (ev.flight?.departAt ? fmtDateTime(ev.flight.departAt).time
-                  : ev.lodging?.checkInAt ? fmtDateTime(ev.lodging.checkInAt).time
-                    : ev.valet?.scheduledAt ? fmtDateTime(ev.valet.scheduledAt).time
-                      : ev.reservation?.reservedAt ? fmtDateTime(ev.reservation.reservedAt).time : '')
-              return (
-                <div key={ev.id} className="tl-item">
-                  <div className="tl-rail">
-                    {railTime && <div className="tl-time">{railTime}</div>}
-                    <span className={`tl-dot ${ev.flight || ev.lodging || ev.valet ? 'ticket' : ''}`} />
-                  </div>
-                  <div className="tl-body">
-                    <EventCard
-                      ev={ev}
-                      participants={members}
-                      eventExpenses={expensesByEvent.get(ev.id) ?? []}
-                      bucketItems={bucketItems}
-                      vouchers={vouchers}
-                      dragIndex={idx}
-                      onDragStart={(i) => { dragFrom.current = i }}
-                      onDrop={() => reorder(idx)}
-                      onChanged={refresh}
-                      isToday={todayNum != null && day === todayNum}
-                      displaySeq={displaySeqById.get(ev.id) ?? null}
-                      spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
-                    />
-                    {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
-                  </div>
-                </div>
-              )
-            })}
+            {dayEvents.map((ev, idx) => (
+              <div key={ev.id}>
+                <EventCard
+                  ev={ev}
+                  participants={members}
+                  eventExpenses={expensesByEvent.get(ev.id) ?? []}
+                  bucketItems={bucketItems}
+                  vouchers={vouchers}
+                  dragIndex={idx}
+                  onDragStart={(i) => { dragFrom.current = i }}
+                  onDrop={() => reorder(idx)}
+                  onChanged={refresh}
+                  isToday={todayNum != null && day === todayNum}
+                  displaySeq={displaySeqById.get(ev.id) ?? null}
+                  spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
+                />
+                {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+              </div>
+            ))}
           </div>
 
           <div className="row" style={{ flexWrap: 'wrap', marginTop: 14 }}>

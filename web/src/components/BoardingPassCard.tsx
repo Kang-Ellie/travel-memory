@@ -1,4 +1,4 @@
-import type { FlightDetail, Member } from '../../shared/types'
+import type { FlightDetail, Member, Voucher } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
@@ -8,9 +8,10 @@ function formatDuration(minutes: number): string {
   return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
-export default function BoardingPassCard({ flight, fromName, participants = [] }: {
-  flight: FlightDetail; fromName: string; participants?: Member[]
+export default function BoardingPassCard({ flight, fromName, participants = [], vouchers = [] }: {
+  flight: FlightDetail; fromName: string; participants?: Member[]; vouchers?: Voucher[]
 }) {
+  const voucher = flight.voucherId ? vouchers.find((v) => v.id === flight.voucherId) : undefined
   const dep = fmtDateTime(flight.departAt)
   const arr = fmtDateTime(flight.arriveAt)
   const hasInfo = flight.durationMinutes != null || flight.bookingRef
@@ -66,7 +67,11 @@ export default function BoardingPassCard({ flight, fromName, participants = [] }
 
         {(flight.voucherId || (!allAboard && passengerNames.length > 0)) && (
           <div className="bpass-badges">
-            {flight.voucherId && <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>}
+            {flight.voucherId && (voucher ? (
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {flight.voucherTitle ?? voucher.title}</a>
+            ) : (
+              <span className="chip green" title={flight.voucherTitle ?? ''}>🎫 {flight.voucherTitle}</span>
+            ))}
             {!allAboard && passengerNames.length > 0 && (
               <span className="chip purple">🧑‍🤝‍🧑 {passengerNames.join(', ')}</span>
             )}

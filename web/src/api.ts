@@ -185,11 +185,13 @@ export const api = {
   bucket: {
     list: () => req<BucketItem[]>('GET', '/api/bucket'),
     create: (data: {
-      title: string; memo: string | null; countryIds: string[]; cityIds: string[]
+      title: string; memo: string | null; tip?: string | null; countryIds: string[]; cityIds: string[]
       category: string | null; linkedPlaceId?: string | null; linkedTripId?: string | null
     }) => req<BucketItem>('POST', '/api/bucket', data),
-    update: (id: string, data: { done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null }) =>
-      req<void>('PUT', `/api/bucket/${id}`, data),
+    update: (id: string, data: {
+      done?: boolean; linkedTripId?: string | null; linkedPlaceId?: string | null
+      memo?: string | null; tip?: string | null
+    }) => req<void>('PUT', `/api/bucket/${id}`, data),
     delete: (id: string) => req<void>('DELETE', `/api/bucket/${id}`),
     uploadPhoto: (id: string, file: File) => upload<BucketItem>(`/api/bucket/${id}/photo`, [file]),
     deletePhoto: (id: string) => req<void>('DELETE', `/api/bucket/${id}/photo`),

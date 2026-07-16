@@ -21,8 +21,17 @@ function BucketCard({
   const [tripId, setTripId] = useState('')
   const [linkingPlace, setLinkingPlace] = useState(false)
   const [placeId, setPlaceId] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [memo, setMemo] = useState(item.memo ?? '')
+  const [tip, setTip] = useState(item.tip ?? '')
   const photoInput = useRef<HTMLInputElement>(null)
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
+
+  const saveNotes = async () => {
+    await api.bucket.update(item.id, { memo: memo.trim() || null, tip: tip.trim() || null })
+    setEditing(false)
+    onChanged()
+  }
   const coverPhoto = item.imagePath ?? linkedPlace?.coverPhoto ?? null
 
   const toggleDone = async () => {
@@ -94,6 +103,7 @@ function BucketCard({
           {subCategory && <span className="bucket-photo-chip">#{subCategory}</span>}
           <span className="bucket-photo-menu">
             <DropdownMenu actions={[
+              { label: '✏️ 메모·TIP 편집', onClick: () => setEditing(true) },
               { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
               ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
               'divider' as const,
@@ -137,9 +147,10 @@ function BucketCard({
           ✓
         </button>
       </div>
-      {(item.memo || linkedPlace || linkingPlace || linking) && (
+      {(item.tip || item.memo || linkedPlace || linkingPlace || linking) && (
         <div className="bucket-photo-foot">
-          {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
+          {item.tip && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>💡 {item.tip}</div>}
+          {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>📝 {item.memo}</div>}
           {linkedPlace && <PlaceMeta place={linkedPlace} />}
           {linkingPlace && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -163,6 +174,37 @@ function BucketCard({
           )}
         </div>
       )}
+      {editing && (
+        <Modal title={`${kindEmoji} ${item.title}`} onClose={() => setEditing(false)}>
+          <div className="field" style={{ marginBottom: 12 }}>
+            <label>{kind === 'food' ? '💡 특징 · 알아야 할 TIP' : '💡 알아야 할 TIP'}</label>
+            <textarea
+              value={tip}
+              onChange={(e) => setTip(e.target.value)}
+              placeholder={
+                kind === 'food'
+                  ? '예: 오사카식은 국물이 진해요 · 웨이팅 김 · 예약 필수'
+                  : kind === 'wish'
+                    ? '예: 면세 되는지 확인 · 공항보다 시내가 쌈'
+                    : '예: 오전에 가야 한산함 · 예약 필요'
+              }
+              rows={2}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 14 }}>
+            <label>📝 느낀점</label>
+            <textarea
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              placeholder="다녀온 뒤 느낌, 다음에 참고할 점"
+              rows={2}
+              style={{ width: '100%' }}
+            />
+          </div>
+          <button className="btn primary" onClick={saveNotes}>저장</button>
+        </Modal>
+      )}
     </div>
   )
 }
@@ -181,6 +223,7 @@ export default function BucketListScreen({
 
   const [title, setTitle] = useState('')
   const [memo, setMemo] = useState('')
+  const [tip, setTip] = useState('')
   const [kind, setKind] = useState<BucketKind>('bucket')
   const [subCategory, setSubCategory] = useState('')
   const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
@@ -228,11 +271,11 @@ export default function BucketListScreen({
     if (!title.trim()) return
     const category = kind === 'bucket' ? (subCategory.trim() || null) : BUCKET_KIND_CATEGORY[kind]
     await api.bucket.create({
-      title: title.trim(), memo: memo.trim() || null,
+      title: title.trim(), memo: memo.trim() || null, tip: tip.trim() || null,
       countryIds: [...selCountryIds], cityIds: [...selCityIds], category,
       linkedPlaceId: linkPlaceId || null, linkedTripId: linkTripId || null,
     })
-    setTitle(''); setMemo(''); setKind('bucket'); setSubCategory('')
+    setTitle(''); setMemo(''); setTip(''); setKind('bucket'); setSubCategory('')
     setSelCountryIds(new Set()); setSelCityIds(new Set()); setLinkPlaceId(''); setLinkTripId('')
     setShowAdd(false)
     refresh()
@@ -324,7 +367,12 @@ export default function BucketListScreen({
               </Select></div>
           </div>
           <div className="field">
-            <label>비고 (선택 · 여러 줄 가능)</label>
+            <label>{kind === 'food' ? '💡 특징 · 알아야 할 TIP (선택)' : '💡 알아야 할 TIP (선택)'}</label>
+            <textarea value={tip} placeholder={'예: 예약 필수 · 오전에 가면 한산함'}
+              onChange={(e) => setTip(e.target.value)} style={{ width: '100%' }} />
+          </div>
+          <div className="field">
+            <label>📝 느낀점 / 비고 (선택 · 여러 줄 가능)</label>
             <textarea value={memo} placeholder={'예:\n회원 할인 있음\n예약은 최소 1주일 전에'}
               onChange={(e) => setMemo(e.target.value)} style={{ width: '100%' }} />
           </div>

@@ -1,9 +1,11 @@
-import type { ValetDetail } from '../../shared/types'
+import type { ValetDetail, Voucher } from '../../shared/types'
+import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
-export default function ValetPassCard({ valet, placeName }: { valet: ValetDetail; placeName: string }) {
+export default function ValetPassCard({ valet, placeName, vouchers = [] }: { valet: ValetDetail; placeName: string; vouchers?: Voucher[] }) {
   const at = fmtDateTime(valet.scheduledAt)
   const hasInfo = valet.bookingRef || valet.bookedVia
+  const voucher = valet.voucherId ? vouchers.find((v) => v.id === valet.voucherId) : undefined
 
   return (
     <div className="bpass">
@@ -36,7 +38,11 @@ export default function ValetPassCard({ valet, placeName }: { valet: ValetDetail
 
         {valet.voucherId && (
           <div className="bpass-badges">
-            <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>
+            {voucher ? (
+              <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기">🎫 {valet.voucherTitle ?? voucher.title}</a>
+            ) : (
+              <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>
+            )}
           </div>
         )}
       </div>

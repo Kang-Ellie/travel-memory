@@ -334,6 +334,7 @@ export interface BucketItem {
   id: string
   title: string
   memo: string | null
+  tip: string | null
   countryIds: string[]
   cityIds: string[]
   category: string | null
