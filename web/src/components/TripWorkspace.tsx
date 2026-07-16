@@ -47,6 +47,13 @@ export function dayLabel(trip: Trip, day: number): string {
   return `${d.getMonth() + 1}/${d.getDate()} (${week})`
 }
 
+// N일차의 실제 날짜(YYYY-MM-DD) — 일차별 지출 합계가 spentAt 날짜 기준이라 지출 저장 시 이 값을 쓴다.
+export function dayISODate(trip: Trip, day: number): string {
+  const d = new Date(trip.startDate + 'T00:00:00')
+  d.setDate(d.getDate() + day - 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 // 여행 기간 중이면 오늘 날짜에 해당하는 일차 번호를, 아니면 null을 반환한다.
 export function todayDayNumber(trip: Trip): number | null {
   const today = new Date()
@@ -191,7 +198,7 @@ interface QuickExpenseState {
 
 
 function EventCard({
-  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday, displaySeq,
+  ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday, displaySeq, spentAtDate,
 }: {
   ev: TimelineEvent
   participants: Member[]
@@ -205,6 +212,9 @@ function EventCard({
   isToday?: boolean
   // 하루 안에서 티켓(항공·발렛·숙소)을 뺀 방문 순번. 티켓이면 null → 배지 자체를 안 그린다.
   displaySeq: number | null
+  // 이 일정이 속한 일차의 실제 날짜(YYYY-MM-DD) — 빠른 지출의 spentAt으로 쓴다.
+  // (기록한 "오늘" 날짜로 저장하면 여행 일차별 합계에 안 잡히는 버그가 있었음)
+  spentAtDate: string
 }) {
   const [editing, setEditing] = useState(false)
   const [review, setReview] = useState(ev.review ?? '')
@@ -341,7 +351,7 @@ function EventCard({
       tripId: ev.tripId, eventId: ev.id, amount: amt, currency: qe.currency, category: qe.category,
       description: ev.place.name, paidBy: qe.paidBy,
       splitWith: qe.isShared ? [...qe.splitWith] : [qe.paidBy],
-      spentAt: new Date().toISOString().slice(0, 10),
+      spentAt: spentAtDate,
       paymentMethod: qe.paymentMethod.trim() || null, memo: null, purchaseItems: qe.purchaseItems.trim() || null,
       isShared: qe.isShared, isPrebooked: false,
     })
@@ -549,37 +559,45 @@ function EventCard({
                   </label>
                 </div>
               )}
-              <div className="field" style={{ marginBottom: 6 }}>
-                <label>방문 시간 (선택)</label>
-                <TimePicker value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
-              </div>
+              {/* 티켓(항공·발렛·숙소)은 "방문지"가 아니라 예약 서류라서, 방문 시간·꼭 해봐야 하는 것·
+                  버킷리스트·리뷰·참고 링크 같은 방문 기록용 필드는 아예 숨긴다. 메모(실용 정보)만 유지. */}
+              {!isTicket && (
+                <div className="field" style={{ marginBottom: 6 }}>
+                  <label>방문 시간 (선택)</label>
+                  <TimePicker value={plannedTime} onChange={(e) => setPlannedTime(e.target.value)} />
+                </div>
+              )}
               <div className="field" style={{ marginBottom: 6 }}>
                 <label>📝 메모 (발렛·주차·입장코드 등 실용 정보)</label>
                 <textarea value={memo} placeholder="예: 발렛 맡김 — OO발렛 010-1234-5678, 3층 입구"
                   onChange={(e) => setMemo(e.target.value)} style={{ width: '100%' }} />
               </div>
-              <div className="field" style={{ marginBottom: 6 }}>
-                <label>🌟 꼭 해봐야 하는 것 (한 줄에 하나씩)</label>
-                <textarea value={mustTry} placeholder={'예:\n명란 정식\n창가 자리 뷰'}
-                  onChange={(e) => setMustTry(e.target.value)} style={{ width: '100%' }} />
-              </div>
-              <div className="field" style={{ marginBottom: 6 }}>
-                <label>✨ 버킷리스트 연결 (선택)</label>
-                <Select value={bucketItemId} onChange={(e) => setBucketItemId(e.target.value)}>
-                  <option value="">— 선택 안함 —</option>
-                  {bucketItems.map((b) => <option key={b.id} value={b.id}>{b.done ? '✓ ' : ''}{b.title}</option>)}
-                </Select>
-              </div>
-              <div className="field" style={{ marginBottom: 6 }}>
-                <label>리뷰 · 사진 일기</label>
-                <textarea value={review} placeholder="우리끼리만 보는 솔직 리뷰 ✍️"
-                  onChange={(e) => setReview(e.target.value)} style={{ width: '100%' }} />
-              </div>
-              <div className="field" style={{ marginBottom: 8 }}>
-                <label>참고 링크</label>
-                <input type="text" value={linkUrl} placeholder="블로그·인스타 URL"
-                  onChange={(e) => setLinkUrl(e.target.value)} style={{ width: '100%' }} />
-              </div>
+              {!isTicket && (
+                <>
+                  <div className="field" style={{ marginBottom: 6 }}>
+                    <label>🌟 꼭 해봐야 하는 것 (한 줄에 하나씩)</label>
+                    <textarea value={mustTry} placeholder={'예:\n명란 정식\n창가 자리 뷰'}
+                      onChange={(e) => setMustTry(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: 6 }}>
+                    <label>✨ 버킷리스트 연결 (선택)</label>
+                    <Select value={bucketItemId} onChange={(e) => setBucketItemId(e.target.value)}>
+                      <option value="">— 선택 안함 —</option>
+                      {bucketItems.map((b) => <option key={b.id} value={b.id}>{b.done ? '✓ ' : ''}{b.title}</option>)}
+                    </Select>
+                  </div>
+                  <div className="field" style={{ marginBottom: 6 }}>
+                    <label>리뷰 · 사진 일기</label>
+                    <textarea value={review} placeholder="우리끼리만 보는 솔직 리뷰 ✍️"
+                      onChange={(e) => setReview(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                  <div className="field" style={{ marginBottom: 8 }}>
+                    <label>참고 링크</label>
+                    <input type="text" value={linkUrl} placeholder="블로그·인스타 URL"
+                      onChange={(e) => setLinkUrl(e.target.value)} style={{ width: '100%' }} />
+                  </div>
+                </>
+              )}
               <button className="btn small primary" onClick={save}>저장</button>
               <button className="btn small" onClick={() => setEditing(false)} style={{ marginLeft: 6 }}>취소</button>
             </Modal>
@@ -1077,6 +1095,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   onChanged={refresh}
                   isToday={todayNum != null && day === todayNum}
                   displaySeq={displaySeqById.get(ev.id) ?? null}
+                  spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
                 />
                 {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
               </div>

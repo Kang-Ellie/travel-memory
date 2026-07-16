@@ -72,79 +72,95 @@ function BucketCard({
   const itemCities = item.cityIds.map((id) => cities.find((c) => c.id === id)).filter((c): c is City => !!c)
 
   const kindEmoji = kind === 'food' ? '🍽' : kind === 'wish' ? '🛍' : '🪣'
-  const kindPastel = kind === 'food' ? 'var(--pink-soft)' : kind === 'wish' ? 'var(--blue-soft)' : 'var(--purple-soft)'
+  const kindPastel = kind === 'food'
+    ? 'linear-gradient(160deg, var(--pink-soft), var(--yellow-soft))'
+    : kind === 'wish'
+      ? 'linear-gradient(160deg, var(--blue-soft), var(--purple-soft))'
+      : 'linear-gradient(160deg, var(--purple-soft), var(--pink-soft))'
 
   return (
-    <div className="card place-card" style={{ cursor: 'default' }}>
-      {coverPhoto ? (
-        <img className="place-card-photo" src={fileUrl(coverPhoto)} alt="" />
-      ) : (
-        <div className="place-card-photo-wrap place-card-photo-empty" style={{ background: kindPastel }}>
-          <span>{kindEmoji}</span>
+    <div className={`bucket-photo-card ${item.done ? 'done' : ''}`}>
+      <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
+      <div className="bucket-photo-media">
+        {coverPhoto ? (
+          <img src={fileUrl(coverPhoto)} alt="" />
+        ) : (
+          <div className="bucket-photo-media-empty" style={{ background: kindPastel }}>{kindEmoji}</div>
+        )}
+        <div className="bucket-photo-top">
+          <span className="bucket-photo-chip">{BUCKET_KIND_LABEL[kind]}</span>
+          {subCategory && <span className="bucket-photo-chip">#{subCategory}</span>}
+          <span className="bucket-photo-menu">
+            <DropdownMenu actions={[
+              { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
+              ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
+              'divider' as const,
+              ...(item.linkedPlaceId
+                ? [{ label: '장소 연결 해제', onClick: unlinkPlace }] as const
+                : [{ label: '📍 장소 족보와 연결', onClick: () => setLinkingPlace(true) }] as const),
+              ...(item.linkedTripId
+                ? [{ label: '여행 연결 해제', onClick: unlink }] as const
+                : [{ label: '여행에 연결', onClick: () => setLinking(true) }] as const),
+              'divider' as const,
+              { label: '🗑 삭제', danger: true, onClick: remove },
+            ]} />
+          </span>
+        </div>
+        {item.done && (
+          <span className="stamp small green bucket-done-stamp"><span className="stamp-text">DONE</span></span>
+        )}
+        <div className="bucket-photo-overlay">
+          {itemCountries.length > 0 && (
+            <div className="bucket-photo-geo">
+              {itemCountries.map((co) => {
+                const citiesHere = itemCities.filter((c) => c.countryId === co.id)
+                return (
+                  <span key={co.id} style={{ marginRight: 8 }}>
+                    {flagEmoji(co.code)} {co.name}{citiesHere.length > 0 ? ` · ${citiesHere.map((c) => c.name).join(', ')}` : ''}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+          <div className="bucket-photo-title">{item.title}</div>
+          {item.linkedPlaceId && <div className="bucket-photo-sub">📍 {item.linkedPlaceName}</div>}
+          {item.linkedTripId && <div className="bucket-photo-sub">✈️ {item.linkedTripTitle}에서{item.done ? ' 완료' : ''}</div>}
+        </div>
+        <button
+          type="button"
+          className="bucket-done-toggle"
+          title={item.done ? '미완료로 되돌리기' : '완료로 표시'}
+          onClick={toggleDone}
+        >
+          ✓
+        </button>
+      </div>
+      {(item.memo || linkedPlace || linkingPlace || linking) && (
+        <div className="bucket-photo-foot">
+          {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
+          {linkedPlace && <PlaceMeta place={linkedPlace} />}
+          {linkingPlace && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+                <option value="">— 장소 선택 —</option>
+                {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
+              </Select>
+              <button className="btn small primary" onClick={linkPlace}>연결</button>
+              <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
+            </div>
+          )}
+          {linking && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Select value={tripId} onChange={(e) => setTripId(e.target.value)}>
+                <option value="">— 여행 선택 —</option>
+                {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </Select>
+              <button className="btn small primary" onClick={link}>연결</button>
+              <button className="btn small" onClick={() => setLinking(false)}>취소</button>
+            </div>
+          )}
         </div>
       )}
-      <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
-      <div className="place-card-body">
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <input type="checkbox" checked={item.done} onChange={toggleDone} title="완료로 표시" style={{ marginTop: 3 }} />
-          <div className="grow" style={{ fontWeight: 800, textDecoration: item.done ? 'line-through' : undefined }}>
-            {item.title}
-          </div>
-          <DropdownMenu actions={[
-            { label: item.imagePath ? '📷 사진 변경' : '📷 사진 추가', onClick: () => photoInput.current?.click() },
-            ...(item.imagePath ? [{ label: '🗑 사진 삭제', danger: true, onClick: removePhoto }] as const : []),
-            'divider' as const,
-            ...(item.linkedPlaceId
-              ? [{ label: '장소 연결 해제', onClick: unlinkPlace }] as const
-              : [{ label: '📍 장소 족보와 연결', onClick: () => setLinkingPlace(true) }] as const),
-            ...(item.linkedTripId
-              ? [{ label: '여행 연결 해제', onClick: unlink }] as const
-              : [{ label: '여행에 연결', onClick: () => setLinking(true) }] as const),
-            'divider' as const,
-            { label: '🗑 삭제', danger: true, onClick: remove },
-          ]} />
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          <span className="chip purple">{BUCKET_KIND_LABEL[kind]}</span>
-          {subCategory && <span className="chip blue">{subCategory}</span>}
-        </div>
-        {itemCountries.length > 0 && (
-          <div className="muted" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {itemCountries.map((co) => {
-              const citiesHere = itemCities.filter((c) => c.countryId === co.id)
-              return (
-                <span key={co.id}>
-                  {flagEmoji(co.code)} {co.name}{citiesHere.length > 0 ? ` · ${citiesHere.map((c) => c.name).join(', ')}` : ''}
-                </span>
-              )
-            })}
-          </div>
-        )}
-        {item.memo && <div className="muted" style={{ whiteSpace: 'pre-wrap' }}>{item.memo}</div>}
-        {item.linkedPlaceId && <div className="muted">📍 {item.linkedPlaceName}</div>}
-        {linkedPlace && <PlaceMeta place={linkedPlace} />}
-        {item.linkedTripId && <div className="muted">✈️ {item.linkedTripTitle}에서 완료</div>}
-        {linkingPlace && (
-          <div className="row" style={{ border: 'none', padding: 0 }}>
-            <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
-              <option value="">— 장소 선택 —</option>
-              {places.map((p) => <option key={p.id} value={p.id}>[{p.category}] {p.name}</option>)}
-            </Select>
-            <button className="btn small primary" onClick={linkPlace}>연결</button>
-            <button className="btn small" onClick={() => setLinkingPlace(false)}>취소</button>
-          </div>
-        )}
-        {linking && (
-          <div className="row" style={{ border: 'none', padding: 0 }}>
-            <Select value={tripId} onChange={(e) => setTripId(e.target.value)}>
-              <option value="">— 여행 선택 —</option>
-              {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
-            </Select>
-            <button className="btn small primary" onClick={link}>연결</button>
-            <button className="btn small" onClick={() => setLinking(false)}>취소</button>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
@@ -341,13 +357,16 @@ export default function BucketListScreen({
         {filtered.length === 0 ? (
           <div className="empty">항목이 없어요.</div>
         ) : (
-          <div className="grid">
+          <div className="bucket-photo-grid">
             {filtered.map((item) => (
               <BucketCard key={item.id} item={item} trips={trips} places={places} countries={countries} cities={cities} onChanged={refresh} />
             ))}
           </div>
         )}
       </Window>
+
+      {/* 모바일: 화면 아래 떠 있는 + 버튼으로 바로 추가 */}
+      <button type="button" className="fab" title="버킷리스트 추가" onClick={() => setShowAdd(true)}>＋</button>
     </div>
   )
 }

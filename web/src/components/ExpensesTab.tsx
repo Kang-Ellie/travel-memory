@@ -192,6 +192,11 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
           })
         )}
       </div>
+
+      {/* 모바일: 여행 중 계산대 앞에서 바로 누르는 떠 있는 + 버튼 */}
+      {participants.length > 0 && (
+        <button type="button" className="fab" title="지출 기록" onClick={() => setShowAddExpense(true)}>＋</button>
+      )}
     </div>
   )
 }

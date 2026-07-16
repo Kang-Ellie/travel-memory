@@ -1007,6 +1007,109 @@ textarea { resize: vertical; min-height: 70px; }
   text-align: right;
 }
 
+/* ── 버킷리스트: 풀블리드 사진 카드 (하단 그라데이션 오버레이 + 흰 타이틀) ── */
+.bucket-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.bucket-photo-card {
+  border-radius: 16px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+.bucket-photo-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+.bucket-photo-media { position: relative; aspect-ratio: 3 / 4; }
+.bucket-photo-media img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.bucket-photo-media-empty {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46px;
+}
+.bucket-photo-card.done .bucket-photo-media img { filter: grayscale(0.65); opacity: 0.85; }
+.bucket-photo-top {
+  position: absolute; top: 10px; left: 10px; right: 6px;
+  display: flex; align-items: center; gap: 6px;
+  z-index: 2;
+}
+.bucket-photo-chip {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 10.5px; font-weight: 800;
+  box-shadow: var(--shadow-xs);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bucket-photo-menu { margin-left: auto; }
+.bucket-photo-menu .event-menu-trigger {
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 50%;
+  width: 27px; height: 27px;
+  box-shadow: var(--shadow-xs);
+}
+.bucket-photo-overlay {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 44px 14px 12px;
+  background: linear-gradient(transparent, rgba(20, 18, 30, 0.78));
+  color: #fff;
+  z-index: 1;
+}
+.bucket-photo-geo { font-size: 11px; font-weight: 700; opacity: 0.85; margin-bottom: 2px; }
+.bucket-photo-title {
+  font-size: 17px; font-weight: 800; line-height: 1.3;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  word-break: keep-all;
+}
+.bucket-photo-card.done .bucket-photo-title { text-decoration: line-through; opacity: 0.85; }
+.bucket-photo-sub { font-size: 11.5px; font-weight: 700; opacity: 0.88; margin-top: 3px; }
+.bucket-done-toggle {
+  position: absolute; right: 12px; bottom: 12px; z-index: 2;
+  width: 34px; height: 34px; border-radius: 50%;
+  border: none; cursor: pointer;
+  background: rgba(255, 255, 255, 0.92);
+  color: rgba(45, 42, 62, 0.45);
+  font-weight: 800; font-size: 15px; line-height: 1;
+  box-shadow: var(--shadow-xs);
+}
+.bucket-photo-card.done .bucket-done-toggle { background: var(--stamp-green); color: #fff; }
+.bucket-done-stamp {
+  position: absolute; top: 46px; right: 12px; z-index: 2;
+  background: rgba(255, 255, 255, 0.85);
+  transform: rotate(10deg);
+}
+.bucket-photo-foot {
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 8px;
+  font-size: 12px;
+}
+
+/* ── 플로팅 + 버튼 (모바일 전용) ── */
+.fab {
+  display: none;
+  position: fixed; right: 18px; bottom: 20px; z-index: 80;
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: var(--pink);
+  color: #fff;
+  font-size: 26px; font-weight: 800; line-height: 1;
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+}
+.fab:active { transform: scale(0.95); }
+@media (max-width: 860px) {
+  .fab { display: flex; align-items: center; justify-content: center; }
+}
+
 /* ── BASE: 버킷·먹킷·위시 3열 컬럼 ── */
 .base-lists {
   display: grid;
@@ -1689,4 +1792,35 @@ input[type='checkbox'] {
   .print-itinerary, .print-itinerary * { visibility: visible; }
   .print-itinerary { position: absolute; top: 0; left: 0; width: 100%; padding: 0; }
   .print-itinerary-actions { display: none; }
+}
+
+/* ── 모바일 다듬기 ─────────────────────────
+   여행 중엔 폰으로 쓰는 앱이라 모바일이 1순위 화면. */
+@media (max-width: 640px) {
+  /* iOS는 16px 미만 입력창을 탭하면 화면을 강제 확대한다 — 입력류는 전부 16px로 */
+  input[type='text'], input[type='date'], input[type='number'], input[type='password'],
+  textarea, select, .cselect-trigger, .cdate-trigger {
+    font-size: 16px;
+  }
+  .window-body { padding: 14px 14px 16px; }
+  .window-titlebar { padding: 12px 14px 8px; }
+  .trip-doc-head { padding: 12px 14px 12px; }
+  .trip-doc-title { font-size: 21px; }
+  .trip-mrz { font-size: 10px; letter-spacing: 0.1em; }
+  .grid { grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 14px; }
+  .bucket-photo-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .pill { padding: 7px 14px; font-size: 13px; }
+  .form-row { gap: 12px; }
+  .page-header-title { font-size: 24px; }
+  .dash-hero-title { font-size: 24px; }
+  .map-holder { height: 340px; }
+  .podium-slot { max-width: 110px; }
+  .podium-photo { width: 48px; height: 48px; }
+}
+
+/* 터치 기기엔 hover가 없다 — hover에서만 보이던 삭제/추가 버튼을 항상 노출 */
+@media (hover: none) {
+  .checklist-row .btn, .checklist-row .x-btn,
+  .ledger-row .x-btn,
+  .photo-del { opacity: 1; }
 }
