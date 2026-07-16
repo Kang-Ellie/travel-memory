@@ -15,29 +15,34 @@ export function skyPhaseOf(d: Date): SkyPhase {
   return 'night'
 }
 
-// 처마 앞선(前線) 곡선 — 왼쪽 추녀 끝에서 오른쪽 위로 올라가는 2차 베지어.
-const P0 = [58, 158] as const
-const P1 = [158, 66] as const
-const P2 = [300, 22] as const
-const EAVE_D = `M ${P0[0]} ${P0[1]} Q ${P1[0]} ${P1[1]} ${P2[0]} ${P2[1]}`
+// 정면에서 본 기와지붕 — 가운데는 낮고 양끝 처마가 살짝 치켜올라간 곡선.
+const ROOF_L = 54
+const ROOF_R = 246
+const ROOF_CX = 150
+const topY = (x: number) => 214 + 0.00072 * (x - ROOF_CX) ** 2   // 지붕 윗선(용마루 아래)
+const botY = (x: number) => 250 - 0.00092 * (x - ROOF_CX) ** 2   // 처마 밑선
 
-function eaveAt(t: number): [number, number] {
-  const u = 1 - t
-  return [
-    u * u * P0[0] + 2 * u * t * P1[0] + t * t * P2[0],
-    u * u * P0[1] + 2 * u * t * P1[1] + t * t * P2[1],
-  ]
-}
-const SAMPLE = [0.05, 0.16, 0.27, 0.38, 0.49, 0.6, 0.71, 0.82, 0.93]
-const stamp = (dy: number) => SAMPLE.map((t) => { const [x, y] = eaveAt(t); return [x, y + dy] as const })
+// 지붕 실루엣 (윗선 왼→오, 밑선 오→왼)
+const STEP = (ROOF_R - ROOF_L) / 16
+const XS = Array.from({ length: 17 }, (_, i) => ROOF_L + i * STEP)
+const ROOF_PATH = [
+  `M ${ROOF_L} ${botY(ROOF_L).toFixed(1)}`,
+  ...XS.map((x) => `L ${x.toFixed(1)} ${topY(x).toFixed(1)}`),
+  ...[...XS].reverse().map((x) => `L ${x.toFixed(1)} ${botY(x).toFixed(1)}`),
+  'Z',
+].join(' ')
 
-// 연화(꽃문양) 8장 꽃잎
-const PETALS = Array.from({ length: 8 }, (_, i) => i * 45)
+// 기왓골(세로 줄무늬)·수막새(처마 끝 원판) 위치
+const TILE_XS = Array.from({ length: 15 }, (_, i) => ROOF_L + 8 + i * ((ROOF_R - ROOF_L - 16) / 14))
 
-// 보딩패스 왼쪽 면의 단청 한옥 처마.
-// 이미지 파일 없이 SVG로 그린 단청 — 연화머리초(서까래 끝 동심원)·연화 꽃문양·수막새가
-// 처마 곡선을 따라 반복된다. 시간대(새벽/아침/낮/노을/밤)에 따라 하늘·해·달·별·단청 색조가 함께 바뀐다.
-// preserveAspectRatio=meet + 뒤의 하늘 그라데이션으로, 화면이 줄어도 해·달·풍경이 잘리지 않는다.
+// 대문 널판 x좌표
+const DOOR_L = 116
+const DOOR_R = 184
+const PLANK_XS = Array.from({ length: 5 }, (_, i) => DOOR_L + 4 + i * ((DOOR_R - DOOR_L - 8) / 4))
+
+// 보딩패스 왼쪽 면의 한옥 씬 — 첨부한 플랫 벡터 스타일(정면 기와지붕 + 대문 + 기와담).
+// 이미지 파일 없이 SVG. 시간대(새벽/아침/낮/노을/밤)에 따라 하늘·해·달·별·구름이 바뀐다.
+// preserveAspectRatio=meet + 뒤의 하늘 그라데이션으로, 화면이 줄어도 잘리지 않는다.
 export default function HanokSky({ photo }: { photo?: string | null }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
@@ -49,6 +54,7 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
   const time = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
   const starry = phase === 'night' || phase === 'dawn'
   const cloudy = phase !== 'night'
+  const bird = phase === 'morning' || phase === 'day' || phase === 'dusk'
 
   return (
     <div className={`sky ${phase} ${photo ? 'has-photo' : ''}`}>
@@ -61,58 +67,41 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
           <filter id="hk-glow" x="-70%" y="-70%" width="240%" height="240%">
             <feGaussianBlur stdDeviation="8" />
           </filter>
-          {/* 연화머리초 — 서까래 끝 동심원 (단청의 핵심 반복 문양) */}
-          <g id="dc-eye">
-            <circle r="10" className="dc-outline" />
-            <circle r="8.6" className="dc-green" />
-            <circle r="6.3" className="dc-orange" />
-            <circle r="4.1" className="dc-yellow" />
-            <circle r="2.2" className="dc-red" />
-            <circle r="0.9" className="dc-white" />
-          </g>
-          {/* 연화 — 꽃문양 (초록 바탕 위) */}
-          <g id="dc-flower">
-            <circle r="7.6" className="dc-green" />
-            {PETALS.map((deg) => (
-              <ellipse key={deg} cx="0" cy="-4.7" rx="1.7" ry="3.4" transform={`rotate(${deg})`} className="dc-orange" />
-            ))}
-            <circle r="2.5" className="dc-yellow" />
-            <circle r="0.9" className="dc-white" />
-          </g>
-          {/* 수막새 — 기와 끝 연꽃 원판 */}
-          <g id="dc-mak">
-            <circle r="7.4" className="dc-tile-disc" />
-            <circle r="3.3" className="dc-orange" />
-            <circle r="1.3" className="dc-yellow" />
-          </g>
         </defs>
 
-        {/* 해 / 달 — 좌상단 고정 */}
+        {/* 해 / 달 */}
         {phase === 'night' ? (
           <g>
-            <circle className="orb-glow moon" cx="60" cy="60" r="40" filter="url(#hk-glow)" />
-            <circle className="orb moon" cx="60" cy="60" r="28" />
-            <circle className="crater" cx="72" cy="51" r="6" />
-            <circle className="crater" cx="52" cy="71" r="4.5" />
-            <circle className="crater" cx="49" cy="49" r="3" />
+            <circle className="orb-glow moon" cx="206" cy="74" r="40" filter="url(#hk-glow)" />
+            <circle className="orb moon" cx="206" cy="74" r="30" />
+            <circle className="crater" cx="218" cy="65" r="6" />
+            <circle className="crater" cx="197" cy="86" r="4.6" />
+            <circle className="crater" cx="195" cy="63" r="3" />
           </g>
         ) : (
           <g>
-            <circle className="orb-glow sun" cx="60" cy="60" r="38" filter="url(#hk-glow)" />
-            <circle className="orb sun" cx="60" cy="60" r="27" />
+            <circle className="orb-glow sun" cx="206" cy="76" r="40" filter="url(#hk-glow)" />
+            <circle className="orb sun" cx="206" cy="76" r="30" />
+          </g>
+        )}
+
+        {/* 학 — 낮에 해 곁을 지나감 */}
+        {bird && (
+          <g className="sky-bird">
+            <path className="hk-bird" d="M 232 96 q 7 -8 14 -3 q -6 1 -8 6 q 8 -3 13 1 q -7 1 -10 6 q -6 -5 -9 -6 q -3 1 -7 -1 q 8 -3 14 -4 z" />
           </g>
         )}
 
         {/* 서운(상서구름) */}
         {cloudy && (
           <>
-            <g transform="translate(10 118) scale(0.85)">
+            <g transform="translate(24 44) scale(0.8)">
               <g className="cloud c1">
                 <path d="M 8 22 C 8 11, 23 7, 29 16 C 36 5, 54 8, 55 20 C 66 20, 70 33, 57 35 L 14 35 C 1 35, 0 24, 8 22 Z" />
                 <path className="cloud-curl" d="M 24 23 a 5 5 0 1 1 -6.5 -4.6" />
               </g>
             </g>
-            <g transform="translate(120 40) scale(0.6)">
+            <g transform="translate(190 150) scale(0.62)">
               <g className="cloud c2">
                 <path d="M 8 22 C 8 11, 23 7, 29 16 C 36 5, 54 8, 55 20 C 66 20, 70 33, 57 35 L 14 35 C 1 35, 0 24, 8 22 Z" />
                 <path className="cloud-curl" d="M 24 23 a 5 5 0 1 1 -6.5 -4.6" />
@@ -121,31 +110,66 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
           </>
         )}
 
-        {/* ── 단청 처마 ── (뒤에서 앞으로: 서까래 소로 → 부연/서까래 동심원 → 주홍 → 초록+꽃 → 기와+수막새) */}
-        <path className="dc-band-soffit" d={EAVE_D} transform="translate(0 27)" />
-        {stamp(40).map(([x, y], i) => <use key={`e2${i}`} href="#dc-eye" transform={`translate(${x} ${y}) scale(0.72)`} />)}
-        {stamp(21).map(([x, y], i) => <use key={`e1${i}`} href="#dc-eye" transform={`translate(${x} ${y})`} />)}
-        <path className="dc-band-red" d={EAVE_D} transform="translate(0 10)" />
-        <path className="dc-band-green" d={EAVE_D} />
-        {stamp(1).map(([x, y], i) => <use key={`fl${i}`} href="#dc-flower" transform={`translate(${x} ${y})`} />)}
-        <path className="dc-band-tile" d={EAVE_D} transform="translate(0 -17)" />
-        {stamp(-17).map(([x, y], i) => <use key={`mk${i}`} href="#dc-mak" transform={`translate(${x} ${y})`} />)}
-
-        {/* 풍경(風磬) — 추녀 끝에서 흔들림 */}
-        <g className="sky-bell">
-          <line className="bell-string" x1="96" y1="176" x2="96" y2="196" />
-          <path className="bell-body" d="M 88 197 L 104 197 L 106 210 Q 96 216 86 210 Z" />
-          <ellipse className="bell-body" cx="96" cy="212" rx="11" ry="2.6" />
-          <line className="bell-string" x1="96" y1="215" x2="96" y2="222" />
-          <g className="bell-fish">
-            <path d="M 91 228 Q 97 221 106 228 Q 97 235 91 228 Z" />
-            <path d="M 91 228 L 84 223 L 84 233 Z" />
+        {/* 나뭇가지 — 왼쪽에서 뻗어 나옴 */}
+        <g className="sky-branch">
+          <path className="hk-branch" d="M -4 150 C 30 148, 54 152, 78 140 M 40 150 C 44 138, 52 132, 62 130 M 60 145 C 66 137, 74 134, 84 135" />
+          <g className="hk-leaf">
+            <ellipse cx="63" cy="129" rx="4.5" ry="2.3" transform="rotate(-32 63 129)" />
+            <ellipse cx="85" cy="135" rx="4.5" ry="2.3" transform="rotate(-12 85 135)" />
+            <ellipse cx="79" cy="140" rx="4.5" ry="2.3" transform="rotate(-18 79 140)" />
           </g>
         </g>
 
-        {/* 산 — 하단 고정 */}
-        <path className="dc-mtn back" d="M 0 340 L 0 300 Q 62 272 120 300 Q 182 330 244 296 Q 288 276 300 292 L 300 340 Z" />
-        <path className="dc-mtn front" d="M 0 340 L 0 322 Q 74 296 140 320 Q 200 340 262 312 Q 290 300 300 314 L 300 340 Z" />
+        {/* ── 기와담(담장) — 맨 뒤 바닥 ── */}
+        <rect className="hk-wallplaster" x="0" y="316" width="300" height="24" />
+        <rect className="hk-wallcap" x="0" y="306" width="300" height="12" />
+        {Array.from({ length: 20 }, (_, i) => (
+          <rect key={`w${i}`} className="hk-wall" x={i * 15.6} y="306" width="9" height="12" rx="2" />
+        ))}
+
+        {/* ── 대문 ── */}
+        {/* 좌우 벽(회벽) */}
+        <rect className="hk-plaster" x="84" y="266" width="34" height="52" />
+        <rect className="hk-plaster" x="182" y="266" width="34" height="52" />
+        {/* 대문 널판 */}
+        <rect className="hk-door" x={DOOR_L} y="262" width={DOOR_R - DOOR_L} height="56" />
+        {PLANK_XS.map((x) => (
+          <line key={`p${x}`} className="hk-doorline" x1={x} y1="264" x2={x} y2="318" />
+        ))}
+        {/* 문고리 */}
+        <circle className="hk-stud" cx="141" cy="292" r="3.4" />
+        <circle className="hk-stud" cx="159" cy="292" r="3.4" />
+        {/* 인방(창방) — 지붕과 문 사이 나무 보 + 단청 힌트(초록·주홍 얇은 띠) */}
+        <rect className="hk-beam" x="80" y="252" width="140" height="12" />
+        <rect className="hk-dc-green" x="80" y="254" width="140" height="2.4" />
+        <rect className="hk-dc-red" x="80" y="259.5" width="140" height="2.4" />
+
+        {/* ── 기와지붕 ── */}
+        <path className="hk-roof" d={ROOF_PATH} />
+        {/* 기왓골 */}
+        {TILE_XS.map((x) => (
+          <line key={`t${x}`} className="hk-tileline" x1={x} y1={topY(x) + 2} x2={x} y2={botY(x) - 1} />
+        ))}
+        {/* 수막새(처마 끝 원판) */}
+        {TILE_XS.map((x) => (
+          <circle key={`m${x}`} className="hk-tileend" cx={x} cy={botY(x)} r="3.6" />
+        ))}
+        {/* 용마루 + 양끝 치미(장식) */}
+        <rect className="hk-ridge" x="100" y="208" width="100" height="8" rx="4" />
+        <path className="hk-ridge" d="M 100 212 q -8 -2 -10 -10 q 8 3 12 8 z" />
+        <path className="hk-ridge" d="M 200 212 q 8 -2 10 -10 q -8 3 -12 8 z" />
+
+        {/* 풍경(風磬) — 왼쪽 처마 끝에서 흔들림 */}
+        <g className="sky-bell">
+          <line className="bell-string" x1="62" y1="244" x2="62" y2="258" />
+          <path className="bell-body" d="M 55 259 L 69 259 L 71 270 Q 62 275 53 270 Z" />
+          <ellipse className="bell-body" cx="62" cy="272" rx="9.5" ry="2.3" />
+          <line className="bell-string" x1="62" y1="274" x2="62" y2="280" />
+          <g className="bell-fish">
+            <path d="M 57 285 Q 62 279 70 285 Q 62 291 57 285 Z" />
+            <path d="M 57 285 L 51 281 L 51 289 Z" />
+          </g>
+        </g>
       </svg>
 
       <span className="sky-time">{time} · {PHASE_LABEL[phase]}</span>

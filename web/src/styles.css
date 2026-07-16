@@ -1160,17 +1160,20 @@ textarea { resize: vertical; min-height: 70px; }
 .sky {
   position: absolute; inset: 0;
   overflow: hidden;
-  /* 단청 팔레트 (기본: 낮·아침 — 선명하게) */
-  --dc-green: #2e8f57;
-  --dc-orange: #e8552a;
-  --dc-yellow: #f4c33e;
+  /* 플랫 한옥 팔레트 (기본: 낮·아침) */
+  --roof: #414b5a;           /* 기와 */
+  --roof-ridge: #2c3340;     /* 용마루·치미 */
+  --tile-end: #d6dbe2;       /* 수막새 */
+  --tile-line: rgba(255, 255, 255, 0.14);
+  --beam: #bb8b52;           /* 나무 보 */
+  --beam-dark: #8f6638;
+  --plaster: #ecdcbf;        /* 회벽 */
+  --door: #b1824a;
+  --stud: #5f4223;
+  --branch: #6d5844;
+  --leaf: #8fae5d;
+  --dc-green: #3f8a5a;       /* 단청 힌트(얇은 띠만) */
   --dc-red: #c0392a;
-  --dc-outline: #123f2d;
-  --dc-soffit: #7a3b2c;      /* 서까래 소로(밑면) */
-  --dc-tile: #33405c;        /* 기와 */
-  --dc-tile-disc: #cfd5dc;   /* 수막새 */
-  --mtn-back: #a6b6ce;
-  --mtn-front: #74869f;
   --bell: #c07a3a;
   --cloud: rgba(255, 255, 255, 0.92);
 }
@@ -1188,18 +1191,20 @@ textarea { resize: vertical; min-height: 70px; }
 .sky.dusk .sky-grad { background: linear-gradient(#37356a, #9c5484 44%, #ee7f4c 76%, #ffbf78); }
 .sky.night .sky-grad { background: linear-gradient(#060a18, #0f1938 55%, #1b2a4e); }
 
-/* 노을·새벽 — 단청에 붉은 기가 돌고 살짝 가라앉음 */
+/* 노을·새벽 — 붉은 기가 돌고 살짝 가라앉음 */
 .sky.dusk, .sky.dawn {
-  --dc-green: #2b7d4c; --dc-orange: #d9491f; --dc-yellow: #e6b23a; --dc-red: #a8342a;
-  --dc-outline: #10352a; --dc-soffit: #6a3325; --dc-tile: #2a3450; --dc-tile-disc: #c2b8b0;
-  --mtn-back: #7b7398; --mtn-front: #524d75;
-  --bell: #a5652f; --cloud: rgba(255, 226, 200, 0.85);
+  --roof: #3a3c50; --roof-ridge: #262838; --tile-end: #c9bcb4;
+  --beam: #a5763f; --beam-dark: #7a5330; --plaster: #e2cba7; --door: #9d7040;
+  --branch: #5c4a3a; --leaf: #7d955a; --bell: #a5652f;
+  --cloud: rgba(255, 226, 200, 0.85);
 }
-/* 밤 — 달빛에 가라앉은 단청 */
+/* 밤 — 달빛에 가라앉음 */
 .sky.night {
-  --dc-green: #226340; --dc-orange: #a53f22; --dc-yellow: #b18a34; --dc-red: #822a22;
-  --dc-outline: #0c2a1f; --dc-soffit: #4a271c; --dc-tile: #1b2340; --dc-tile-disc: #8b93a8;
-  --mtn-back: #2c3654; --mtn-front: #1c2542; --bell: #7d4e27;
+  --roof: #232a3d; --roof-ridge: #171d2c; --tile-end: #7f8aa0;
+  --tile-line: rgba(255, 255, 255, 0.08);
+  --beam: #6f5433; --beam-dark: #4a381f; --plaster: #b3a284; --door: #6d5030;
+  --branch: #45392c; --leaf: #52683c; --dc-green: #2c6244; --dc-red: #83302a;
+  --bell: #7d4e27;
 }
 
 .sky-art { position: absolute; inset: 0; width: 100%; height: 100%; }
@@ -1241,34 +1246,46 @@ textarea { resize: vertical; min-height: 70px; }
   50% { transform: translateX(18px); }
 }
 
-/* 산 */
-.dc-mtn.back { fill: var(--mtn-back); }
-.dc-mtn.front { fill: var(--mtn-front); }
+/* 학 — 해 곁을 천천히 지나감 */
+.hk-bird { fill: #fbfbf8; stroke: #4a4a4a; stroke-width: 0.6; }
+.sky.night .hk-bird { fill: #d8dde8; }
+.sky-bird { transform-box: view-box; animation: bird-fly 26s linear infinite; }
+@keyframes bird-fly {
+  0% { transform: translate(-40px, 20px); opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { transform: translate(60px, -34px); opacity: 0; }
+}
 
-/* 단청 문양 색 (연화머리초·연화·수막새) */
-.dc-green { fill: var(--dc-green); }
-.dc-orange { fill: var(--dc-orange); }
-.dc-yellow { fill: var(--dc-yellow); }
-.dc-red { fill: var(--dc-red); }
-.dc-outline { fill: var(--dc-outline); }
-.dc-white { fill: #fff; }
-.dc-tile-disc { fill: var(--dc-tile-disc); }
+/* 나뭇가지 */
+.hk-branch { stroke: var(--branch); stroke-width: 3; fill: none; stroke-linecap: round; }
+.hk-leaf { fill: var(--leaf); }
 
-/* 단청 띠 (처마 곡선을 따라가는 두꺼운 스트로크) */
-.dc-band-tile { stroke: var(--dc-tile); stroke-width: 22; fill: none; }
-.dc-band-green { stroke: var(--dc-green); stroke-width: 20; fill: none; }
-.dc-band-red { stroke: var(--dc-red); stroke-width: 8; fill: none; }
-.dc-band-soffit { stroke: var(--dc-soffit); stroke-width: 44; fill: none; }
+/* 플랫 한옥 구조 */
+.hk-roof { fill: var(--roof); }
+.hk-ridge { fill: var(--roof-ridge); }
+.hk-tileline { stroke: var(--tile-line); stroke-width: 1.6; }
+.hk-tileend { fill: var(--tile-end); }
+.hk-beam { fill: var(--beam); }
+.hk-plaster { fill: var(--plaster); }
+.hk-door { fill: var(--door); }
+.hk-doorline { stroke: var(--beam-dark); stroke-width: 1.1; }
+.hk-stud { fill: var(--stud); }
+.hk-wall { fill: var(--roof); }
+.hk-wallcap { fill: var(--roof-ridge); }
+.hk-wallplaster { fill: var(--plaster); }
+.hk-dc-green { fill: var(--dc-green); }
+.hk-dc-red { fill: var(--dc-red); }
 
-/* 풍경 — 추녀 끝에서 천천히 좌우로 */
+/* 풍경 — 왼쪽 처마 끝에서 천천히 좌우로 */
 .sky-bell {
   transform-box: view-box;
-  transform-origin: 96px 176px;
+  transform-origin: 62px 244px;
   animation: bell-sway 4.6s ease-in-out infinite;
 }
-.bell-string { stroke: var(--dc-soffit); stroke-width: 1.4; }
+.bell-string { stroke: var(--beam-dark); stroke-width: 1.3; }
 .sky-bell .bell-body { fill: var(--bell); }
-.sky-bell .bell-fish path { fill: var(--dc-yellow); }
+.sky-bell .bell-fish path { fill: var(--bell); }
 @keyframes bell-sway {
   0%, 100% { transform: rotate(-4deg); }
   50% { transform: rotate(4deg); }
