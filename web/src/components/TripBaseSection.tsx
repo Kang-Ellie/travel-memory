@@ -22,6 +22,7 @@ const KIND_PLACEHOLDER: Record<BucketKind, string> = {
 };
 
 const KIND_EMOJI: Record<BucketKind, string> = { bucket: "🪣", food: "🍽", wish: "🛍" };
+const KIND_ENG: Record<BucketKind, string> = { bucket: "BUCKET LIST", food: "FOOD LIST", wish: "WISH LIST" };
 
 function BaseListCard({
   item,
@@ -102,11 +103,7 @@ function BaseListCard({
           onChange={toggleDone}
           title={item.done ? "미완료로 표시" : "완료로 표시"}
         />
-        {coverPhoto ? (
-          <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" />
-        ) : (
-          <div className="bucket-row-thumb bucket-row-thumb-empty">{KIND_EMOJI[kind]}</div>
-        )}
+        {coverPhoto && <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" />}
         <div className="grow" style={{ minWidth: 0 }}>
           <div
             style={{
@@ -392,33 +389,32 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                 </div>
 
                 {citiesWithInfo.length > 0 && (
-                  <>
-                    <div className="boarding-pass-divider" style={{ margin: "0 16px" }} />
-                    <div className="city-route-grid">
+                  <div style={{ padding: "0 16px 16px" }}>
+                    {/* 공항 출발 전광판(FIDS) — 도시별 항공시간·시차·경유를 다크 보드로 */}
+                    <div className="fids-board">
+                      <div className="fids-title">
+                        <span>DEPARTURES</span>
+                        <span>KOREA → {co.name}</span>
+                      </div>
+                      <div className="fids-row head">
+                        <span>DESTINATION</span>
+                        <span>FLIGHT</span>
+                        <span>TIME DIFF</span>
+                        <span>VIA / REMARK</span>
+                      </div>
                       {citiesWithInfo.map((c) => (
-                        <div key={c.id} className="city-route-item">
-                          <div className="boarding-pass-route">
-                            <div>
-                              <div style={{ fontWeight: 800, fontSize: 18 }}>한국</div>
-                              <div className="muted">출발</div>
-                            </div>
-                            <div style={{ textAlign: "center" }}>
-                              <div style={{ fontSize: 18 }}>✈️</div>
-                              {c.flightDuration && <div className="muted" style={{ fontSize: 11 }}>{c.flightDuration}</div>}
-                              {c.timeDiff && <div className="muted" style={{ fontSize: 11 }}>🕐 {c.timeDiff}</div>}
-                            </div>
-                            <div style={{ textAlign: "right" }}>
-                              <div style={{ fontWeight: 800, fontSize: 18 }}>{c.name}</div>
-                              <div className="muted">{c.flightAirport ? `${c.flightAirport} 기준` : "도착"}</div>
-                            </div>
-                          </div>
-                          {c.caution && (
-                            <div className="muted" style={{ padding: "0 16px 14px", fontSize: 12 }}>⚠️ {c.caution}</div>
-                          )}
+                        <div key={c.id} className="fids-row">
+                          <span className="fids-dest">{c.name}</span>
+                          <span>{c.flightDuration ?? "—"}</span>
+                          <span>{c.timeDiff ?? "—"}</span>
+                          <span className="fids-remark">
+                            {[c.flightAirport, c.flightType].filter(Boolean).join(" · ") || "—"}
+                            {c.caution ? ` ⚠ ${c.caution}` : ""}
+                          </span>
                         </div>
                       ))}
                     </div>
-                  </>
+                  </div>
                 )}
               </div>
             );
@@ -432,6 +428,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
             const items = byKind(kind);
             return (
               <div key={kind} className={`base-list-col ${kind}`}>
+                <div className="base-list-eng">{KIND_ENG[kind]}</div>
                 <div
                   style={{
                     display: "flex",
