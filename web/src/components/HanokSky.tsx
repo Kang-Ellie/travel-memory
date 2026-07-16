@@ -78,7 +78,10 @@ export default function HanokSky({ photo }: { photo?: string | null }) {
         </g>
       </svg>
 
-      <svg className="sky-art" viewBox="0 0 300 340" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
+      {/* slice(= object-fit: cover)로 세로를 꽉 채운다. meet(= contain)을 쓰면 카드가
+          세로로 길 때(데스크톱, 오른쪽 텍스트가 긴 경우) 그림 전체가 폭 기준으로 줄어들어
+          위에 빈 하늘만 크게 남고 한옥이 작아 보이는 문제가 있었다. */}
+      <svg className="sky-art" viewBox="0 0 300 340" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
         <defs>
           <filter id="hk-glow" x="-70%" y="-70%" width="240%" height="240%">
             <feGaussianBlur stdDeviation="8" />

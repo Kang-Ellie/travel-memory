@@ -244,7 +244,9 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
 .ticket-hero-body > * { position: relative; z-index: 1; }
 @media (max-width: 720px) {
   .ticket-hero { flex-direction: column; }
-  .ticket-hero-photo-wrap { width: 100%; min-width: 0; min-height: 190px; }
+  /* slice 모드는 세로를 꽉 채우려고 확대하는데, 배너가 너무 낮으면(가로로 김) 확대율이
+     커져서 해/달이 위쪽으로 잘려나간다. 260px 정도면 대부분 시간대에서 해/달이 보인다. */
+  .ticket-hero-photo-wrap { width: 100%; min-width: 0; min-height: 260px; }
   .ticket-hero-body { border-left: none; border-top: 2px dashed var(--line-strong); padding: 18px 20px 56px; }
   .ticket-hero-body::before { top: -11px; left: -11px; }
   .ticket-hero-body::after { top: -11px; bottom: auto; left: auto; right: -11px; }
