@@ -6,6 +6,7 @@ import { computeDailySpend, dailyBudgetStatus } from '../settlement'
 import { dayLabel } from './TripWorkspace'
 import Modal from './Modal'
 import Lightbox from './Lightbox'
+import Thumb from './Thumb'
 
 function budgetBarColor(percent: number): string {
   if (percent <= 30) return 'var(--green-deep)'
@@ -61,7 +62,7 @@ export default function DayDiaryModal({
       <div className="diary-cover-wrap">
         {cover ? (
           <>
-            <img className="diary-cover" src={fileUrl(cover.filePath)} alt="" decoding="async" onClick={() => setLightboxIndex(0)} />
+            <Thumb className="diary-cover" path={cover.filePath} onClick={() => setLightboxIndex(0)} />
             <button className="photo-del" title="사진 삭제"
               onClick={() => api.dayNotes.deletePhoto(cover.id).then(onChanged)}>×</button>
           </>
@@ -101,7 +102,7 @@ export default function DayDiaryModal({
         <div className="photo-strip">
           {restPhotos.map((p, i) => (
             <div key={p.id} className="photo-thumb">
-              <img src={fileUrl(p.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightboxIndex(i + 1)} />
+              <Thumb path={p.filePath} onClick={() => setLightboxIndex(i + 1)} />
               <button className="photo-del" title="사진 삭제"
                 onClick={() => api.dayNotes.deletePhoto(p.id).then(onChanged)}>×</button>
             </div>

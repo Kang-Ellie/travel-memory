@@ -1,16 +1,10 @@
-import { useEffect, useState } from 'react'
-import type { Trip, Member, Expense } from '../../shared/types'
-import { api } from '../api'
+import type { Trip } from '../../shared/types'
+import { useMembers, useExpenses } from '../queries'
 import { computeSettlement, fmtMoney } from '../settlement'
 
 export default function SettlementTab({ trip }: { trip: Trip }) {
-  const [allMembers, setAllMembers] = useState<Member[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-
-  useEffect(() => {
-    api.members.list().then(setAllMembers)
-    api.expenses.list(trip.id).then(setExpenses)
-  }, [trip.id])
+  const { data: allMembers = [] } = useMembers()
+  const { data: expenses = [] } = useExpenses(trip.id)
 
   const settlements = computeSettlement(expenses, allMembers)
 

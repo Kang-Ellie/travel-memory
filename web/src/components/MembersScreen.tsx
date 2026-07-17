@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Member } from '../../shared/types'
 import { api } from '../api'
+import { useMembers, useQueryClient, queryKeys } from '../queries'
 import Window from './Window'
 import PageHeader from './PageHeader'
 
@@ -9,14 +10,14 @@ const MEMBER_EMOJIS = ['🧑', '👩', '👨', '👵', '👴', '👧', '👦', '
 export default function MembersScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const [members, setMembers] = useState<Member[]>([])
+  const { data: members = [] } = useMembers()
+  const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [error, setError] = useState('')
   const [editingEmojiFor, setEditingEmojiFor] = useState<string | null>(null)
   const nameInput = useRef<HTMLInputElement>(null)
 
-  const refresh = () => { api.members.list().then(setMembers) }
-  useEffect(refresh, [])
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.members })
 
   useEffect(() => {
     if (autoOpenAdd) { nameInput.current?.focus(); onConsumedAutoOpenAdd?.() }

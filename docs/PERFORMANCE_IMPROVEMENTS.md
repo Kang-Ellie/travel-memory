@@ -12,10 +12,11 @@
 | 🔴 P1 | 미사용 20MB mp4 등 public 자산 정리 | 큼 | 10분 |
 | 🔴 P1 | 이미지 `loading="lazy"` (현재 0곳) | 큼 | 1시간 |
 | 🔴 P1 | 응답 gzip 압축 (현재 없음) | 큼 | 30분 |
-| 🟠 P2 | 업로드 시 썸네일 생성 + 목록은 썸네일 사용 | 큼 | 1일 |
-| 🟠 P2 | TanStack Query 도입 (전체 refetch 패턴 제거) | 큼 | 2~3일 |
+| ✅ | 업로드 시 썸네일 생성 + 목록은 썸네일 사용 | 큼 | 완료 |
+| ✅ | TanStack Query 도입 (전체 refetch 패턴 제거) | 큼 | 완료 |
+| ✅ | 트랜잭션 + 루프 INSERT 배치화 | 큼 | 완료 |
+| ✅ | initSchema → 마이그레이션 체계 (기동 시간) | 중간 | 완료 |
 | 🟠 P2 | 화면 단위 코드 스플리팅 | 중간 | 반나절 |
-| 🟠 P2 | initSchema → 마이그레이션 체계 (기동 시간) | 중간 | 1일 |
 | 🟡 P3 | 파일 서빙 presigned URL 전환 | 중간 | 1~2일 |
 | 🟡 P3 | 나머지 세부 항목 | 소~중 | 각 소규모 |
 
@@ -50,11 +51,8 @@
 
 ### A-2. 쓰기 경로
 
-- [ ] **루프 INSERT/UPDATE (왕복 폭증)** —
-  - `routes.ts:823-831` 드래그 재정렬: 항목마다 UPDATE. → `UPDATE ... FROM unnest($1::text[], $2::int[])` 단일 쿼리.
-  - `routes.ts:222-227` `setTripCities`, `routes.ts:281-283` 멤버 연결, `routes.ts:1038-1040` 정산 대상: 동일 패턴. → 다중 VALUES 단일 INSERT.
-  - `routes.ts:190-205` `seedChecklistPresets`: 여행 생성마다 ~30회 순차 INSERT. → 한 번의 다중 VALUES.
-- [ ] **트랜잭션 0회** — 여행 생성(trips + trip_members + trip_cities + 시드 2종 + 로그), 재정렬, 보관함→일정 변환(`routes.ts:1186-1211`, 장소+이벤트+사진 생성 후 원본 삭제) 등 다단계 쓰기가 전부 비원자적. 중간 실패 시 반쪽 데이터가 남고, 왕복도 많음. → `pool.connect()` + BEGIN/COMMIT 헬퍼 하나 만들어 다단계 쓰기에 적용.
+- [x] **루프 INSERT/UPDATE (왕복 폭증)** ✅ 완료 — 재정렬은 `unnest` 단일 UPDATE로, setTripCities/setTripMembers/expense_splits/seedChecklistPresets는 다중 VALUES 단일 INSERT로 전환.
+- [x] **트랜잭션 0회** ✅ 완료 — `db.ts`에 `withTransaction` 헬퍼 추가. 여행 생성/수정, 보관함→일정 변환을 BEGIN/COMMIT으로 묶음. 로컬 Postgres로 배치삽입·트랜잭션 경로 스모크 테스트 통과.
 - [ ] **사진 다중 업로드 순차 처리** — `routes.ts:1095-1105`, `1272-1308` 파일마다 sharp 압축→R2 업로드→INSERT를 순차 await. 10장이면 처리시간 ×10. → `Promise.all` + 동시성 제한(3~4개, p-limit)으로 병렬화.
 - [ ] **logActivity가 응답 경로에서 await** — `routes.ts:36-41`. 활동 로그는 부가 기능이므로 응답 후 fire-and-forget(catch만)으로 빼면 쓰기 API 지연이 줄어듦.
 - [ ] **activity_log 무한 증가** — 보존 정책 없음. 주기적으로 오래된 행 삭제(예: 최근 500개만 유지)하는 정리 쿼리 추가.
@@ -62,7 +60,7 @@
 ### A-3. 서버 구성
 
 - [x] **응답 압축 없음** ✅ 2026-07-16 완료 — `index.ts`에 compression 미들웨어 없음. 타임라인/장소 JSON은 수백 KB까지 커질 수 있고 텍스트라 gzip 효율이 큼. → `compression` 패키지 한 줄 (이미지 스트리밍 라우트는 제외).
-- [ ] **initSchema가 기동마다 400줄 DDL 재실행** — `db.ts:8-409`. ALTER/UPDATE 수십 개가 Railway 재배포·재시작마다 Neon에 순차 실행되어 콜드스타트를 늘림. → node-pg-migrate 등으로 이관하고 적용된 마이그레이션은 스킵.
+- [x] **initSchema가 기동마다 400줄 DDL 재실행** ✅ 완료 — node-pg-migrate로 이관(`server/migrations/`), 기존 SQL 전체를 베이스라인 마이그레이션 1개로 옮김(멱등이라 기존 운영 DB에도 안전). 이후 기동은 `pgmigrations` 테이블로 미적용분만 실행. 로컬에서 (a) 빈 DB (b) 이미 initSchema로 세팅된 기존 DB 두 시나리오 모두 검증.
 - [ ] **pg Pool 기본 설정** — `db.ts:3-6`. Neon은 동시 커넥션 제한이 있고 유휴 비용도 있음. → `max`(Railway 단일 인스턴스면 5~10), `idleTimeoutMillis`, `connectionTimeoutMillis` 명시. Neon의 pooled connection string(`-pooler`) 사용 검토. `rejectUnauthorized: false`도 Neon CA 검증으로 바꾸는 것 권장(보안).
 - [ ] **프로덕션을 tsx로 구동** — `server/package.json` `start: tsx src/index.ts`. 기동 시간·메모리 오버헤드. → `tsc`로 빌드 후 `node dist/index.js`.
 - [ ] **로그인 rate limit 없음** — `routes.ts:233`. 성능이라기보다 보안이지만, 무제한 시도는 DoS 벡터이기도 함. → express-rate-limit + `crypto.timingSafeEqual` 비교.
@@ -70,7 +68,7 @@
 ### A-4. 파일 서빙
 
 - [ ] **모든 이미지가 서버 경유 스트리밍** — `upload.ts:91-104` + `routes.ts:263-266`. 사진 한 장마다 브라우저→Railway(단일 리전)→R2→다시 브라우저. 갤러리 24장이면 Railway가 24번 프록시. `Cache-Control: private`이라 CDN 캐시도 불가. → 단기: 현행 유지(브라우저 immutable 캐시는 이미 있음). 중기: 만료 짧은 **R2 presigned URL**을 API 응답에 포함시켜 브라우저가 R2에서 직접 받게 하거나, Cloudflare Worker 프록시로 엣지 캐시.
-- [ ] **썸네일 부재** — 업로드 시 2000px/품질82 단일 변형만 저장(`upload.ts:60-72`). 대시보드 캘린더 셀, 갤러리 그리드, 타임라인 카드 전부 원본(수백 KB~1MB)을 로드. → 업로드 시 ~400px 썸네일을 함께 저장(`photos/thumb/...`)하고 목록 UI는 썸네일, 라이트박스만 원본.
+- [x] **썸네일 부재** ✅ 완료 — 업로드 시 480px/품질70 썸네일을 `thumb_` 접두사로 함께 생성·업로드. 프론트 `Thumb` 컴포넌트(원본 자동 폴백)로 목록/그리드 12곳 전환, 라이트박스는 원본 유지. 삭제 시(`safeUnlink`) 썸네일도 함께 정리. R2 실접근은 배포 환경에서 최종 확인 필요.
 
 ---
 
@@ -90,9 +88,9 @@
 
 ### B-3. 데이터 페칭 구조 (구조적으로 가장 중요)
 
-- [ ] **캐시 계층 부재 + 전체 refetch 패턴** — `TripWorkspace.tsx:818-829` `refresh()`가 API 9개를 호출하고, 지출 삭제 하나(`onChanged`)에도 9개 전부 재호출. 화면 전환·탭 전환마다 언마운트→재마운트로 매번 처음부터 다시 fetch (`TripWindow.tsx:189-193`의 탭 조건부 렌더). → **TanStack Query 도입**: 쿼리 키별 캐시로 탭 왕복 시 즉시 표시, 변경 시 해당 리소스만 invalidate, 지출 추가/삭제는 낙관적 업데이트. 이 프로젝트에서 가장 투자 대비 효과가 큰 구조 개선.
-- [ ] **공용 데이터 중복 fetch** — countries/cities를 `App.tsx:89`, `TripWindow.tsx:52-55`, CountriesScreen, TripCountryCityPicker 등에서 각각 로드. places도 TripWorkspace가 전체 목록을 로드. → Query 캐시로 통합하면 자동 해결.
-- [ ] **bucket.list() 전역 로드** — `TripWorkspace.tsx:826` 일정 화면에서 버킷 전체를 항상 로드하지만 편집 모달에서만 사용. → 모달 열 때 lazy fetch.
+- [x] **캐시 계층 부재 + 전체 refetch 패턴** ✅ 완료 — TanStack Query 도입(`web/src/queries.ts`). TripWorkspace의 9-엔드포인트 blind refetch를 useQuery 9개 + 리소스별 targeted invalidate로 전환(예: 지출 삭제는 `expenses`만, 이동구간 변경은 `transit`만 무효화). 드래그 재정렬은 `queryClient.setQueryData`로 낙관적 업데이트 유지. App/TripWindow/TripsScreen/Dashboard/Countries/Bucket/Places/TripBaseSection/ArchiveBoard/Expenses/Settlement/Members 등 주요 화면 전환, countries·cities 6곳 중복 fetch 제거. Playwright로 실제 브라우저 렌더·탭 왕복·캐시 재사용 확인(콘솔 에러 0, 페이지 예외 0).
+- [x] **공용 데이터 중복 fetch** ✅ 완료 — App/TripWindow/TripsScreen/CountriesScreen/BucketListScreen/PlacesScreen/TripBaseSection 등 countries·cities를 각자 fetch하던 6곳을 `useCountries`/`useCities` 공유 쿼리로 통합. TripCountryCityPicker는 props로 값을 받는 구조라 부모 쪽 통합만으로 캐시 공유됨.
+- [ ] **bucket.list() 전역 로드** — `TripWorkspace.tsx:826` 일정 화면에서 버킷 전체를 항상 로드하지만 편집 모달에서만 사용. → 모달 열 때 lazy fetch. (여전히 미해결 — useBucket()으로 캐시는 공유되지만 로드 자체는 여전히 즉시 실행됨)
 
 ### B-4. 렌더링
 

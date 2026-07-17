@@ -34,6 +34,14 @@ export function makeUploader() {
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.avif', '.tiff', '.gif'])
 
+// 원본 키에서 썸네일 키를 파일명 앞에 thumb_ 접두사를 붙여 규칙적으로 유도한다.
+// 별도 DB 컬럼 없이 프론트가 같은 규칙(web/src/api.ts의 thumbUrl)으로 URL만 바꿔 요청할 수 있게 해준다.
+function thumbKeyOf(key: string): string {
+  const parts = key.split('/')
+  const filename = parts.pop()!
+  return [...parts, `thumb_${filename}`].join('/')
+}
+
 // 사진의 EXIF 촬영일시를 읽는다 (여러 장을 한번에 올릴 때 날짜별로 자동 분류하는 데 사용).
 // 원본 버퍼를 읽어야 하므로 압축·업로드(uploadFile) 전에 호출해야 한다.
 // EXIF가 없거나 파싱 실패 시 null (fail open — 스크린샷 등 카메라 메타데이터가 없는 이미지도 흔함).
@@ -50,12 +58,17 @@ export async function extractTakenDate(file: Express.Multer.File): Promise<Date 
 // 이미지면 리사이즈·재압축(최대 2000x2000, JPEG 품질 82)해서 용량을 줄인 뒤 R2에 올리고,
 // DB에 저장할 오브젝트 키(예: "photos/172..._ab12cd34_name.jpg")를 반환한다.
 // 이미지가 아니거나(PDF 등) 압축 중 에러가 나면 원본을 그대로 올린다(fail open).
+// 이미지라면 목록/그리드용 480px 썸네일도 같은 요청에서 함께 만들어 올린다 — 갤러리·카드 하나에
+// 수백 KB~1MB짜리 원본을 그대로 물리면 스크롤할수록 네트워크가 감당 못 하기 때문.
+// 썸네일 생성이 실패해도(fail open) 메인 업로드는 이미 끝난 뒤라 무시하고 진행한다 —
+// 프론트(Thumb 컴포넌트)는 썸네일이 없으면 원본으로 자동 폴백한다.
 export async function uploadFile(subDir: string, file: Express.Multer.File): Promise<string> {
   const ext = path.extname(file.originalname).toLowerCase()
   const base = sanitize(path.basename(file.originalname, path.extname(file.originalname)))
   let body = file.buffer
   let finalExt = ext
   let contentType = file.mimetype
+  let isImage = false
 
   if (IMAGE_EXTENSIONS.has(ext)) {
     try {
@@ -66,6 +79,7 @@ export async function uploadFile(subDir: string, file: Express.Multer.File): Pro
         .toBuffer()
       finalExt = '.jpg'
       contentType = 'image/jpeg'
+      isImage = true
     } catch (err) {
       console.error('이미지 압축 실패, 원본 유지:', err)
     }
@@ -74,13 +88,33 @@ export async function uploadFile(subDir: string, file: Express.Multer.File): Pro
   const filename = `${Date.now()}_${crypto.randomBytes(4).toString('hex')}_${base}${finalExt}`
   const key = path.posix.join(subDir, filename)
   await r2.send(new PutObjectCommand({ Bucket: BUCKET, Key: key, Body: body, ContentType: contentType }))
+
+  if (isImage) {
+    try {
+      const thumbBody = await sharp(body)
+        .resize({ width: 480, height: 480, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 70 })
+        .toBuffer()
+      await r2.send(new PutObjectCommand({
+        Bucket: BUCKET, Key: thumbKeyOf(key), Body: thumbBody, ContentType: 'image/jpeg',
+      }))
+    } catch (err) {
+      console.error('썸네일 생성 실패, 원본으로 대체됨:', err)
+    }
+  }
+
   return key
 }
 
+// 원본과, 존재한다면 같이 만들어졌던 썸네일도 함께 지운다. 존재하지 않는 키를 지워도
+// S3 호환 DeleteObject는 에러 없이 성공하므로(멱등), 썸네일이 없던 과거 업로드본이어도 안전하다.
 export async function safeUnlink(key: string | null | undefined): Promise<void> {
   if (!key) return
   try {
-    await r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
+    await Promise.all([
+      r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key })),
+      r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: thumbKeyOf(key) })),
+    ])
   } catch (err) {
     console.error('R2 파일 삭제 실패:', err)
   }

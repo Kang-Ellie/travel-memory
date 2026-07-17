@@ -1,11 +1,28 @@
 import 'dotenv/config'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import express from 'express'
 import type { NextFunction, Request, Response } from 'express'
 import cors from 'cors'
 import compression from 'compression'
 import cookieParser from 'cookie-parser'
-import { initSchema } from './db.js'
+import { runner } from 'node-pg-migrate'
+import { sslConfig } from './db.js'
 import { registerRoutes } from './routes.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+// 기동 시 새 마이그레이션만 적용한다(node-pg-migrate가 pgmigrations 테이블로 이미 적용된
+// 파일을 추적). 예전엔 매번 400줄짜리 initSchema() 전체를 재실행했는데, 전부
+// CREATE ... IF NOT EXISTS라 안전하긴 했어도 재배포마다 불필요한 왕복이 쌓였다.
+async function runMigrations(): Promise<void> {
+  await runner({
+    databaseUrl: { connectionString: process.env.DATABASE_URL, ssl: sslConfig },
+    dir: path.join(__dirname, '..', 'migrations'),
+    direction: 'up',
+    migrationsTable: 'pgmigrations',
+  })
+}
 
 // 라우트 핸들러 밖(fire-and-forget 콜백 등)에서 발생한 처리 안 된 에러로 프로세스 전체가
 // 죽는 것을 막는 최후 방어선. Node 22부터 unhandled rejection은 기본적으로 프로세스를 종료시킨다.
@@ -36,11 +53,11 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
 
 const port = Number(process.env.PORT ?? 8787)
 
-initSchema()
+runMigrations()
   .then(() => {
     app.listen(port, () => console.log(`트래블 온 API 서버 실행 중 → http://localhost:${port}`))
   })
   .catch((err) => {
-    console.error('DB 초기화 실패:', err)
+    console.error('DB 마이그레이션 실패:', err)
     process.exit(1)
   })

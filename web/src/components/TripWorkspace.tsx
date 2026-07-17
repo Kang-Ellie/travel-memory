@@ -1,9 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type {
-  Trip, TimelineEvent, Place, Member, Expense, CurrencyRate, TransitSegment, Voucher, BucketItem, DayNote, TripCity,
+  Trip, TimelineEvent, Place, Member, Expense, TransitSegment, Voucher, BucketItem, TripCity,
 } from '../../shared/types'
 import { PAYMENT_METHOD_PRESETS } from '../../shared/types'
 import { api, fileUrl } from '../api'
+import {
+  useEvents, usePlaces, useTripMembers, useExpenses, useRates, useTransit, useVouchers, useBucket, useDayNotes,
+  useQueryClient, queryKeys,
+} from '../queries'
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
@@ -11,6 +15,7 @@ import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
+import Thumb from './Thumb'
 import Select from './Select'
 import ChecklistPanel from './ChecklistPanel'
 import DayNoteEditModal from './DayNoteEditModal'
@@ -442,7 +447,7 @@ function EventCard({
         {ev.photos.length > 0 && (
           <div className="event-photo-col">
             <div className="photo-thumb">
-              <img className="main-photo" src={fileUrl(mainPhoto!.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightboxIndex(0)} />
+              <Thumb className="main-photo" path={mainPhoto!.filePath} onClick={() => setLightboxIndex(0)} />
               {ev.photos.length > 1 && (
                 <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(mainPhoto!.id).then(onChanged)}>×</button>
               )}
@@ -451,7 +456,7 @@ function EventCard({
               <div className="thumb-row">
                 {restPhotos.map((p, i) => (
                   <div key={p.id} className="photo-thumb">
-                    <img src={fileUrl(p.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightboxIndex(i + 1)} />
+                    <Thumb path={p.filePath} onClick={() => setLightboxIndex(i + 1)} />
                     <button className="photo-del" title="사진 삭제" onClick={() => api.photos.delete(p.id).then(onChanged)}>×</button>
                   </div>
                 ))}
@@ -785,15 +790,25 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const days = dayCount(trip)
   const todayNum = todayDayNumber(trip)
   const [day, setDay] = useState(() => todayNum ?? 1)
-  const [events, setEvents] = useState<TimelineEvent[]>([])
-  const [places, setPlaces] = useState<Place[]>([])
-  const [members, setMembers] = useState<Member[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [rates, setRates] = useState<CurrencyRate[]>([])
-  const [transit, setTransit] = useState<TransitSegment[]>([])
-  const [vouchers, setVouchers] = useState<Voucher[]>([])
-  const [bucketItems, setBucketItems] = useState<BucketItem[]>([])
-  const [dayNotes, setDayNotes] = useState<DayNote[]>([])
+  const queryClient = useQueryClient()
+  const { data: events = [] } = useEvents(trip.id)
+  const { data: places = [] } = usePlaces()
+  const { data: members = [] } = useTripMembers(trip.id)
+  const { data: expenses = [] } = useExpenses(trip.id)
+  const { data: rates = [] } = useRates(trip.id)
+  const { data: transit = [] } = useTransit(trip.id)
+  const { data: vouchers = [] } = useVouchers(trip.id)
+  const { data: bucketItems = [] } = useBucket()
+  const { data: dayNotes = [] } = useDayNotes(trip.id)
+  // 지출·티켓 상세·사진은 전부 events 응답에 내려오므로(attachEventDetails), EventCard 안의
+  // 다양한 변경(리뷰·평점·항공권·발렛·숙소·사진·비용 기록)은 이 두 키만 무효화하면 된다.
+  const invalidateEvents = () => queryClient.invalidateQueries({ queryKey: queryKeys.events(trip.id) })
+  const invalidateExpenses = () => queryClient.invalidateQueries({ queryKey: queryKeys.expenses(trip.id) })
+  const invalidateTransit = () => queryClient.invalidateQueries({ queryKey: queryKeys.transit(trip.id) })
+  const invalidateDayNotes = () => queryClient.invalidateQueries({ queryKey: queryKeys.dayNotes(trip.id) })
+  const invalidatePlaces = () => queryClient.invalidateQueries({ queryKey: queryKeys.places })
+  const invalidateArchive = () => queryClient.invalidateQueries({ queryKey: queryKeys.archive(trip.id) })
+  const onEventCardChanged = () => { invalidateEvents(); invalidateExpenses() }
   const [editingDay, setEditingDay] = useState<number | null>(null)
   const [diaryDay, setDiaryDay] = useState<number | null>(null)
   const [rightPanel, setRightPanel] = useState<'map' | 'archive' | 'planb'>('archive')
@@ -814,19 +829,6 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [bulkUploading, setBulkUploading] = useState(false)
   const dragFrom = useRef<number | null>(null)
   const bulkPhotoInput = useRef<HTMLInputElement>(null)
-
-  const refresh = () => {
-    api.events.list(trip.id).then(setEvents)
-    api.places.list().then(setPlaces)
-    api.tripMembers.list(trip.id).then(setMembers)
-    api.expenses.list(trip.id).then(setExpenses)
-    api.rates.list(trip.id).then(setRates)
-    api.transit.list(trip.id).then(setTransit)
-    api.vouchers.list(trip.id).then(setVouchers)
-    api.bucket.list().then(setBucketItems)
-    api.dayNotes.list(trip.id).then(setDayNotes)
-  }
-  useEffect(refresh, [trip.id])
 
   const dayEvents = events.filter((e) => e.dayNumber === day).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
   // 표시용 방문 순번 — 티켓(항공·발렛·숙소)은 방문지가 아니라 번호에서 빼고,
@@ -885,7 +887,8 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     if (!placeId) return
     await api.events.create({ tripId: trip.id, placeId, dayNumber: day })
     setSelPlace('')
-    refresh()
+    invalidateEvents()
+    if (selPlace === '__new') invalidatePlaces()
     setShowAddPlace(false)
   }
 
@@ -896,7 +899,11 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     const ids = dayEvents.map((e) => e.id)
     const [moved] = ids.splice(from, 1)
     ids.splice(targetIdx, 0, moved)
-    setEvents((prev) => {
+    // 드래그가 끝나자마자 눈에 보이는 순서를 먼저 바꾸고(낙관적 업데이트), API 응답을 기다리지 않는다
+    // — react-query 캐시를 직접 갱신하는 거라 서버 확인 후 재검증(invalidate)까지는 하지 않는다
+    // (원래 코드도 그랬음: 실패해도 다음 자연스러운 refetch에서 맞춰짐).
+    queryClient.setQueryData(queryKeys.events(trip.id), (prev: TimelineEvent[] | undefined) => {
+      if (!prev) return prev
       const others = prev.filter((e) => e.dayNumber !== day)
       const reordered = ids.map((eid, i) => {
         const found = prev.find((e) => e.id === eid)!
@@ -915,7 +922,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     const res = await api.dayNotes.addPhotosAuto(trip.id, files)
     setBulkUploading(false)
     alert(`📷 ${res.photos.length}장을 촬영일 기준으로 ${res.dayCount}개 일차 일기에 나눠 넣었어요.`)
-    refresh()
+    invalidateDayNotes()
   }
 
   const addTransit = async () => {
@@ -924,7 +931,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
       mode: transitMode, durationText: transitDuration.trim() || null, note: transitNote.trim() || null,
     })
     setTransitDuration(''); setTransitNote('')
-    refresh()
+    invalidateTransit()
     setShowAddTransit(false)
   }
 
@@ -947,7 +954,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     const archiveId = e.dataTransfer.getData(ARCHIVE_DRAG_TYPE)
     if (archiveId) {
       await api.archive.convertToEvent({ archiveId, tripId: trip.id, dayNumber: day })
-      refresh()
+      invalidateEvents(); invalidatePlaces(); invalidateArchive()
     }
   }
 
@@ -1032,7 +1039,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
         <button className={`pill ${viewMode === 'board' ? 'active' : ''}`} onClick={() => setViewMode('board')}>🗂 보드</button>
       </div>
       {viewMode === 'board' && (
-        <TripBoardView trip={trip} events={events} onChanged={refresh} onOpenDay={(d) => { setDay(d); setViewMode('list') }} />
+        <TripBoardView trip={trip} events={events} onChanged={invalidateEvents} onOpenDay={(d) => { setDay(d); setViewMode('list') }} />
       )}
       {viewMode === 'list' && (
     <div className="workspace">
@@ -1083,7 +1090,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
             note={dayNotes.find((n) => n.dayNumber === editingDay) ?? null}
             cities={trip.cities}
             onClose={() => setEditingDay(null)}
-            onSaved={refresh}
+            onSaved={invalidateDayNotes}
           />
         )}
         {diaryDay != null && (
@@ -1094,7 +1101,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
             expenses={expenses}
             rates={rates}
             onClose={() => setDiaryDay(null)}
-            onChanged={refresh}
+            onChanged={invalidateDayNotes}
             onEdit={() => { setEditingDay(diaryDay); setDiaryDay(null) }}
           />
         )}
@@ -1110,7 +1117,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               dayEvents={dayEvents}
               members={members}
               onOpenDiary={() => setDiaryDay(todayNum)}
-              onChanged={refresh}
+              onChanged={invalidateExpenses}
             />
           </div>
         )}
@@ -1128,7 +1135,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                 이 날의 동선이 비어 있어요. 아래에서 장소를 추가하거나, 오른쪽 보관함 카드를 이 위로 끌어다 놓아보세요.
               </div>
             )}
-            {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+            {transitAfter(null).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={invalidateTransit} />)}
             {dayEvents.map((ev, idx) => (
               <div key={ev.id}>
                 <EventCard
@@ -1140,12 +1147,12 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   dragIndex={idx}
                   onDragStart={(i) => { dragFrom.current = i }}
                   onDrop={() => reorder(idx)}
-                  onChanged={refresh}
+                  onChanged={onEventCardChanged}
                   isToday={todayNum != null && day === todayNum}
                   displaySeq={displaySeqById.get(ev.id) ?? null}
                   spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
                 />
-                {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={refresh} />)}
+                {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={invalidateTransit} />)}
               </div>
             ))}
           </div>
@@ -1179,7 +1186,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           <button className={`pill ${rightPanel === 'map' ? 'active' : ''}`} onClick={() => setRightPanel('map')}>🗺 지도</button>
         </div>
         {rightPanel === 'archive' && <ArchiveBoard tripId={trip.id} />}
-        {rightPanel === 'planb' && <PlanBPanel trip={trip} places={places} events={events} day={day} onAdded={refresh} />}
+        {rightPanel === 'planb' && <PlanBPanel trip={trip} places={places} events={events} day={day} onAdded={invalidateEvents} />}
         {rightPanel === 'map' && <MapTab trip={trip} day={day} />}
       </div>
     </div>

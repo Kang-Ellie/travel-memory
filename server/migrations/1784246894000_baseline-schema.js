@@ -1,0 +1,437 @@
+// 베이스라인 마이그레이션 — 기존 db.ts의 initSchema()에 있던 전체 DDL을 그대로 옮겨왔다.
+// 모든 문장이 CREATE TABLE IF NOT EXISTS / ADD COLUMN IF NOT EXISTS라 이미 이 스키마로
+// 떠 있는 운영 DB(Neon)에 처음 적용돼도 안전(멱등)하다 — 이 파일이 실행되고 나면
+// node-pg-migrate가 적용 여부를 pgmigrations 테이블에 기록해두므로, 그 다음부터는
+// 서버가 뜰 때마다 이 400줄을 다시 실행하지 않고 새로 추가된 마이그레이션 파일만 본다.
+//
+// 앞으로 스키마를 바꿀 땐 이 파일을 고치지 말고 새 마이그레이션 파일을 추가할 것
+// (예: npx node-pg-migrate create 설명).
+
+export const shorthands = undefined
+
+export const up = (pgm) => {
+  pgm.sql(`
+    CREATE TABLE IF NOT EXISTS trips (
+      id         TEXT PRIMARY KEY,
+      title      TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date   TEXT NOT NULL,
+      budget     DOUBLE PRECISION NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS members (
+      id   TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE
+    );
+
+    CREATE TABLE IF NOT EXISTS trip_members (
+      trip_id   TEXT NOT NULL REFERENCES trips(id)   ON DELETE CASCADE,
+      member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+      PRIMARY KEY (trip_id, member_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS places (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      address    TEXT NOT NULL DEFAULT '',
+      category   TEXT NOT NULL DEFAULT '기타',
+      lat        DOUBLE PRECISION,
+      lng        DOUBLE PRECISION,
+      memo       TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS timeline_events (
+      id           TEXT PRIMARY KEY,
+      trip_id      TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      place_id     TEXT NOT NULL REFERENCES places(id),
+      day_number   INT NOT NULL,
+      sequence     INT NOT NULL,
+      planned_time TEXT,
+      rating       DOUBLE PRECISION,
+      review       TEXT,
+      must_try     TEXT,
+      link_url     TEXT,
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS expenses (
+      id          TEXT PRIMARY KEY,
+      trip_id     TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      event_id    TEXT REFERENCES timeline_events(id) ON DELETE SET NULL,
+      amount      DOUBLE PRECISION NOT NULL,
+      currency    TEXT NOT NULL DEFAULT 'KRW',
+      category    TEXT NOT NULL DEFAULT '기타',
+      description TEXT NOT NULL,
+      paid_by     TEXT NOT NULL REFERENCES members(id),
+      spent_at    TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS expense_splits (
+      expense_id TEXT NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+      member_id  TEXT NOT NULL REFERENCES members(id),
+      PRIMARY KEY (expense_id, member_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS vouchers (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      title      TEXT NOT NULL,
+      file_type  TEXT NOT NULL,
+      file_path  TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS photos (
+      id         TEXT PRIMARY KEY,
+      event_id   TEXT NOT NULL REFERENCES timeline_events(id) ON DELETE CASCADE,
+      file_path  TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS archive_items (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      kind       TEXT NOT NULL,
+      title      TEXT NOT NULL,
+      body       TEXT,
+      file_path  TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS day_notes (
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      day_number INT NOT NULL,
+      note       TEXT,
+      weather    TEXT,
+      PRIMARY KEY (trip_id, day_number)
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
+    -- ── 국가·도시 족보 ──────────────────────────────────
+    CREATE TABLE IF NOT EXISTS countries (
+      id                TEXT PRIMARY KEY,
+      name              TEXT NOT NULL,
+      code              TEXT,
+      capital           TEXT,
+      phone_code        TEXT,
+      currency          TEXT,
+      voltage           TEXT,
+      language          TEXT,
+      visa              TEXT,
+      prep_docs         TEXT,
+      emergency_police  TEXT,
+      emergency_medical TEXT,
+      created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS cities (
+      id              TEXT PRIMARY KEY,
+      country_id      TEXT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+      name            TEXT NOT NULL,
+      flight_duration TEXT,
+      time_diff       TEXT,
+      created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS trip_cities (
+      trip_id  TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      city_id  TEXT NOT NULL REFERENCES cities(id) ON DELETE CASCADE,
+      sequence INT NOT NULL DEFAULT 0,
+      PRIMARY KEY (trip_id, city_id)
+    );
+
+    -- ── 항공 상세 (공항 이벤트 1:1) ───────────────────────
+    CREATE TABLE IF NOT EXISTS flight_details (
+      event_id        TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      depart_at       TEXT,
+      arrive_at       TEXT,
+      duration_minutes INT,
+      booking_ref     TEXT,
+      booked_via      TEXT
+    );
+
+    -- ── 여행별 고정 환율 ──────────────────────────────────
+    CREATE TABLE IF NOT EXISTS trip_currency_rates (
+      trip_id      TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      currency     TEXT NOT NULL,
+      krw_per_unit DOUBLE PRECISION NOT NULL,
+      PRIMARY KEY (trip_id, currency)
+    );
+
+    -- ── 체크리스트 (일차별 할일 / 준비물 / 쇼핑 / 음식 공용) ─
+    CREATE TABLE IF NOT EXISTS checklist_items (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      scope      TEXT NOT NULL CHECK (scope IN ('day', 'packing', 'shopping', 'food')),
+      day_number INT,
+      text       TEXT NOT NULL,
+      done       BOOLEAN NOT NULL DEFAULT false,
+      sequence   INT NOT NULL DEFAULT 0,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- ── 버킷리스트 ────────────────────────────────────────
+    CREATE TABLE IF NOT EXISTS bucket_items (
+      id             TEXT PRIMARY KEY,
+      title          TEXT NOT NULL,
+      memo           TEXT,
+      country_id     TEXT REFERENCES countries(id) ON DELETE SET NULL,
+      city_id        TEXT REFERENCES cities(id) ON DELETE SET NULL,
+      category       TEXT,
+      done           BOOLEAN NOT NULL DEFAULT false,
+      linked_trip_id TEXT REFERENCES trips(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    ALTER TABLE trips ADD COLUMN IF NOT EXISTS budget DOUBLE PRECISION NOT NULL DEFAULT 0;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS must_try TEXT;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS planned_time TEXT;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS link_url TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS event_id TEXT REFERENCES timeline_events(id) ON DELETE SET NULL;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS diary TEXT;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_emoji TEXT;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS weather_temp INT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_method TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS memo TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS purchase_items TEXT;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_shared BOOLEAN NOT NULL DEFAULT true;
+    ALTER TABLE expenses ADD COLUMN IF NOT EXISTS is_prebooked BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS map_url TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS pros TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS cons TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS country_id TEXT REFERENCES countries(id) ON DELETE SET NULL;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS city_id TEXT REFERENCES cities(id) ON DELETE SET NULL;
+
+    -- ── 동선 이동 구간 (지하철/도보/기차 등, 특정 일정 뒤에 표시) ─
+    CREATE TABLE IF NOT EXISTS transit_segments (
+      id             TEXT PRIMARY KEY,
+      trip_id        TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      day_number     INT NOT NULL,
+      after_event_id TEXT REFERENCES timeline_events(id) ON DELETE CASCADE,
+      mode           TEXT NOT NULL,
+      duration_text  TEXT,
+      voucher_id     TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    ALTER TABLE transit_segments ADD COLUMN IF NOT EXISTS note TEXT;
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS linked_place_id TEXT REFERENCES places(id) ON DELETE SET NULL;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS bucket_item_id TEXT REFERENCES bucket_items(id) ON DELETE SET NULL;
+    ALTER TABLE timeline_events ADD COLUMN IF NOT EXISTS memo TEXT;
+
+    -- 보관함 항목을 여행에 종속시키지 않고도(SNS에서 저장만 해둔 링크 등) 만들 수 있게 함
+    ALTER TABLE archive_items ALTER COLUMN trip_id DROP NOT NULL;
+    ALTER TABLE archive_items ADD COLUMN IF NOT EXISTS linked_place_id TEXT REFERENCES places(id) ON DELETE SET NULL;
+
+    -- 장소 족보 보강: 영업시간·예약필요·추천메뉴
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS hours TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS reservation_needed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS recommended_menu TEXT;
+
+    -- 항공 상세 보강: 탑승 위치·확정 여부·연결된 바우처
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS departure_location TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS confirmed BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS voucher_id TEXT REFERENCES vouchers(id) ON DELETE SET NULL;
+
+    -- 일차별로 어느 도시에 해당하는지 명시적으로 지정 가능하게(자동 추론 대신/보완) — 하루에 여러 도시 가능
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS city_id TEXT REFERENCES cities(id) ON DELETE SET NULL;
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS city_ids TEXT[] NOT NULL DEFAULT '{}';
+
+    -- 체크리스트: 준비물 안에서 필수/선택/당일준비물로 묶고, '여행 전 Todo' 범위 추가
+    ALTER TABLE checklist_items ADD COLUMN IF NOT EXISTS category TEXT;
+    ALTER TABLE checklist_items DROP CONSTRAINT IF EXISTS checklist_items_scope_check;
+    ALTER TABLE checklist_items ADD CONSTRAINT checklist_items_scope_check
+      CHECK (scope IN ('day', 'packing', 'shopping', 'food', 'predeparture'));
+
+    -- 바우처를 항공권/숙소/티켓 등으로 구분
+    ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT '기타';
+
+    -- '식당' 분류명을 '맛집'으로 통일
+    UPDATE places SET category = '맛집' WHERE category = '식당';
+
+    -- 버킷리스트 항목 하나가 여러 국가·도시에 걸칠 수 있게(먹킷/위시 모두 여러 지역에서 유명할 수 있으므로)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS country_ids TEXT[] NOT NULL DEFAULT '{}';
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS city_ids TEXT[] NOT NULL DEFAULT '{}';
+    UPDATE bucket_items SET country_ids = ARRAY[country_id] WHERE country_id IS NOT NULL AND country_ids = '{}';
+    UPDATE bucket_items SET city_ids = ARRAY[city_id] WHERE city_id IS NOT NULL AND city_ids = '{}';
+
+    -- 일차별 하루 예산(설정하면 TODAY 카드에서 지출 대비 상태 등급을 보여줌)
+    ALTER TABLE day_notes ADD COLUMN IF NOT EXISTS budget DOUBLE PRECISION;
+
+    -- 버킷리스트 항목에 직접 참고 이미지를 올려둘 수 있게(아직 안 가본 곳은 장소 족보에 방문 사진이 없으므로)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS image_path TEXT;
+
+    -- 맛집 브레이크타임(점심·저녁 사이 휴식 시간)
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS break_time TEXT;
+
+    -- 항공권을 탑승권 카드 형태로 보여주기 위한 정보
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS airline TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS airline_logo_path TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS flight_no TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS destination TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS gate TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS seat TEXT;
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS flight_class TEXT;
+
+    -- 업로드 저장 경로와 DB 기록 경로가 어긋났던 과거 버그로 깨진 file_path 복구
+    -- (실제 파일은 photos/vouchers/archive 하위에 평평하게 저장되어 있었음)
+    UPDATE photos SET file_path = 'photos/' || split_part(file_path, '/', 3)
+      WHERE file_path LIKE 'photos/%/%';
+    UPDATE vouchers SET file_path = 'vouchers/' || split_part(file_path, '/', 3)
+      WHERE file_path LIKE 'vouchers/%/%';
+    UPDATE archive_items SET file_path = 'archive/' || split_part(file_path, '/', 3)
+      WHERE kind = 'image' AND file_path LIKE 'archive/%/%';
+
+    -- 발렛/항공/숙소를 동선에 일차를 배정하기 전에 '미배정 티켓'으로 먼저 저장할 수 있게 함
+    ALTER TABLE timeline_events ALTER COLUMN day_number DROP NOT NULL;
+    ALTER TABLE timeline_events ALTER COLUMN sequence SET DEFAULT 0;
+
+    -- 발렛 상세 (이동 이벤트 1:1) — 공항/터미널마다 발렛사·예약 방법이 다름
+    CREATE TABLE IF NOT EXISTS valet_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      scheduled_at TEXT,
+      location     TEXT,
+      company      TEXT,
+      booked_via   TEXT,
+      booking_ref  TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
+    -- 숙소 상세 (숙소 이벤트 1:1) — 체크인/아웃·예약번호 등 여행별(1회성) 정보
+    CREATE TABLE IF NOT EXISTS lodging_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      check_in_at  TEXT,
+      check_out_at TEXT,
+      booking_ref  TEXT,
+      booked_via   TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
+    -- 예약 상세 (맛집·카페 등 일반 장소 이벤트 1:1) — 예약 시간·인원·예약번호 등
+    CREATE TABLE IF NOT EXISTS reservation_details (
+      event_id     TEXT PRIMARY KEY REFERENCES timeline_events(id) ON DELETE CASCADE,
+      reserved_at  TEXT,
+      party_size   INT,
+      booking_ref  TEXT,
+      booked_via   TEXT,
+      confirmed    BOOLEAN NOT NULL DEFAULT false,
+      voucher_id   TEXT REFERENCES vouchers(id) ON DELETE SET NULL,
+      note         TEXT
+    );
+
+    -- 버킷·먹킷·위시: 알아두면 좋은 TIP(느낀점=memo와 별개)
+    ALTER TABLE bucket_items ADD COLUMN IF NOT EXISTS tip TEXT;
+
+    -- 여행: 몇박(날짜 범위와 별개로, 2박4일 같은 경우를 직접 입력)
+    ALTER TABLE trips ADD COLUMN IF NOT EXISTS nights INT;
+
+    -- 장소 족보 보강: 발렛사/예약 채널(발렛), 성급/가는 법(숙소), 영아 픽 메뉴(맛집·카페·숙소), 추천 여부
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS valet_company TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS booking_channel TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS grade TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS directions TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS baby_menu TEXT;
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS recommend BOOLEAN;
+
+    -- 구글 지도의 "알아두면 좋은 정보" 같은, 방문 전 알아두면 좋은 팁(직접 작성)
+    ALTER TABLE places ADD COLUMN IF NOT EXISTS tip TEXT;
+
+    -- 오늘의 일기 전용 사진첩 (특정 장소 방문과 무관하게 그날 하루를 남기는 사진)
+    CREATE TABLE IF NOT EXISTS day_note_photos (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+      day_number INT NOT NULL,
+      file_path  TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- 동행인 카드에 표시할 이모지(수정 가능)
+    ALTER TABLE members ADD COLUMN IF NOT EXISTS emoji TEXT;
+
+    -- 여행 기초정보 카드에 보여줄 국가 정보 보강
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS weather TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS tip TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS price_level TEXT;
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS exchange_rate TEXT;
+
+    -- 도시별 항공 소요시간이 어느 공항 기준인지(예: 인천 도시는 공항이 여러 개일 수 있음)
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_airport TEXT;
+
+    -- 도시별 항공편이 직항인지 경유인지
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS flight_type TEXT;
+
+    -- 같은 항공 이벤트라도 가족이 각자 따로 티켓을 샀을 수 있어서, 이 항공권에 탄 사람이 누군지 표시
+    ALTER TABLE flight_details ADD COLUMN IF NOT EXISTS passenger_ids TEXT[] NOT NULL DEFAULT '{}';
+
+    -- 숙소 예약의 조식 포함 여부·룸 타입
+    ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS breakfast_included BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE lodging_details ADD COLUMN IF NOT EXISTS room_type TEXT;
+
+    -- 가족이 같이 쓰는 앱이라 "방금 누가 뭘 추가했는지"를 대시보드에 보여주기 위한 최근 활동 로그.
+    -- 로그인이 공용 비밀번호 하나라 "누가"는 특정할 수 없어서 "무엇을·언제"만 기록한다.
+    CREATE TABLE IF NOT EXISTS activity_log (
+      id         TEXT PRIMARY KEY,
+      trip_id    TEXT REFERENCES trips(id) ON DELETE CASCADE,
+      action     TEXT NOT NULL,
+      summary    TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    -- 추천 여행 시기·주의사항은 같은 나라라도 도시마다 달라서(예: 이탈리아, 중국)
+    -- 국가가 아니라 도시 단위로 관리한다.
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS best_season TEXT;
+    ALTER TABLE cities ADD COLUMN IF NOT EXISTS caution TEXT;
+
+    -- 구글 API(장소 검색·역지오코딩) 하루 호출 횟수 집계. 콘솔 할당량이 무제한(체험판 계정
+    -- 등)이어도 여기서 하루 상한을 걸어서 요금 폭탄을 코드 레벨에서 막는다.
+    CREATE TABLE IF NOT EXISTS api_usage (
+      usage_date TEXT NOT NULL,
+      kind       TEXT NOT NULL,
+      count      INT  NOT NULL DEFAULT 0,
+      PRIMARY KEY (usage_date, kind)
+    );
+
+    -- 준비서류를 온라인으로 신청할 수 있는 사이트 URL
+    ALTER TABLE countries ADD COLUMN IF NOT EXISTS prep_docs_url TEXT;
+
+    -- 항공 티켓 등록 시 장소 카테고리를 '공항'이 아니라 '항공'으로 잘못 저장하던 예전 버그의
+    -- 잔존 데이터를 바로잡는다('항공'은 어느 화면에서도 정식 카테고리로 선택할 수 없는 값이라
+    -- 이 값이 남아있다면 100% 그 버그로 생긴 데이터).
+    UPDATE places SET category = '공항' WHERE category = '항공';
+
+    -- ── 조회 인덱스 ──────────────────────────────────────
+    -- FK 컬럼에는 인덱스가 자동으로 안 생긴다. 타임라인/사진/지출처럼 "여행(이벤트)별로
+    -- 걸러 읽는" 쿼리가 대부분이라, 그 필터 컬럼들에 인덱스를 걸어 풀스캔을 막는다.
+    CREATE INDEX IF NOT EXISTS idx_events_trip_day   ON timeline_events (trip_id, day_number, sequence);
+    CREATE INDEX IF NOT EXISTS idx_events_place      ON timeline_events (place_id);
+    CREATE INDEX IF NOT EXISTS idx_photos_event      ON photos (event_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_trip     ON expenses (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_expenses_event    ON expenses (event_id);
+    CREATE INDEX IF NOT EXISTS idx_archive_trip      ON archive_items (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_checklist_trip    ON checklist_items (trip_id, scope, day_number);
+    CREATE INDEX IF NOT EXISTS idx_transit_trip_day  ON transit_segments (trip_id, day_number);
+    CREATE INDEX IF NOT EXISTS idx_daynote_photos    ON day_note_photos (trip_id, day_number);
+    CREATE INDEX IF NOT EXISTS idx_activity_time     ON activity_log (created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_places_city       ON places (city_id);
+    CREATE INDEX IF NOT EXISTS idx_places_country    ON places (country_id);
+    CREATE INDEX IF NOT EXISTS idx_cities_country    ON cities (country_id);
+    CREATE INDEX IF NOT EXISTS idx_trip_cities_city  ON trip_cities (city_id);
+    CREATE INDEX IF NOT EXISTS idx_vouchers_trip     ON vouchers (trip_id);
+    CREATE INDEX IF NOT EXISTS idx_bucket_trip       ON bucket_items (linked_trip_id);
+    CREATE INDEX IF NOT EXISTS idx_bucket_place      ON bucket_items (linked_place_id);
+  `)
+}
+
+// 베이스라인은 되돌릴 이유가 없다 — 서비스 시작점이므로 down을 만들지 않는다.
+export const down = false

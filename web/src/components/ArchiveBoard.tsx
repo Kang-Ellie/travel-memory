@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ArchiveItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
+import { useArchive, useQueryClient, queryKeys } from '../queries'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
+import Thumb from './Thumb'
 
 const ICON: Record<ArchiveItem['kind'], string> = { memo: '📝', link: '🔗', image: '🖼' }
 
@@ -27,7 +29,7 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
         }}>×</button>
       </div>
       {item.kind === 'image' && item.filePath && (
-        <img src={fileUrl(item.filePath)} alt="" loading="lazy" decoding="async" onClick={() => setLightbox(true)} />
+        <Thumb path={item.filePath} onClick={() => setLightbox(true)} />
       )}
       {item.kind === 'link' && item.body && (
         <div className="archive-card-body">🔗 {item.body}</div>
@@ -41,15 +43,15 @@ function ArchiveCard({ item, onChanged }: { item: ArchiveItem; onChanged: () => 
 }
 
 export default function ArchiveBoard({ tripId }: { tripId: string }) {
-  const [items, setItems] = useState<ArchiveItem[]>([])
+  const { data: items = [] } = useArchive(tripId)
+  const queryClient = useQueryClient()
   const [mode, setMode] = useState<'memo' | 'link'>('memo')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
 
-  const refresh = () => { api.archive.list(tripId).then(setItems) }
-  useEffect(refresh, [tripId])
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.archive(tripId) })
 
   const addMemo = async () => {
     if (!body.trim()) return

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Trip } from "../shared/types";
-import { auth, api } from "./api";
+import { auth } from "./api";
 import { flagEmoji } from "./categories";
+import { useCountries, useCities } from "./queries";
 import Login from "./Login";
 import DashboardScreen from "./components/DashboardScreen";
 import TripsScreen from "./components/TripsScreen";
@@ -59,7 +60,8 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [openTrip, setOpenTrip] = useState<Trip | null>(null);
   const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null);
-  const [visitedFlags, setVisitedFlags] = useState<string[]>([]);
+  const { data: countries = [] } = useCountries();
+  const { data: cities = [] } = useCities();
   const [bookmarkSection, setBookmarkSection] = useState<BookmarkSection>("places");
   const [showSearch, setShowSearch] = useState(false);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | null>(null);
@@ -86,19 +88,16 @@ export default function App() {
       setScreen("bookmarks");
       window.history.replaceState(null, "", "/");
     }
-    Promise.all([api.countries.list(), api.cities.list()]).then(
-      ([countries, cities]) => {
-        const visitedCountryIds = new Set(
-          cities.filter((c) => c.visited).map((c) => c.countryId),
-        );
-        setVisitedFlags(
-          countries
-            .filter((c) => visitedCountryIds.has(c.id))
-            .map((c) => flagEmoji(c.code)),
-        );
-      },
-    );
   }, []);
+
+  const visitedFlags = useMemo(() => {
+    const visitedCountryIds = new Set(
+      cities.filter((c) => c.visited).map((c) => c.countryId),
+    );
+    return countries
+      .filter((c) => visitedCountryIds.has(c.id))
+      .map((c) => flagEmoji(c.code));
+  }, [countries, cities]);
 
   const handleQuickAdd = (target: QuickAddTarget) => {
     setOpenTrip(null);

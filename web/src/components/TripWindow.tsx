@@ -1,7 +1,8 @@
-import { useEffect, useState, type CSSProperties } from 'react'
-import type { Country, City, Trip } from '../../shared/types'
+import { useState, type CSSProperties } from 'react'
+import type { Trip } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
+import { useCountries, useCities, useQueryClient, queryKeys } from '../queries'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
@@ -38,8 +39,9 @@ interface Props {
 export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const [tab, setTab] = useState<Tab>('base')
   const [showPrint, setShowPrint] = useState(false)
-  const [countries, setCountries] = useState<Country[]>([])
-  const [cities, setCities] = useState<City[]>([])
+  const { data: countries = [] } = useCountries()
+  const { data: cities = [] } = useCities()
+  const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(trip.title)
   const [startDate, setStartDate] = useState(trip.startDate)
@@ -48,11 +50,6 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
   const [nights, setNights] = useState(trip.nights != null ? String(trip.nights) : '')
   const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set(trip.cities.map((c) => c.id)))
-
-  useEffect(() => {
-    api.countries.list().then(setCountries)
-    api.cities.list().then(setCities)
-  }, [])
 
   const startEdit = () => {
     setTitle(trip.title); setStartDate(trip.startDate); setEndDate(trip.endDate)
@@ -84,7 +81,9 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
     })
     if (result.unassignedCount > 0) {
       alert(`일정 ${result.unassignedCount}개가 '일차 미배정'으로 이동했어요. [🎒 여행 준비] 탭에서 확인하세요.`)
+      queryClient.invalidateQueries({ queryKey: queryKeys.events(trip.id) })
     }
+    queryClient.invalidateQueries({ queryKey: queryKeys.trips })
     const fresh = await api.trips.list()
     const updated = fresh.find((t) => t.id === trip.id)
     if (updated) onTripChanged(updated)
@@ -172,7 +171,10 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
               onSelCountryIdsChange={setSelCountryIds}
               selCityIds={selCityIds}
               onSelCityIdsChange={setSelCityIds}
-              onCatalogChanged={() => { api.countries.list().then(setCountries); api.cities.list().then(setCities) }}
+              onCatalogChanged={() => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.countries })
+                queryClient.invalidateQueries({ queryKey: queryKeys.cities })
+              }}
             />
             {selCityIds.size > 0 && (
               <div className="muted" style={{ marginTop: 8 }}>

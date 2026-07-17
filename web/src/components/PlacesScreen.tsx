@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
-import { api, fileUrl } from '../api'
+import { api } from '../api'
+import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
 import { flagEmoji, ratingColor, recommendedFieldLabel } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
@@ -8,6 +9,7 @@ import Select from './Select'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
 import PlacesMapView from './PlacesMapView'
+import Thumb from './Thumb'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
 // 사진이 아직 없는 장소 카드의 플레이스홀더 (카테고리별 이모지 + 파스텔 배경)
@@ -217,7 +219,7 @@ function PlaceCard({
     <div className="card place-card" onClick={() => setDetailOpen(true)}>
       {place.coverPhoto ? (
         <div className="place-card-photo-wrap">
-          <img className="place-card-photo" src={fileUrl(place.coverPhoto)} alt="" loading="lazy" decoding="async" />
+          <Thumb className="place-card-photo" path={place.coverPhoto} />
           {place.visitCount > 0 && <span className="place-visit-badge">🔁 {place.visitCount}번 방문</span>}
         </div>
       ) : (
@@ -288,10 +290,11 @@ function PlaceCard({
 export default function PlacesScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const [places, setPlaces] = useState<Place[]>([])
-  const [countries, setCountries] = useState<Country[]>([])
-  const [cities, setCities] = useState<City[]>([])
-  const [bucket, setBucket] = useState<BucketItem[]>([])
+  const { data: places = [] } = usePlaces()
+  const { data: countries = [] } = useCountries()
+  const { data: cities = [] } = useCities()
+  const { data: bucket = [] } = useBucket()
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState('전체')
   const [query, setQuery] = useState('')
   const [searching, setSearching] = useState(false)
@@ -326,13 +329,7 @@ export default function PlacesScreen({
     if (res.name && !manName.trim()) setManName(res.name)
   }
 
-  const refresh = () => {
-    api.places.list().then(setPlaces)
-    api.countries.list().then(setCountries)
-    api.cities.list().then(setCities)
-    api.bucket.list().then(setBucket)
-  }
-  useEffect(refresh, [])
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.places })
 
   const search = async () => {
     if (!query.trim()) return

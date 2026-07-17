@@ -35,6 +35,15 @@ export function fileUrl(relPath: string): string {
   return `${API_BASE}/api/files/${relPath.split('/').map(encodeURIComponent).join('/')}`
 }
 
+// 업로드 시 함께 생성된 목록/그리드용 축소본 URL (서버 upload.ts의 thumbKeyOf와 동일한 규칙).
+// 이미지가 아닌 파일(PDF 등)이나, 이 기능이 생기기 전에 올라간 과거 사진에는 썸네일이 없을 수
+// 있으므로 반드시 Thumb 컴포넌트(원본 폴백 포함)를 통해서만 쓴다.
+export function thumbUrl(relPath: string): string {
+  const parts = relPath.split('/')
+  const filename = parts.pop()!
+  return fileUrl([...parts, `thumb_${filename}`].join('/'))
+}
+
 export const auth = {
   session: () => req<{ authed: boolean }>('GET', '/api/session'),
   login: (passcode: string) => req<{ ok: true } | { error: string }>('POST', '/api/login', { passcode }),

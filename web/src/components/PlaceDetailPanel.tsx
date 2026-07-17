@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type { PlaceDetail } from '../../shared/types'
-import { api, fileUrl } from '../api'
+import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import PlaceMeta from './PlaceMeta'
+import Thumb from './Thumb'
 
 export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
   const [detail, setDetail] = useState<PlaceDetail | null>(null)
@@ -48,7 +49,7 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
             {v.review && <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{v.review}</div>}
             {v.photos.length > 0 && (
               <div className="photo-strip">
-                {v.photos.map((p) => <img key={p.id} src={fileUrl(p.filePath)} alt="" loading="lazy" decoding="async"
+                {v.photos.map((p) => <Thumb key={p.id} path={p.filePath}
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--ink)' }} />)}
               </div>
             )}

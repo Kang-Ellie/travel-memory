@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Member, Expense, CurrencyRate } from '../../shared/types'
+import type { Trip, Expense } from '../../shared/types'
 import { api } from '../api'
+import { useTripMembers, useMembers, useExpenses, useRates, useQueryClient, queryKeys } from '../queries'
 import { fmtMoney, computeCategoryTotals } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
 import AddExpenseModal from './AddExpenseModal'
@@ -14,22 +15,15 @@ function dateLabel(date: string): string {
 }
 
 export default function ExpensesTab({ trip }: { trip: Trip }) {
-  const [participants, setParticipants] = useState<Member[]>([])
-  const [allMembers, setAllMembers] = useState<Member[]>([])
-  const [expenses, setExpenses] = useState<Expense[]>([])
-  const [rates, setRates] = useState<CurrencyRate[]>([])
+  const { data: participants = [] } = useTripMembers(trip.id)
+  const { data: allMembers = [] } = useMembers()
+  const { data: expenses = [] } = useExpenses(trip.id)
+  const { data: rates = [] } = useRates(trip.id)
+  const queryClient = useQueryClient()
   const [editingMembers, setEditingMembers] = useState(false)
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
   const [showAddExpense, setShowAddExpense] = useState(false)
-
-  const refresh = () => {
-    api.tripMembers.list(trip.id).then(setParticipants)
-    api.members.list().then(setAllMembers)
-    api.expenses.list(trip.id).then(setExpenses)
-    api.rates.list(trip.id).then(setRates)
-  }
-  useEffect(refresh, [trip.id])
 
   useEffect(() => {
     setSelMembers(new Set(participants.map((m) => m.id)))
@@ -41,13 +35,13 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     const n = parseFloat(value)
     if (!n || n <= 0) return
     await api.rates.set(trip.id, c, n)
-    api.rates.list(trip.id).then(setRates)
+    queryClient.invalidateQueries({ queryKey: queryKeys.rates(trip.id) })
   }
 
   const saveParticipants = async () => {
     await api.tripMembers.set(trip.id, [...selMembers])
     setEditingMembers(false)
-    refresh()
+    queryClient.invalidateQueries({ queryKey: queryKeys.tripMembers(trip.id) })
   }
 
   const addMember = async () => {
@@ -63,7 +57,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
       return
     }
     setSelMembers((prev) => new Set(prev).add(res.id))
-    api.members.list().then(setAllMembers)
+    queryClient.invalidateQueries({ queryKey: queryKeys.members })
   }
 
   // 장부(가계부)답게 날짜별로 묶는다 — 최신 날짜가 위.
@@ -147,7 +141,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
           trip={trip}
           participants={participants}
           onClose={() => setShowAddExpense(false)}
-          onAdded={() => { setShowAddExpense(false); refresh() }}
+          onAdded={() => { setShowAddExpense(false); queryClient.invalidateQueries({ queryKey: queryKeys.expenses(trip.id) }) }}
         />
       )}
 
@@ -191,7 +185,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                     </div>
                     <span className="muted" style={{ flexShrink: 0 }}>{e.payerName}</span>
                     <span className="ledger-amount">{fmtMoney(e.amount, e.currency)}</span>
-                    <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(refresh)}>×</button>
+                    <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(() => queryClient.invalidateQueries({ queryKey: queryKeys.expenses(trip.id) }))}>×</button>
                   </div>
                 ))}
               </div>

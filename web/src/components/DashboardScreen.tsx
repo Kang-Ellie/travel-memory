@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import type { Trip, DashboardData, ActivityLogEntry } from '../../shared/types'
-import { api, fileUrl } from '../api'
+import { useState } from 'react'
+import type { Trip } from '../../shared/types'
+import { fileUrl } from '../api'
+import { useTrips, useDashboard, useActivity } from '../queries'
 import { fmtMoney } from '../settlement'
 import { tripCitiesLabel } from '../categories'
 import { fmtRange, dday, tripStatus, type TripStatus } from './TripsScreen'
@@ -11,6 +12,7 @@ import FolderIcon, { type FolderColor } from './FolderIcon'
 import ActivityFeed from './ActivityFeed'
 import TripTicket from './TripTicket'
 import HanokSky from './HanokSky'
+import Thumb from './Thumb'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -22,8 +24,8 @@ const STATUS_TABS: Array<{ key: TripStatus; label: string; color: FolderColor }>
 ]
 
 export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
-  const [trips, setTrips] = useState<Trip[]>([])
-  const [data, setData] = useState<DashboardData | null>(null)
+  const { data: trips = [] } = useTrips()
+  const { data = null } = useDashboard()
   const [statusFilter, setStatusFilter] = useState<TripStatus>('upcoming')
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth())
@@ -31,14 +33,8 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const [calendarLightbox, setCalendarLightbox] = useState<string | null>(null)
   const [visibleCount, setVisibleCount] = useState(GALLERY_PAGE)
   const [bottomView, setBottomView] = useState<'calendar' | 'gallery'>('calendar')
-  const [activity, setActivity] = useState<ActivityLogEntry[]>([])
+  const { data: activity = [] } = useActivity(20)
   const [showActivity, setShowActivity] = useState(false)
-
-  useEffect(() => {
-    api.trips.list().then(setTrips)
-    api.dashboard.get().then(setData)
-    api.activity.list(20).then(setActivity)
-  }, [])
 
   const shiftMonth = (delta: number) => {
     let y = viewYear
@@ -223,7 +219,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                     className={`dash-calendar-cell ${photo ? 'has-photo' : ''}`}
                     onClick={() => photo && setCalendarLightbox(photo)}
                   >
-                    {photo && <img src={fileUrl(photo)} alt="" loading="lazy" decoding="async" />}
+                    {photo && <Thumb path={photo} />}
                     {day != null && <span className="dash-calendar-daynum">{day}</span>}
                   </div>
                 )
@@ -240,7 +236,7 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
             <div className="dash-gallery-grid">
               {gallery.slice(0, visibleCount).map((g, i) => (
                 <div key={g.id} className="dash-gallery-item" onClick={() => setGalleryLightbox(i)}>
-                  <img src={fileUrl(g.filePath)} alt="" loading="lazy" decoding="async" />
+                  <Thumb path={g.filePath} />
                   {g.caption && <div className="dash-gallery-caption">{g.caption}</div>}
                 </div>
               ))}

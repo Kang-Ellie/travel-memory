@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { Trip, Member, Country, City } from '../../shared/types'
+import type { Trip } from '../../shared/types'
 import { api } from '../api'
+import { useTrips, useMembers, useCountries, useCities, useQueryClient, queryKeys } from '../queries'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
@@ -40,10 +41,11 @@ export function dday(t: Trip): string {
 export default function TripsScreen({
   onOpenTrip, autoOpenAdd, onConsumedAutoOpenAdd,
 }: { onOpenTrip: (t: Trip) => void; autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const [trips, setTrips] = useState<Trip[]>([])
-  const [members, setMembers] = useState<Member[]>([])
-  const [countries, setCountries] = useState<Country[]>([])
-  const [cities, setCities] = useState<City[]>([])
+  const { data: trips = [] } = useTrips()
+  const { data: members = [] } = useMembers()
+  const { data: countries = [] } = useCountries()
+  const { data: cities = [] } = useCities()
+  const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
 
   useEffect(() => {
@@ -60,14 +62,6 @@ export default function TripsScreen({
   const [selCountryIds, setSelCountryIds] = useState<Set<string>>(new Set())
   const [selCityIds, setSelCityIds] = useState<Set<string>>(new Set())
 
-  const refresh = () => {
-    api.trips.list().then(setTrips)
-    api.members.list().then(setMembers)
-    api.countries.list().then(setCountries)
-    api.cities.list().then(setCities)
-  }
-  useEffect(refresh, [])
-
   const create = async () => {
     if (!title.trim() || !startDate || !endDate) return
     if (endDate < startDate) {
@@ -81,7 +75,7 @@ export default function TripsScreen({
     })
     setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setNights(''); setSelMembers(new Set())
     setSelCountryIds(new Set()); setSelCityIds(new Set()); setCreating(false)
-    refresh()
+    queryClient.invalidateQueries({ queryKey: queryKeys.trips })
   }
 
   const addMember = async () => {
@@ -99,13 +93,13 @@ export default function TripsScreen({
     }
     setSelMembers((prev) => new Set(prev).add(res.id))
     setShowAddMember(false)
-    api.members.list().then(setMembers)
+    queryClient.invalidateQueries({ queryKey: queryKeys.members })
   }
 
   const remove = async (t: Trip) => {
     if (!confirm(`'${t.title}' 여행을 삭제할까요?\n동선·가계부·바우처 기록이 모두 사라집니다.`)) return
     await api.trips.delete(t.id)
-    refresh()
+    queryClient.invalidateQueries({ queryKey: queryKeys.trips })
   }
 
   return (
@@ -162,7 +156,10 @@ export default function TripsScreen({
               onSelCountryIdsChange={setSelCountryIds}
               selCityIds={selCityIds}
               onSelCityIdsChange={setSelCityIds}
-              onCatalogChanged={() => { api.countries.list().then(setCountries); api.cities.list().then(setCities) }}
+              onCatalogChanged={() => {
+                queryClient.invalidateQueries({ queryKey: queryKeys.countries })
+                queryClient.invalidateQueries({ queryKey: queryKeys.cities })
+              }}
             />
           </div>
           <div className="field" style={{ marginTop: 12 }}>

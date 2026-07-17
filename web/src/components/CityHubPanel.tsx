@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { CityPlaceSummary } from '../../shared/types'
-import { api, fileUrl } from '../api'
+import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import { recommendedFieldLabel } from '../categories'
 import { CATEGORY_EMOJI } from './PlacesScreen'
+import Thumb from './Thumb'
 
 const CATEGORY_ORDER = ['맛집', '카페', '숙소', '명소', '쇼핑', '기타']
 const RANK_MEDAL = ['🥇', '🥈', '🥉']
@@ -18,7 +19,7 @@ function PodiumSlot({ item, rank }: { item: CityPlaceSummary; rank: number }) {
     <div className="podium-slot">
       <span className="podium-medal">{RANK_MEDAL[rank]}</span>
       {item.place.coverPhoto ? (
-        <img className="podium-photo" src={fileUrl(item.place.coverPhoto)} alt="" loading="lazy" decoding="async" />
+        <Thumb className="podium-photo" path={item.place.coverPhoto} />
       ) : (
         <div className="podium-photo podium-photo-empty">{CATEGORY_EMOJI[item.place.category] ?? '📍'}</div>
       )}

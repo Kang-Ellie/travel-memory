@@ -1,7 +1,7 @@
 import crypto from 'node:crypto'
 import path from 'node:path'
 import type { Express as ExpressApp, Request, Response, NextFunction } from 'express'
-import { pool } from './db.js'
+import { pool, withTransaction, type Queryable } from './db.js'
 import { makeUploader, uploadFile, safeUnlink, streamFile, decodeOriginalName, extractTakenDate } from './upload.js'
 import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSION_COOKIE } from './auth.js'
 
@@ -220,21 +220,25 @@ const PACKING_PRESETS: Record<string, string[]> = {
   당일준비물: ['보조배터리', '선크림', '충전기'],
 }
 
-async function seedChecklistPresets(tripId: string, scope: 'predeparture' | 'packing'): Promise<void> {
-  const existing = await pool.query('SELECT text, category FROM checklist_items WHERE trip_id = $1 AND scope = $2', [tripId, scope])
+async function seedChecklistPresets(tripId: string, scope: 'predeparture' | 'packing', db: Queryable = pool): Promise<void> {
+  const existing = await db.query('SELECT text, category FROM checklist_items WHERE trip_id = $1 AND scope = $2', [tripId, scope])
   const seen = new Set(existing.rows.map((r: any) => `${r.category ?? ''}::${r.text}`))
   const toInsert: Array<{ text: string; category: string | null }> = scope === 'predeparture'
     ? PREDEPARTURE_PRESETS.map((text) => ({ text, category: null }))
     : Object.entries(PACKING_PRESETS).flatMap(([category, texts]) => texts.map((text) => ({ text, category })))
   let seq = existing.rows.length
+  const rows: Array<[string, string, string, string, string | null, number]> = []
   for (const item of toInsert) {
     const key = `${item.category ?? ''}::${item.text}`
     if (seen.has(key)) continue
     seq += 1
-    await pool.query(
-      'INSERT INTO checklist_items (id, trip_id, scope, day_number, text, category, sequence) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [id(), tripId, scope, null, item.text, item.category, seq])
+    rows.push([id(), tripId, scope, item.text, item.category, seq])
   }
+  if (rows.length === 0) return
+  const values = rows.map((_, i) => `($${i * 6 + 1},$${i * 6 + 2},$${i * 6 + 3},$${i * 6 + 4},$${i * 6 + 5},$${i * 6 + 6})`).join(', ')
+  await db.query(
+    `INSERT INTO checklist_items (id, trip_id, scope, text, category, sequence) VALUES ${values}`,
+    rows.flat())
 }
 const mapBucket = (r: any) => ({
   id: r.id, title: r.title, memo: r.memo, tip: r.tip ?? null,
@@ -252,11 +256,19 @@ const TRIP_CITIES_SUBQUERY = `
   ), '[]'::json) AS cities
 `
 
-async function setTripCities(tripId: string, cityIds: string[]): Promise<void> {
-  await pool.query('DELETE FROM trip_cities WHERE trip_id = $1', [tripId])
-  for (let i = 0; i < (cityIds ?? []).length; i++) {
-    await pool.query('INSERT INTO trip_cities (trip_id, city_id, sequence) VALUES ($1,$2,$3)', [tripId, cityIds[i], i])
-  }
+async function setTripCities(tripId: string, cityIds: string[], db: Queryable = pool): Promise<void> {
+  await db.query('DELETE FROM trip_cities WHERE trip_id = $1', [tripId])
+  const ids = cityIds ?? []
+  if (ids.length === 0) return
+  const values = ids.map((_, i) => `($1, $${i + 2}, ${i})`).join(', ')
+  await db.query(`INSERT INTO trip_cities (trip_id, city_id, sequence) VALUES ${values}`, [tripId, ...ids])
+}
+
+async function setTripMembers(tripId: string, memberIds: string[], db: Queryable = pool): Promise<void> {
+  const ids = memberIds ?? []
+  if (ids.length === 0) return
+  const values = ids.map((_, i) => `($1, $${i + 2})`).join(', ')
+  await db.query(`INSERT INTO trip_members (trip_id, member_id) VALUES ${values}`, [tripId, ...ids])
 }
 
 export function registerRoutes(app: ExpressApp): void {
@@ -309,14 +321,16 @@ export function registerRoutes(app: ExpressApp): void {
       title: string; startDate: string; endDate: string; budget: number; nights?: number | null; memberIds: string[]; cityIds: string[]
     }
     const tripId = id()
-    await pool.query('INSERT INTO trips (id, title, start_date, end_date, budget, nights) VALUES ($1,$2,$3,$4,$5,$6)',
-      [tripId, title, startDate, endDate, budget ?? 0, nights ?? null])
-    for (const m of memberIds ?? []) {
-      await pool.query('INSERT INTO trip_members (trip_id, member_id) VALUES ($1,$2)', [tripId, m])
-    }
-    await setTripCities(tripId, cityIds)
-    await seedChecklistPresets(tripId, 'predeparture')
-    await seedChecklistPresets(tripId, 'packing')
+    // 여행 하나 만드는 데 테이블 4개(trips/trip_members/trip_cities/checklist_items)가 얽힌다.
+    // 트랜잭션으로 묶어야 중간에 실패해도 '멤버 없는 반쪽 여행' 같은 게 안 남는다.
+    await withTransaction(async (db) => {
+      await db.query('INSERT INTO trips (id, title, start_date, end_date, budget, nights) VALUES ($1,$2,$3,$4,$5,$6)',
+        [tripId, title, startDate, endDate, budget ?? 0, nights ?? null])
+      await setTripMembers(tripId, memberIds, db)
+      await setTripCities(tripId, cityIds, db)
+      await seedChecklistPresets(tripId, 'predeparture', db)
+      await seedChecklistPresets(tripId, 'packing', db)
+    })
     await logActivity(tripId, 'trip_created', title)
     const r = await pool.query(`SELECT t.*, ${TRIP_CITIES_SUBQUERY} FROM trips t WHERE t.id = $1`, [tripId])
     res.json(mapTrip(r.rows[0]))
@@ -326,22 +340,26 @@ export function registerRoutes(app: ExpressApp): void {
     const { title, startDate, endDate, budget, nights, cityIds } = req.body as {
       title: string; startDate: string; endDate: string; budget: number; nights?: number | null; cityIds: string[]
     }
-    await pool.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4, nights=$5 WHERE id=$6',
-      [title, startDate, endDate, budget ?? 0, nights ?? null, req.params.id])
-    await setTripCities(req.params.id, cityIds)
+    // trips UPDATE + 도시 재설정 + 기간축소 유령일정 처리가 한 번에 부분 적용되면 안 되므로 트랜잭션으로 묶는다.
+    const unassignedCount = await withTransaction(async (db) => {
+      await db.query('UPDATE trips SET title=$1, start_date=$2, end_date=$3, budget=$4, nights=$5 WHERE id=$6',
+        [title, startDate, endDate, budget ?? 0, nights ?? null, req.params.id])
+      await setTripCities(req.params.id, cityIds, db)
 
-    // 여행 기간을 줄이면 범위 밖 일차의 일정이 DB에 남는데, 일정 화면은 1~N일차 탭만
-    // 그리므로 접근 불가능한 유령 데이터가 된다. 지우는 대신 '미배정 티켓'(day_number NULL)으로
-    // 옮겨서 리뷰·사진·지출 연결을 보존하고, 유저가 다시 일차를 배정할 수 있게 한다.
-    // 그 일차들의 이동 구간은 앞뒤 일정이 사라져 의미가 없으므로 삭제한다.
-    const s = new Date(`${startDate}T00:00:00`)
-    const e = new Date(`${endDate}T00:00:00`)
-    const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
-    await pool.query('DELETE FROM transit_segments WHERE trip_id = $1 AND day_number > $2', [req.params.id, days])
-    const moved = await pool.query(
-      'UPDATE timeline_events SET day_number = NULL, sequence = 0 WHERE trip_id = $1 AND day_number > $2 RETURNING id',
-      [req.params.id, days])
-    res.json({ ok: true, unassignedCount: moved.rows.length })
+      // 여행 기간을 줄이면 범위 밖 일차의 일정이 DB에 남는데, 일정 화면은 1~N일차 탭만
+      // 그리므로 접근 불가능한 유령 데이터가 된다. 지우는 대신 '미배정 티켓'(day_number NULL)으로
+      // 옮겨서 리뷰·사진·지출 연결을 보존하고, 유저가 다시 일차를 배정할 수 있게 한다.
+      // 그 일차들의 이동 구간은 앞뒤 일정이 사라져 의미가 없으므로 삭제한다.
+      const s = new Date(`${startDate}T00:00:00`)
+      const e = new Date(`${endDate}T00:00:00`)
+      const days = Math.max(1, Math.round((e.getTime() - s.getTime()) / 86_400_000) + 1)
+      await db.query('DELETE FROM transit_segments WHERE trip_id = $1 AND day_number > $2', [req.params.id, days])
+      const moved = await db.query(
+        'UPDATE timeline_events SET day_number = NULL, sequence = 0 WHERE trip_id = $1 AND day_number > $2 RETURNING id',
+        [req.params.id, days])
+      return moved.rows.length
+    })
+    res.json({ ok: true, unassignedCount })
   })
 
   // 여행 삭제 시 CASCADE로 함께 지워지는 행(사진·일기 사진·바우처·보관함 이미지·항공사 로고)이
@@ -414,10 +432,10 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.put('/api/trips/:tripId/members', async (req, res) => {
     const memberIds = (req.body?.memberIds ?? []) as string[]
-    await pool.query('DELETE FROM trip_members WHERE trip_id = $1', [req.params.tripId])
-    for (const m of memberIds) {
-      await pool.query('INSERT INTO trip_members (trip_id, member_id) VALUES ($1,$2)', [req.params.tripId, m])
-    }
+    await withTransaction(async (db) => {
+      await db.query('DELETE FROM trip_members WHERE trip_id = $1', [req.params.tripId])
+      await setTripMembers(req.params.tripId, memberIds, db)
+    })
     res.json({ ok: true })
   })
 
@@ -861,10 +879,14 @@ export function registerRoutes(app: ExpressApp): void {
 
   app.post('/api/trips/:tripId/events/reorder', async (req, res) => {
     const { dayNumber, orderedIds } = req.body as { dayNumber: number; orderedIds: string[] }
-    for (let i = 0; i < orderedIds.length; i++) {
+    if (orderedIds.length > 0) {
+      // 항목마다 UPDATE 왕복하는 대신, id·순번 배열을 unnest해서 한 번의 쿼리로 전부 갱신한다.
+      // 단일 문장이라 그 자체로 원자적 — 별도 트랜잭션이 필요 없다.
       await pool.query(
-        'UPDATE timeline_events SET sequence=$1 WHERE id=$2 AND trip_id=$3 AND day_number=$4',
-        [i + 1, orderedIds[i], req.params.tripId, dayNumber])
+        `UPDATE timeline_events AS te SET sequence = v.seq
+         FROM (SELECT unnest($1::text[]) AS id, unnest($2::int[]) AS seq) AS v
+         WHERE te.id = v.id AND te.trip_id = $3 AND te.day_number = $4`,
+        [orderedIds, orderedIds.map((_, i) => i + 1), req.params.tripId, dayNumber])
     }
     res.json({ ok: true })
   })
@@ -1083,8 +1105,9 @@ export function registerRoutes(app: ExpressApp): void {
        ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
       [expenseId, req.params.tripId, eventId, amount, currency, category, description.trim(), paidBy, spentAt,
         paymentMethod ?? null, memo ?? null, purchaseItems ?? null, isShared ?? true, isPrebooked ?? false])
-    for (const m of splitWith ?? []) {
-      await pool.query('INSERT INTO expense_splits (expense_id, member_id) VALUES ($1,$2)', [expenseId, m])
+    if ((splitWith ?? []).length > 0) {
+      const values = splitWith.map((_, i) => `($1, $${i + 2})`).join(', ')
+      await pool.query(`INSERT INTO expense_splits (expense_id, member_id) VALUES ${values}`, [expenseId, ...splitWith])
     }
     await logActivity(req.params.tripId, 'expense_added', `${description.trim()} (${amount.toLocaleString()} ${currency})`)
     res.json({ ok: true })
@@ -1237,24 +1260,28 @@ export function registerRoutes(app: ExpressApp): void {
     const item = itemRow.rows[0]
     if (!item) { res.status(404).json({ error: '보관함 항목을 찾을 수 없어요.' }); return }
 
-    const placeId = id()
-    await pool.query('INSERT INTO places (id, name, address, category) VALUES ($1,$2,$3,$4)',
-      [placeId, item.title, '', '기타'])
+    // 장소 생성 + 일정 생성 + 사진 이관 + 원본 삭제 4단계가 한 번에 성공/실패해야 한다
+    // (중간에 실패하면 "장소만 생기고 일정은 없는" 반쪽 상태가 남을 수 있음).
+    await withTransaction(async (db) => {
+      const placeId = id()
+      await db.query('INSERT INTO places (id, name, address, category) VALUES ($1,$2,$3,$4)',
+        [placeId, item.title, '', '기타'])
 
-    const max = await pool.query(
-      'SELECT COALESCE(MAX(sequence), 0) AS m FROM timeline_events WHERE trip_id = $1 AND day_number = $2',
-      [tripId, dayNumber])
-    const eventId = id()
-    const review = item.kind === 'memo' ? item.body : null
-    const linkUrl = item.kind === 'link' ? item.body : null
-    await pool.query(
-      'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence, review, link_url) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-      [eventId, tripId, placeId, dayNumber, Number(max.rows[0].m) + 1, review, linkUrl])
+      const max = await db.query(
+        'SELECT COALESCE(MAX(sequence), 0) AS m FROM timeline_events WHERE trip_id = $1 AND day_number = $2',
+        [tripId, dayNumber])
+      const eventId = id()
+      const review = item.kind === 'memo' ? item.body : null
+      const linkUrl = item.kind === 'link' ? item.body : null
+      await db.query(
+        'INSERT INTO timeline_events (id, trip_id, place_id, day_number, sequence, review, link_url) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+        [eventId, tripId, placeId, dayNumber, Number(max.rows[0].m) + 1, review, linkUrl])
 
-    if (item.kind === 'image' && item.file_path) {
-      await pool.query('INSERT INTO photos (id, event_id, file_path) VALUES ($1,$2,$3)', [id(), eventId, item.file_path])
-    }
-    await pool.query('DELETE FROM archive_items WHERE id = $1', [item.id])
+      if (item.kind === 'image' && item.file_path) {
+        await db.query('INSERT INTO photos (id, event_id, file_path) VALUES ($1,$2,$3)', [id(), eventId, item.file_path])
+      }
+      await db.query('DELETE FROM archive_items WHERE id = $1', [item.id])
+    })
     res.json({ ok: true })
   })
 

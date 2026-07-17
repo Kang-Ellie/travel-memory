@@ -1,13 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import type { BucketItem, Country, City, Trip, Place, BucketKind } from '../../shared/types'
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from '../../shared/types'
-import { api, fileUrl } from '../api'
+import { api } from '../api'
+import { useBucket, useCountries, useCities, useTrips, usePlaces, useQueryClient, queryKeys } from '../queries'
 import { flagEmoji } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import DropdownMenu from './DropdownMenu'
 import PlaceMeta from './PlaceMeta'
+import Thumb from './Thumb'
 
 const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
@@ -95,7 +97,7 @@ function BucketCard({
       <input ref={photoInput} type="file" accept="image/*" hidden onChange={onPhotoPicked} />
       <div className="bucket-photo-media">
         {coverPhoto ? (
-          <img src={fileUrl(coverPhoto)} alt="" loading="lazy" decoding="async" />
+          <Thumb path={coverPhoto} />
         ) : (
           <div className="bucket-photo-media-empty" style={{ background: kindPastel }}>{kindEmoji}</div>
         )}
@@ -214,11 +216,12 @@ function BucketCard({
 export default function BucketListScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const [items, setItems] = useState<BucketItem[]>([])
-  const [countries, setCountries] = useState<Country[]>([])
-  const [cities, setCities] = useState<City[]>([])
-  const [trips, setTrips] = useState<Trip[]>([])
-  const [places, setPlaces] = useState<Place[]>([])
+  const { data: items = [] } = useBucket()
+  const { data: countries = [] } = useCountries()
+  const { data: cities = [] } = useCities()
+  const { data: trips = [] } = useTrips()
+  const { data: places = [] } = usePlaces()
+  const queryClient = useQueryClient()
   const [filter, setFilter] = useState<'all' | 'todo' | 'done'>('todo')
   const [kindFilter, setKindFilter] = useState<'all' | BucketKind>('all')
   const [categoryFilter, setCategoryFilter] = useState('전체')
@@ -238,14 +241,7 @@ export default function BucketListScreen({
     if (autoOpenAdd) { setShowAdd(true); onConsumedAutoOpenAdd?.() }
   }, [autoOpenAdd])
 
-  const refresh = () => {
-    api.bucket.list().then(setItems)
-    api.countries.list().then(setCountries)
-    api.cities.list().then(setCities)
-    api.trips.list().then(setTrips)
-    api.places.list().then(setPlaces)
-  }
-  useEffect(refresh, [])
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.bucket })
 
   const toggleCountry = (id: string) => {
     setSelCountryIds((prev) => {

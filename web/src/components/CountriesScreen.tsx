@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Country, City } from "../../shared/types";
 import { api } from "../api";
+import { useCountries, useCities, useQueryClient, queryKeys } from "../queries";
 import { flagEmoji } from "../categories";
 import Window from "./Window";
 import Modal from "./Modal";
@@ -671,17 +672,16 @@ function CountryCard({
 export default function CountriesScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
+  const { data: countries = [] } = useCountries();
+  const { data: cities = [] } = useCities();
+  const queryClient = useQueryClient();
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.countries });
+    queryClient.invalidateQueries({ queryKey: queryKeys.cities });
+  };
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<CountryForm>(EMPTY_COUNTRY_FORM);
   const [hubCity, setHubCity] = useState<City | null>(null);
-
-  const refresh = () => {
-    api.countries.list().then(setCountries);
-    api.cities.list().then(setCities);
-  };
-  useEffect(refresh, []);
 
   useEffect(() => {
     if (autoOpenAdd) { setCreating(true); onConsumedAutoOpenAdd?.() }

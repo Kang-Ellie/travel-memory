@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import type {
   Trip,
   Country,
@@ -8,12 +8,14 @@ import type {
   BucketKind,
 } from "../../shared/types";
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from "../../shared/types";
-import { api, fileUrl } from "../api";
+import { api } from "../api";
+import { useCountries, useCities, useBucket, usePlaces, useQueryClient, queryKeys } from "../queries";
 import { flagEmoji } from "../categories";
 import Modal from "./Modal";
 import Select from "./Select";
 import DropdownMenu from "./DropdownMenu";
 import InfoCardGrid from "./InfoCardGrid";
+import Thumb from "./Thumb";
 
 const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: "해보고 싶은 것",
@@ -114,7 +116,7 @@ function BaseListCard({
         >
           <span className="mark">DONE</span>
         </button>
-        {coverPhoto && <img className="bucket-row-thumb" src={fileUrl(coverPhoto)} alt="" loading="lazy" decoding="async" />}
+        {coverPhoto && <Thumb className="bucket-row-thumb" path={coverPhoto} />}
         <div className="grow" style={{ minWidth: 0 }}>
           <div
             style={{
@@ -200,11 +202,8 @@ function BaseListCard({
             onChange={onPhotoPicked}
           />
           {coverPhoto ? (
-            <img
-              src={fileUrl(coverPhoto)}
-              alt=""
-              loading="lazy"
-              decoding="async"
+            <Thumb
+              path={coverPhoto}
               style={{
                 width: "100%",
                 borderRadius: 10,
@@ -318,21 +317,15 @@ function BaseListCard({
 }
 
 export default function TripBaseSection({ trip }: { trip: Trip }) {
-  const [countries, setCountries] = useState<Country[]>([]);
-  const [cities, setCities] = useState<City[]>([]);
-  const [bucket, setBucket] = useState<BucketItem[]>([]);
-  const [places, setPlaces] = useState<Place[]>([]);
+  const { data: countries = [] } = useCountries();
+  const { data: cities = [] } = useCities();
+  const { data: bucket = [] } = useBucket();
+  const { data: places = [] } = usePlaces();
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.bucket });
   const [collapsed, setCollapsed] = useState(false);
   const [addingKind, setAddingKind] = useState<BucketKind | null>(null);
   const [newTitle, setNewTitle] = useState("");
-
-  const refresh = () => {
-    api.countries.list().then(setCountries);
-    api.cities.list().then(setCities);
-    api.bucket.list().then(setBucket);
-    api.places.list().then(setPlaces);
-  };
-  useEffect(refresh, [trip.id]);
 
   if (trip.cities.length === 0) {
     return (
