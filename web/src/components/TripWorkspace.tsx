@@ -874,6 +874,18 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     }
   }
 
+  // 숙소 티켓 하나가 체크인~체크아웃으로 여러 밤을 이미 커버하는데, 그 카드는 체크인한
+  // 일차에만 보인다. 그래서 체크인 다음날부터 체크아웃 전날까지는 "계속 숙박 중" 배너로
+  // 알려준다 — 같은 숙소를 일차마다 중복 등록하지 않아도 되게.
+  const ongoingStay = events.find((e) => {
+    if (e.place.category !== '숙소' || !e.lodging || e.dayNumber === day) return false
+    const inDate = e.lodging.checkInAt?.slice(0, 10)
+    const outDate = e.lodging.checkOutAt?.slice(0, 10)
+    if (!inDate || !outDate) return false
+    const thisDate = dayISODate(trip, day)
+    return inDate <= thisDate && thisDate < outDate
+  })
+
   const addEvent = async () => {
     let placeId = selPlace
     if (placeId === '__new') {
@@ -1122,6 +1134,20 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           </div>
         )}
         <ChecklistPanel tripId={trip.id} scope="day" dayNumber={day} title="✅ 오늘 해야할 일" addPlaceholder="예: 호텔 체크인, 유심 개통" />
+
+        {ongoingStay && (
+          <div
+            className="chip yellow"
+            style={{ display: 'flex', width: '100%', boxSizing: 'border-box', marginTop: 12, padding: '8px 12px', fontSize: 13 }}
+          >
+            🏨 계속 <strong style={{ margin: '0 4px' }}>{ongoingStay.place.name}</strong> 숙박 중
+            {ongoingStay.lodging?.checkOutAt && (
+              <span className="muted" style={{ marginLeft: 'auto' }}>
+                체크아웃 {ongoingStay.lodging.checkOutAt.replace('T', ' ')}
+              </span>
+            )}
+          </div>
+        )}
 
           <div
             className={`drop-zone ${dayEvents.length === 0 ? 'is-empty' : ''} ${dragOver ? 'drag-over' : ''}`}
