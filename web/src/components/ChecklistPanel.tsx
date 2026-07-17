@@ -110,7 +110,11 @@ export default function ChecklistPanel({
 
       <div className="checklist-doc-body">
         {items.length === 0 ? (
-          <div className="checklist-empty">아직 항목이 없어요. ＋로 추가하거나 프리셋을 불러오세요.</div>
+          <div className="checklist-empty">
+            {SEEDABLE_SCOPES.has(scope)
+              ? '아직 항목이 없어요. ＋로 추가하거나 프리셋을 불러오세요.'
+              : '아직 항목이 없어요. ＋로 추가해보세요.'}
+          </div>
         ) : usesCategory ? (
           <div className="checklist-cols">
             {[...PACKING_CATEGORIES, ...extraCats].map((cat) => {

@@ -57,7 +57,7 @@ export default function BoardingPassCard({ flight, fromName, participants = [], 
 
         {hasInfo && (
           <div className="bpass-info">
-            {flight.departureLocation && <div><div className="k">출발장소</div><div className="v">{flight.departureLocation}</div></div>}
+            {flight.departureLocation && <div><div className="k">출발장소 상세</div><div className="v">{flight.departureLocation}</div></div>}
             {flight.durationMinutes != null && <div><div className="k">소요시간</div><div className="v">{formatDuration(flight.durationMinutes)}</div></div>}
             {flight.bookingRef && <div><div className="k">예약번호</div><div className="v">{flight.bookingRef}</div></div>}
             {flight.seat && <div><div className="k">Seat</div><div className="v">{flight.seat}</div></div>}
