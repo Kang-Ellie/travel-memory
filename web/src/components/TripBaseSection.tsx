@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type {
   Trip,
   City,
@@ -34,6 +34,12 @@ function BucketRow({
   onChanged: () => void; tripId: string
 }) {
   const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
   const toggleDone = async () => {
     await api.bucket.update(item.id, { done: !item.done });
     onChanged();
@@ -75,8 +81,8 @@ function BucketRow({
         </div>
       </div>
       {open && (
-        <Modal title={item.title} onClose={() => setOpen(false)}>
-          <div style={{ maxWidth: 340, margin: "0 auto" }}>
+        <div className="modal-overlay" onClick={() => setOpen(false)}>
+          <div style={{ width: "100%", maxWidth: 320 }} onClick={(e) => e.stopPropagation()}>
             <BucketCard
               item={item}
               trips={trips}
@@ -87,7 +93,7 @@ function BucketRow({
               tripContext={{ tripId }}
             />
           </div>
-        </Modal>
+        </div>
       )}
     </>
   );
