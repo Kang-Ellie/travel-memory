@@ -125,6 +125,10 @@ export interface FlightDetail {
   airlineLogoPath: string | null
   flightNo: string | null
   destination: string | null
+  destinationPlaceId: string | null
+  // 서버가 destinationPlaceId로 조인해서 채워주는 읽기 전용 필드 — 저장 요청에는 안 실어도 된다.
+  destinationPlaceName?: string | null
+  destinationAirportCode?: string | null
   gate: string | null
   seat: string | null
   passengerIds: string[]

@@ -21,8 +21,10 @@ export default function BoardingPassCard({ flight, fromName, fromAirportCode, pa
   const voucher = flight.voucherId ? vouchers.find((v) => v.id === flight.voucherId) : undefined
   const dep = fmtDateTime(flight.departAt)
   const arr = fmtDateTime(flight.arriveAt)
+  // 도착지를 장소로 등록해뒀으면 destination 자유 텍스트는 "To"가 아니라 보조 상세 정보로 내려간다.
+  const destinationDetail = flight.destinationPlaceName ? flight.destination : null
   const hasInfo = flight.durationMinutes != null || flight.bookingRef
-    || flight.seat || flight.bookedVia || flight.departureLocation
+    || flight.seat || flight.bookedVia || flight.departureLocation || destinationDetail
   const passengerNames = flight.passengerIds
     .map((id) => participants.find((p) => p.id === id)?.name)
     .filter((n): n is string => !!n)
@@ -57,8 +59,10 @@ export default function BoardingPassCard({ flight, fromName, fromAirportCode, pa
           <div className="bpass-path"><span className="line" /><span className="plane">✈</span><span className="line" /></div>
           <div className="bpass-endpoint to">
             <div className="kicker">To</div>
-            <div className="code" title={flight.destination ?? undefined}>
-              {flight.destination ? shortAirportLabel(flight.destination) : '?'}
+            <div className="code" title={flight.destinationPlaceName ?? flight.destination ?? undefined}>
+              {flight.destinationPlaceName
+                ? shortAirportLabel(flight.destinationPlaceName, flight.destinationAirportCode)
+                : flight.destination ? shortAirportLabel(flight.destination) : '?'}
             </div>
             <div className="time">{arr.date} {arr.time}</div>
           </div>
@@ -67,6 +71,7 @@ export default function BoardingPassCard({ flight, fromName, fromAirportCode, pa
         {hasInfo && (
           <div className="bpass-info">
             {flight.departureLocation && <div><div className="k">출발장소 상세</div><div className="v">{flight.departureLocation}</div></div>}
+            {destinationDetail && <div><div className="k">도착지 상세</div><div className="v">{destinationDetail}</div></div>}
             {flight.durationMinutes != null && <div><div className="k">소요시간</div><div className="v">{formatDuration(flight.durationMinutes)}</div></div>}
             {flight.bookingRef && <div><div className="k">예약번호</div><div className="v">{flight.bookingRef}</div></div>}
             {flight.seat && <div><div className="k">Seat</div><div className="v">{flight.seat}</div></div>}

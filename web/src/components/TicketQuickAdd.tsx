@@ -43,6 +43,12 @@ export default function TicketQuickAdd({
   const [arriveAt, setArriveAt] = useState(f?.arriveAt ?? '')
   const [departureLocation, setDepartureLocation] = useState(f?.departureLocation ?? '')
   const [destination, setDestination] = useState(f?.destination ?? '')
+  const [destinationPlaceId, setDestinationPlaceId] = useState(f?.destinationPlaceId ?? '')
+  // 수정 모드에서 등록된 도착지 없이 자유 입력 텍스트만 있던 옛날 티켓이면, 그 텍스트를
+  // "새 공항 등록" 이름칸에 미리 채워둬서 코드만 추가하고 저장하면 바로 장소로 승격되게 한다.
+  const [newDestName, setNewDestName] = useState(f && !f.destinationPlaceId ? (f.destination ?? '') : '')
+  const [newDestAddress, setNewDestAddress] = useState('')
+  const [newDestAirportCode, setNewDestAirportCode] = useState('')
   const [airline, setAirline] = useState(f?.airline ?? '')
   const [flightNo, setFlightNo] = useState(f?.flightNo ?? '')
   const [passengerIds, setPassengerIds] = useState<Set<string>>(
@@ -71,6 +77,7 @@ export default function TicketQuickAdd({
     setArriveAt(source.flight.arriveAt ?? '')
     setDepartureLocation(source.flight.departureLocation ?? '')
     setDestination(source.flight.destination ?? '')
+    setDestinationPlaceId(source.flight.destinationPlaceId ?? '')
     setAirline(source.flight.airline ?? '')
     setFlightNo(source.flight.flightNo ?? '')
     const covered = new Set(source.flight.passengerIds)
@@ -86,6 +93,14 @@ export default function TicketQuickAdd({
         airportCode: kind === '항공' ? (newAirportCode.trim() || null) : undefined,
       })
       resolvedPlaceId = p.id
+    }
+    let resolvedDestinationPlaceId: string | null = destinationPlaceId && destinationPlaceId !== '__new__' ? destinationPlaceId : null
+    if (kind === '항공' && destinationPlaceId === '__new__' && newDestName.trim()) {
+      const dp = await api.places.create({
+        name: newDestName.trim(), address: newDestAddress.trim(), category: '공항',
+        airportCode: newDestAirportCode.trim() || null,
+      })
+      resolvedDestinationPlaceId = dp.id
     }
     setSaving(true)
     // 수정 모드: 새 파일을 안 올렸으면 기존 바우처 연결을 그대로 유지한다.
@@ -111,7 +126,8 @@ export default function TicketQuickAdd({
         departureLocation: departureLocation.trim() || null, confirmed,
         voucherId, voucherTitle,
         airline: airline.trim() || null, airlineLogoPath: f?.airlineLogoPath ?? null, flightNo: flightNo.trim() || null,
-        destination: destination.trim() || null, gate: f?.gate ?? null, seat: f?.seat ?? null,
+        destination: destination.trim() || null, destinationPlaceId: resolvedDestinationPlaceId,
+        gate: f?.gate ?? null, seat: f?.seat ?? null,
         passengerIds: [...passengerIds],
       })
     } else {
@@ -217,9 +233,10 @@ export default function TicketQuickAdd({
                 <option value="">— 선택 안 함 —</option>
                 {copyableFlights.map((e) => {
                   const dep = fmtDateTime(e.flight?.departAt ?? null)
+                  const to = e.flight?.destinationPlaceName ?? e.flight?.destination
                   return (
                     <option key={e.id} value={e.id}>
-                      {e.place.name}{e.flight?.destination ? ` → ${e.flight.destination}` : ''} · {dep.date} {dep.time}
+                      {e.place.name}{to ? ` → ${to}` : ''} · {dep.date} {dep.time}
                     </option>
                   )
                 })}
@@ -228,7 +245,32 @@ export default function TicketQuickAdd({
           )}
           <div className="field grow"><label>🛫 출발장소 상세 (선택 · 터미널 등)</label>
             <input type="text" value={departureLocation} placeholder="예: T2, 3층 F카운터" onChange={(e) => setDepartureLocation(e.target.value)} /></div>
-          <div className="field grow"><label>도착지</label>
+          <div className="field grow">
+            <label>도착지 (공항 — 재사용하려면 등록해두세요, 선택)</label>
+            <Select value={destinationPlaceId} onChange={(e) => setDestinationPlaceId(e.target.value)}>
+              <option value="">— 선택 안 함 (아래 자유 입력만 사용) —</option>
+              <option value="__new__">✚ 새 공항 등록</option>
+              {candidatePlaces.map((p) => <option key={p.id} value={p.id}>{p.name}{p.airportCode ? ` (${p.airportCode})` : ''}</option>)}
+            </Select>
+          </div>
+          {destinationPlaceId === '__new__' && (
+            <>
+              <div className="field grow">
+                <label>공항 이름</label>
+                <input type="text" value={newDestName} placeholder="예: 간사이국제공항" onChange={(e) => setNewDestName(e.target.value)} />
+              </div>
+              <div className="field" style={{ maxWidth: 110 }}>
+                <label>✈️ 공항 코드</label>
+                <input type="text" value={newDestAirportCode} maxLength={4} placeholder="예: KIX"
+                  onChange={(e) => setNewDestAirportCode(e.target.value.toUpperCase())} />
+              </div>
+              <div className="field grow">
+                <label>주소 (선택)</label>
+                <input type="text" value={newDestAddress} onChange={(e) => setNewDestAddress(e.target.value)} placeholder="주소" />
+              </div>
+            </>
+          )}
+          <div className="field grow"><label>도착지 상세 (선택)</label>
             <input type="text" value={destination} placeholder="예: 나리타 (NRT)" onChange={(e) => setDestination(e.target.value)} /></div>
           <div className="field"><label>✈️ 출발시간</label>
             <DateTimePicker value={departAt} onChange={(e) => setDepartAt(e.target.value)} /></div>
