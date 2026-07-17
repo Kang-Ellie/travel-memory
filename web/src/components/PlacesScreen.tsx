@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
+import { STAY_TYPES } from '../../shared/types'
 import { api } from '../api'
 import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
 import { flagEmoji, ratingColor, recommendedFieldLabel } from '../categories'
@@ -52,6 +53,7 @@ function PlaceCard({
   const [valetCompany, setValetCompany] = useState(place.valetCompany ?? '')
   const [bookingChannel, setBookingChannel] = useState(place.bookingChannel ?? '')
   const [grade, setGrade] = useState(place.grade ?? '')
+  const [stayType, setStayType] = useState(place.stayType ?? '')
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
@@ -85,8 +87,8 @@ function PlaceCard({
       hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
       breakTime: breakTime.trim() || null,
       valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
-      grade: grade.trim() || null, directions: directions.trim() || null, babyMenu: babyMenu.trim() || null,
-      recommend, tip: tip.trim() || null,
+      grade: grade.trim() || null, stayType: stayType || null, directions: directions.trim() || null,
+      babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
     setEditing(false)
     onChanged()
@@ -157,6 +159,10 @@ function PlaceCard({
               )}
               {isLodging && (
                 <>
+                  <div className="field"><label>🏨 숙소 유형</label>
+                    <Select value={stayType} onChange={(e) => setStayType(e.target.value)} placeholder="— 선택 안 함 —">
+                      {STAY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+                    </Select></div>
                   <div className="field"><label>⭐ 성급</label>
                     <input type="text" value={grade} placeholder="예: 4성급" onChange={(e) => setGrade(e.target.value)} /></div>
                   <div className="field grow"><label>🚕 가는 법</label>

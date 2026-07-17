@@ -83,6 +83,7 @@ export interface Place {
   valetCompany: string | null
   bookingChannel: string | null
   grade: string | null
+  stayType: string | null
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null
@@ -191,6 +192,8 @@ export interface TimelineEvent {
 export const EXPENSE_CATEGORIES = ['맛집', '카페', '숙소', '교통', '쇼핑', '관광', '면세점', '선물', '기타'] as const
 export const PAYMENT_METHOD_PRESETS = ['현금', '신용카드', '체크카드', '페이(간편결제)', '기타']
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export const STAY_TYPES = ['호텔', '리조트', '게스트하우스', '호스텔', '에어비앤비', '펜션 · 풀빌라', '한옥스테이', '기타'] as const
 
 export interface Expense {
   id: string

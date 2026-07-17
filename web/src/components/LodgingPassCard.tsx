@@ -1,21 +1,21 @@
-import type { LodgingDetail, Voucher } from '../../shared/types'
+import type { LodgingDetail, Place, Voucher } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
-export default function LodgingPassCard({ lodging, placeName, vouchers = [] }: { lodging: LodgingDetail; placeName: string; vouchers?: Voucher[] }) {
+export default function LodgingPassCard({ lodging, place, vouchers = [] }: { lodging: LodgingDetail; place: Place; vouchers?: Voucher[] }) {
   const inAt = fmtDateTime(lodging.checkInAt)
   const outAt = fmtDateTime(lodging.checkOutAt)
-  const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType
+  const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType || place.grade
   const voucher = lodging.voucherId ? vouchers.find((v) => v.id === lodging.voucherId) : undefined
 
   return (
     <div className="bpass">
       <div className="bpass-main">
         <div className="bpass-head">
-          <div className="brand"><span title={placeName}>🏨 {placeName}</span></div>
+          <div className="brand"><span title={place.name}>🏨 {place.name}</span></div>
           <div className="gate">
             <div className="gate-label">Stay</div>
-            <div className="gate-val">HOTEL</div>
+            <div className="gate-val">{place.stayType || '숙소'}</div>
           </div>
         </div>
 
@@ -35,6 +35,7 @@ export default function LodgingPassCard({ lodging, placeName, vouchers = [] }: {
 
         {hasInfo && (
           <div className="bpass-info">
+            {place.grade && <div><div className="k">성급</div><div className="v">⭐ {place.grade}</div></div>}
             {lodging.roomType && <div><div className="k">룸 타입</div><div className="v">{lodging.roomType}</div></div>}
             {lodging.bookingRef && <div><div className="k">예약번호</div><div className="v">{lodging.bookingRef}</div></div>}
             {lodging.bookedVia && <div><div className="k">예약처</div><div className="v">{lodging.bookedVia}</div></div>}

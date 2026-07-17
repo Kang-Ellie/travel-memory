@@ -680,7 +680,7 @@ function EventCard({
               {isLodging && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.lodging && (ev.lodging.checkInAt || ev.lodging.checkOutAt || ev.lodging.bookingRef) ? (
-                    <LodgingPassCard lodging={ev.lodging} placeName={ev.place.name} vouchers={vouchers} />
+                    <LodgingPassCard lodging={ev.lodging} place={ev.place} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>🏨 숙소 티켓 정보 입력하기</button>
                   )}

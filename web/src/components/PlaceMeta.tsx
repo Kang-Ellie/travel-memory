@@ -6,6 +6,12 @@ import { recommendedFieldLabel } from '../categories'
 export default function PlaceMeta({ place }: { place: Place }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {(place.stayType || place.grade) && (
+        <div className="muted">
+          {place.stayType && <>🏨 {place.stayType} </>}
+          {place.grade && <>· ⭐ {place.grade}</>}
+        </div>
+      )}
       {place.hours && (
         <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>
       )}
