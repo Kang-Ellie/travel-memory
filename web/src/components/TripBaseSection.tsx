@@ -2,6 +2,9 @@ import { useState } from "react";
 import type {
   Trip,
   City,
+  Country,
+  Place,
+  BucketItem,
   BucketKind,
 } from "../../shared/types";
 import { BUCKET_KIND_LABEL, BUCKET_KIND_CATEGORY, bucketKindOf } from "../../shared/types";
@@ -12,6 +15,7 @@ import Modal from "./Modal";
 import Select from "./Select";
 import InfoCardGrid from "./InfoCardGrid";
 import BucketCard from "./BucketCard";
+import Thumb from "./Thumb";
 
 const KIND_PLACEHOLDER: Record<BucketKind, string> = {
   bucket: "해보고 싶은 것",
@@ -20,6 +24,74 @@ const KIND_PLACEHOLDER: Record<BucketKind, string> = {
 };
 
 const KIND_ENG: Record<BucketKind, string> = { bucket: "BUCKET LIST", food: "FOOD LIST", wish: "WISH LIST" };
+
+// 원래 여행 상세의 버킷·먹킷·위시는 짧은 목록 형태로 두고, 항목을 누르면
+// 북마크 화면과 똑같은 카드(BucketCard)가 팝업으로 뜨게 한다.
+function BucketRow({
+  item, trips, places, countries, cities, onChanged, tripId,
+}: {
+  item: BucketItem; trips: Trip[]; places: Place[]; countries: Country[]; cities: City[]
+  onChanged: () => void; tripId: string
+}) {
+  const [open, setOpen] = useState(false);
+  const toggleDone = async () => {
+    await api.bucket.update(item.id, { done: !item.done });
+    onChanged();
+  };
+  return (
+    <>
+      <div className={`card bucket-row ${item.done ? "done" : ""}`} onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className="check-stamp"
+          onClick={(e) => { e.stopPropagation(); toggleDone(); }}
+          title={item.done ? "미완료로 표시" : "완료로 표시"}
+        >
+          <span className="mark">DONE</span>
+        </button>
+        {item.imagePath && <Thumb className="bucket-row-thumb" path={item.imagePath} />}
+        <div className="grow" style={{ minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 800,
+              textDecoration: item.done ? "line-through" : undefined,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.title}
+          </div>
+          {item.tip && (
+            <div style={{ color: "var(--ink)", fontSize: 12.5, marginTop: 3, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+              💡 {item.tip}
+            </div>
+          )}
+          {item.memo && (
+            <div style={{ color: "var(--ink)", fontSize: 12.5, marginTop: 3, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+              📝 {item.memo}
+            </div>
+          )}
+        </div>
+      </div>
+      {open && (
+        <Modal title={item.title} onClose={() => setOpen(false)}>
+          <div style={{ maxWidth: 340, margin: "0 auto" }}>
+            <BucketCard
+              item={item}
+              trips={trips}
+              places={places}
+              countries={countries}
+              cities={cities}
+              onChanged={onChanged}
+              tripContext={{ tripId }}
+            />
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
 
 export default function TripBaseSection({ trip }: { trip: Trip }) {
   const { data: countries = [] } = useCountries();
@@ -226,7 +298,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {items.map((b) => (
-                      <BucketCard
+                      <BucketRow
                         key={b.id}
                         item={b}
                         trips={trips}
@@ -234,7 +306,7 @@ export default function TripBaseSection({ trip }: { trip: Trip }) {
                         countries={countries}
                         cities={cities}
                         onChanged={refresh}
-                        tripContext={{ tripId: trip.id }}
+                        tripId={trip.id}
                       />
                     ))}
                   </div>
