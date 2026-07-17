@@ -1483,9 +1483,30 @@ export function registerRoutes(app: ExpressApp): void {
     if (linkedPlaceId !== undefined) { params.push(linkedPlaceId); sets.push(`linked_place_id = $${params.length}`) }
     if (memo !== undefined) { params.push(memo); sets.push(`memo = $${params.length}`) }
     if (tip !== undefined) { params.push(tip); sets.push(`tip = $${params.length}`) }
-    if (sets.length === 0) { res.json({ ok: true }); return }
-    params.push(req.params.id)
-    await pool.query(`UPDATE bucket_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    if (sets.length > 0) {
+      params.push(req.params.id)
+      await pool.query(`UPDATE bucket_items SET ${sets.join(', ')} WHERE id = $${params.length}`, params)
+    }
+    // 완료로 표시됐는데 아직 여행이 안 이어져 있으면, 국가/도시가 겹치는 여행 중
+    // 오늘 날짜에서 가장 가까운(막 다녀왔을 확률이 높은) 여행으로 자동 연결한다.
+    if (done === true && linkedTripId === undefined) {
+      const itemR = await pool.query('SELECT country_ids, city_ids, linked_trip_id FROM bucket_items WHERE id = $1', [req.params.id])
+      const item = itemR.rows[0] as { country_ids: string[]; city_ids: string[]; linked_trip_id: string | null } | undefined
+      if (item && !item.linked_trip_id && (item.city_ids.length > 0 || item.country_ids.length > 0)) {
+        const match = await pool.query(
+          `SELECT t.id
+           FROM trips t
+           JOIN trip_cities tc ON tc.trip_id = t.id
+           JOIN cities c ON c.id = tc.city_id
+           WHERE c.id = ANY($1::text[]) OR c.country_id = ANY($2::text[])
+           ORDER BY LEAST(ABS(t.start_date::date - CURRENT_DATE), ABS(t.end_date::date - CURRENT_DATE)) ASC
+           LIMIT 1`,
+          [item.city_ids, item.country_ids])
+        if (match.rows[0]) {
+          await pool.query('UPDATE bucket_items SET linked_trip_id = $1 WHERE id = $2', [match.rows[0].id, req.params.id])
+        }
+      }
+    }
     res.json({ ok: true })
   })
 
