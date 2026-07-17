@@ -1,8 +1,12 @@
+import { useState } from 'react'
 import type { LodgingDetail, Place, Voucher } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
+import Modal from './Modal'
+import PlaceDetailPanel from './PlaceDetailPanel'
 
 export default function LodgingPassCard({ lodging, place, vouchers = [] }: { lodging: LodgingDetail; place: Place; vouchers?: Voucher[] }) {
+  const [placeInfoOpen, setPlaceInfoOpen] = useState(false)
   const inAt = fmtDateTime(lodging.checkInAt)
   const outAt = fmtDateTime(lodging.checkOutAt)
   const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType || place.grade
@@ -12,12 +16,25 @@ export default function LodgingPassCard({ lodging, place, vouchers = [] }: { lod
     <div className="bpass">
       <div className="bpass-main">
         <div className="bpass-head">
-          <div className="brand"><span title={place.name}>🏨 {place.name}</span></div>
+          <div className="brand">
+            <span
+              title={`${place.name} · 눌러서 장소 정보 보기`}
+              onClick={(e) => { e.stopPropagation(); setPlaceInfoOpen(true) }}
+              style={{ cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 }}
+            >
+              🏨 {place.name}
+            </span>
+          </div>
           <div className="gate">
             <div className="gate-label">Stay</div>
             <div className="gate-val">{place.stayType || '숙소'}</div>
           </div>
         </div>
+        {placeInfoOpen && (
+          <Modal title={`${place.name} · 방문 기록`} onClose={() => setPlaceInfoOpen(false)}>
+            <PlaceDetailPanel placeId={place.id} />
+          </Modal>
+        )}
 
         <div className="bpass-route">
           <div className="bpass-endpoint from">
