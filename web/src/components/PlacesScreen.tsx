@@ -54,6 +54,7 @@ function PlaceCard({
   const [bookingChannel, setBookingChannel] = useState(place.bookingChannel ?? '')
   const [grade, setGrade] = useState(place.grade ?? '')
   const [stayType, setStayType] = useState(place.stayType ?? '')
+  const [airportCode, setAirportCode] = useState(place.airportCode ?? '')
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
@@ -65,6 +66,7 @@ function PlaceCard({
   const citiesOfCountry = cities.filter((c) => c.countryId === countryId)
   const isValet = category === '발렛'
   const isLodging = category === '숙소'
+  const isAirport = category === '공항'
   const needsReview = !NO_REVIEW_CATEGORIES.includes(category)
 
   const resolveMapLink = async () => {
@@ -87,7 +89,7 @@ function PlaceCard({
       hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
       breakTime: breakTime.trim() || null,
       valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
-      grade: grade.trim() || null, stayType: stayType || null, directions: directions.trim() || null,
+      grade: grade.trim() || null, stayType: stayType || null, airportCode: airportCode.trim() || null, directions: directions.trim() || null,
       babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
     setEditing(false)
@@ -168,6 +170,11 @@ function PlaceCard({
                   <div className="field grow"><label>🚕 가는 법</label>
                     <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
                 </>
+              )}
+              {isAirport && (
+                <div className="field" style={{ maxWidth: 130 }}><label>✈️ 공항 코드</label>
+                  <input type="text" value={airportCode} placeholder="예: ICN" maxLength={4}
+                    onChange={(e) => setAirportCode(e.target.value.toUpperCase())} /></div>
               )}
               {needsReview && (
                 <>

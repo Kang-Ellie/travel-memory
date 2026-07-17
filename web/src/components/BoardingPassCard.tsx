@@ -8,8 +8,15 @@ function formatDuration(minutes: number): string {
   return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
-export default function BoardingPassCard({ flight, fromName, participants = [], vouchers = [] }: {
-  flight: FlightDetail; fromName: string; participants?: Member[]; vouchers?: Voucher[]
+// 티켓 카드에서는 "인천국제공항"처럼 긴 정식 명칭 대신 "인천 (ICN)"처럼 짧게 보여준다.
+// 장소 족보에는 정식 명칭이 그대로 남아있으니 검색·지도에서는 영향 없다.
+function shortAirportLabel(name: string, code?: string | null): string {
+  const stripped = name.replace(/(국제공항|공항)$/, '').trim() || name
+  return code ? `${stripped} (${code})` : stripped
+}
+
+export default function BoardingPassCard({ flight, fromName, fromAirportCode, participants = [], vouchers = [] }: {
+  flight: FlightDetail; fromName: string; fromAirportCode?: string | null; participants?: Member[]; vouchers?: Voucher[]
 }) {
   const voucher = flight.voucherId ? vouchers.find((v) => v.id === flight.voucherId) : undefined
   const dep = fmtDateTime(flight.departAt)
@@ -44,13 +51,15 @@ export default function BoardingPassCard({ flight, fromName, participants = [], 
         <div className="bpass-route">
           <div className="bpass-endpoint from">
             <div className="kicker">From</div>
-            <div className="code" title={fromName}>{fromName}</div>
+            <div className="code" title={fromName}>{shortAirportLabel(fromName, fromAirportCode)}</div>
             <div className="time">{dep.date} {dep.time}</div>
           </div>
           <div className="bpass-path"><span className="line" /><span className="plane">✈</span><span className="line" /></div>
           <div className="bpass-endpoint to">
             <div className="kicker">To</div>
-            <div className="code">{flight.destination || '?'}</div>
+            <div className="code" title={flight.destination ?? undefined}>
+              {flight.destination ? shortAirportLabel(flight.destination) : '?'}
+            </div>
             <div className="time">{arr.date} {arr.time}</div>
           </div>
         </div>

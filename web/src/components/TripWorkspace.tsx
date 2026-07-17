@@ -662,7 +662,7 @@ function EventCard({
               {isAirport && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.flight && (ev.flight.departAt || ev.flight.arriveAt || ev.flight.bookingRef || ev.flight.bookedVia) ? (
-                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
+                    <BoardingPassCard flight={ev.flight} fromName={ev.place.name} fromAirportCode={ev.place.airportCode} participants={participants} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>✈️ 탑승권 정보 입력하기</button>
                   )}

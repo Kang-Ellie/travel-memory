@@ -84,6 +84,7 @@ export interface Place {
   bookingChannel: string | null
   grade: string | null
   stayType: string | null
+  airportCode: string | null
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null

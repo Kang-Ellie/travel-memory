@@ -155,7 +155,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           )}
           {ticketSection('항공', 'FLIGHT', '✈️ 항공', flights,
             (ev) => ev.flight
-              ? <BoardingPassCard flight={ev.flight} fromName={ev.place.name} participants={participants} vouchers={vouchers} />
+              ? <BoardingPassCard flight={ev.flight} fromName={ev.place.name} fromAirportCode={ev.place.airportCode} participants={participants} vouchers={vouchers} />
               : null,
             '항공 상세정보 입력')}
 

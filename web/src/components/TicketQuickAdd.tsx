@@ -33,6 +33,7 @@ export default function TicketQuickAdd({
   const [placeId, setPlaceId] = useState(editEvent?.placeId ?? '')
   const [newName, setNewName] = useState('')
   const [newAddress, setNewAddress] = useState('')
+  const [newAirportCode, setNewAirportCode] = useState('')
 
   const [scheduledAt, setScheduledAt] = useState(va?.scheduledAt ?? '')
   const [location, setLocation] = useState(va?.location ?? '')
@@ -80,7 +81,10 @@ export default function TicketQuickAdd({
     let resolvedPlaceId = placeId
     if (!isEdit && !resolvedPlaceId) {
       if (!newName.trim()) return
-      const p = await api.places.create({ name: newName.trim(), address: newAddress.trim(), category: CATEGORY_FOR_KIND[kind] })
+      const p = await api.places.create({
+        name: newName.trim(), address: newAddress.trim(), category: CATEGORY_FOR_KIND[kind],
+        airportCode: kind === '항공' ? (newAirportCode.trim() || null) : undefined,
+      })
       resolvedPlaceId = p.id
     }
     setSaving(true)
@@ -176,6 +180,13 @@ export default function TicketQuickAdd({
                   <label>{NAME_LABEL[kind]}</label>
                   <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={`예: ${kind === '항공' ? '인천국제공항' : kind === '숙소' ? '호텔명' : '인천공항 T1 단기주차장'}`} />
                 </div>
+                {kind === '항공' && (
+                  <div className="field" style={{ maxWidth: 110 }}>
+                    <label>✈️ 공항 코드</label>
+                    <input type="text" value={newAirportCode} maxLength={4} placeholder="예: ICN"
+                      onChange={(e) => setNewAirportCode(e.target.value.toUpperCase())} />
+                  </div>
+                )}
                 <div className="field grow">
                   <label>주소 (선택)</label>
                   <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="주소" />
