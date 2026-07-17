@@ -243,7 +243,7 @@ export default function TicketQuickAdd({
               </Select>
             </div>
           )}
-          <div className="field grow"><label>🛫 출발장소 상세 (선택 · 터미널 등)</label>
+          <div className="field grow"><label>🛫 출발지 상세 (선택 · 터미널 등)</label>
             <input type="text" value={departureLocation} placeholder="예: T2, 3층 F카운터" onChange={(e) => setDepartureLocation(e.target.value)} /></div>
           <div className="field grow">
             <label>도착지 (공항 — 재사용하려면 등록해두세요, 선택)</label>

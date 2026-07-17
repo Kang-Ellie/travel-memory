@@ -8,11 +8,17 @@ function formatDuration(minutes: number): string {
   return h > 0 ? `${h}시간${m > 0 ? ` ${m}분` : ''}` : `${m}분`
 }
 
-// 티켓 카드에서는 "인천국제공항"처럼 긴 정식 명칭 대신 "인천 (ICN)"처럼 짧게 보여준다.
+// 티켓 카드에서는 "인천국제공항"처럼 긴 정식 명칭 대신 "인천"처럼 짧게 보여주고,
+// 코드는 이름과 같은 줄에 괄호로 욱여넣지 않고 항상 그 아래 줄에 따로 보여준다
+// (같은 줄에 붙이면 카드 폭에 따라 줄바꿈 위치가 들쭉날쭉해져서 지저분해 보임).
 // 장소 족보에는 정식 명칭이 그대로 남아있으니 검색·지도에서는 영향 없다.
-function shortAirportLabel(name: string, code?: string | null): string {
-  const stripped = name.replace(/(국제공항|공항)$/, '').trim() || name
-  return code ? `${stripped} (${code})` : stripped
+function splitAirportLabel(rawName: string, explicitCode?: string | null): { name: string; code: string | null } {
+  const stripped = rawName.replace(/(국제공항|공항)$/, '').trim() || rawName
+  if (explicitCode) return { name: stripped, code: explicitCode }
+  // 자유 입력 도착지에 "나리타 (NRT)"처럼 코드를 직접 적어둔 경우도 같은 방식으로 분리한다.
+  const m = stripped.match(/^(.*?)\s*\(([^()]+)\)\s*$/)
+  if (m) return { name: m[1].trim() || stripped, code: m[2].trim() }
+  return { name: stripped, code: null }
 }
 
 export default function BoardingPassCard({ flight, fromName, fromAirportCode, participants = [], vouchers = [] }: {
@@ -29,6 +35,11 @@ export default function BoardingPassCard({ flight, fromName, fromAirportCode, pa
     .map((id) => participants.find((p) => p.id === id)?.name)
     .filter((n): n is string => !!n)
   const allAboard = participants.length > 0 && passengerNames.length === participants.length
+  const from = splitAirportLabel(fromName, fromAirportCode)
+  const toRaw = flight.destinationPlaceName ?? flight.destination
+  const to = toRaw
+    ? splitAirportLabel(toRaw, flight.destinationPlaceName ? flight.destinationAirportCode : null)
+    : null
 
   return (
     <div className="bpass">
@@ -53,24 +64,22 @@ export default function BoardingPassCard({ flight, fromName, fromAirportCode, pa
         <div className="bpass-route">
           <div className="bpass-endpoint from">
             <div className="kicker">From</div>
-            <div className="code" title={fromName}>{shortAirportLabel(fromName, fromAirportCode)}</div>
+            <div className="code" title={fromName}>{from.name}</div>
+            {from.code && <div className="airport-code">{from.code}</div>}
             <div className="time">{dep.date} {dep.time}</div>
           </div>
           <div className="bpass-path"><span className="line" /><span className="plane">✈</span><span className="line" /></div>
           <div className="bpass-endpoint to">
             <div className="kicker">To</div>
-            <div className="code" title={flight.destinationPlaceName ?? flight.destination ?? undefined}>
-              {flight.destinationPlaceName
-                ? shortAirportLabel(flight.destinationPlaceName, flight.destinationAirportCode)
-                : flight.destination ? shortAirportLabel(flight.destination) : '?'}
-            </div>
+            <div className="code" title={toRaw ?? undefined}>{to ? to.name : '?'}</div>
+            {to?.code && <div className="airport-code">{to.code}</div>}
             <div className="time">{arr.date} {arr.time}</div>
           </div>
         </div>
 
         {hasInfo && (
           <div className="bpass-info">
-            {flight.departureLocation && <div><div className="k">출발장소 상세</div><div className="v">{flight.departureLocation}</div></div>}
+            {flight.departureLocation && <div><div className="k">출발지 상세</div><div className="v">{flight.departureLocation}</div></div>}
             {destinationDetail && <div><div className="k">도착지 상세</div><div className="v">{destinationDetail}</div></div>}
             {flight.durationMinutes != null && <div><div className="k">소요시간</div><div className="v">{formatDuration(flight.durationMinutes)}</div></div>}
             {flight.bookingRef && <div><div className="k">예약번호</div><div className="v">{flight.bookingRef}</div></div>}
