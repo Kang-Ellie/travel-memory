@@ -33,9 +33,9 @@ import TripBoardView from './TripBoardView'
 import TodayStrip from './TodayStrip'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
-const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '배', '기타']
+const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '환승', '배', '기타']
 const TRANSIT_ICON: Record<string, string> = {
-  도보: '🚶', 지하철: '🚇', 버스: '🚌', 기차: '🚄', 택시: '🚕', 비행기: '✈️', 배: '⛴',
+  도보: '🚶', 지하철: '🚇', 버스: '🚌', 기차: '🚄', 택시: '🚕', 비행기: '✈️', 환승: '🔄', 배: '⛴',
 }
 // 도로/대중교통 경로가 있는 수단만 구글 Distance Matrix로 자동 계산 가능 (서버 TRANSIT_MODE_TO_GOOGLE와 동일 기준).
 const AUTO_CALC_MODES = new Set(['도보', '지하철', '버스', '기차', '택시'])
