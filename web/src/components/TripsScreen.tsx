@@ -12,7 +12,10 @@ export function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
   const e = new Date(t.endDate + 'T00:00:00')
   const f = (d: Date) => `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`
-  const nights = Math.round((e.getTime() - s.getTime()) / 86_400_000)
+  const spanNights = Math.round((e.getTime() - s.getTime()) / 86_400_000)
+  // 무박(밤도깨비)·마지막날 심야 출발처럼 날짜 차이와 실제 숙박 수가 다른 경우를 위해
+  // 여행 만들 때 직접 입력해둔 nights가 있으면 그걸 우선한다 (TripSummaryCard와 동일 규칙).
+  const nights = t.nights ?? spanNights
   return `${f(s)} ~ ${f(e)} (${nights}박 ${nights + 1}일)`
 }
 
