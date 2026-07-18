@@ -171,3 +171,21 @@ export function fmtMoney(amount: number, currency: string): string {
     maximumFractionDigits: decimals,
   }).format(amount)} ${currency}`
 }
+
+// 정산 결과를 카톡 등에 그대로 붙여넣을 수 있는 텍스트로 — 가족 공용 앱이라 정산 결과를
+// 앱 밖으로 공유할 일이 반드시 생긴다.
+export function buildSettlementShareText(trip: Trip, settlements: CurrencySettlement[]): string {
+  const lines: string[] = [`📋 ${trip.title} 정산 결과`, '']
+  for (const s of settlements) {
+    lines.push(`💰 ${s.currency} 총 지출 ${fmtMoney(s.total, s.currency)}`)
+    if (s.transfers.length === 0) {
+      lines.push('✅ 서로 주고받을 돈이 없어요!')
+    } else {
+      for (const t of s.transfers) {
+        lines.push(`- ${t.fromName} → ${t.toName} : ${fmtMoney(t.amount, s.currency)}`)
+      }
+    }
+    lines.push('')
+  }
+  return lines.join('\n').trim()
+}

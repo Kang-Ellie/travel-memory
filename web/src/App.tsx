@@ -8,7 +8,7 @@ import ToastHost from "./components/ToastHost";
 import Login from "./Login";
 import DashboardScreen from "./components/DashboardScreen";
 import TripsScreen from "./components/TripsScreen";
-import TripWindow from "./components/TripWindow";
+import TripWindow, { type TripTab } from "./components/TripWindow";
 import BookmarksScreen, { type BookmarkSection } from "./components/BookmarksScreen";
 import CountriesScreen from "./components/CountriesScreen";
 import MembersScreen from "./components/MembersScreen";
@@ -61,6 +61,7 @@ export default function App() {
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [screen, setScreen] = useState<Screen>("dashboard");
   const [openTrip, setOpenTrip] = useState<Trip | null>(null);
+  const [openTripTab, setOpenTripTab] = useState<TripTab | undefined>(undefined);
   const [sharePrefill, setSharePrefill] = useState<SharePrefill | null>(null);
   const { data: countries = [] } = useCountries();
   const { data: cities = [] } = useCities();
@@ -132,6 +133,12 @@ export default function App() {
       .filter((c) => visitedCountryIds.has(c.id))
       .map((c) => flagEmoji(c.code));
   }, [countries, cities]);
+
+  // 대시보드의 "오늘" 요약에서 바로 그 여행의 [일정] 탭으로 한 번에 들어가기 위한 헬퍼.
+  const openTripAt = (t: Trip, tab?: TripTab) => {
+    setOpenTrip(t);
+    setOpenTripTab(tab);
+  };
 
   const handleQuickAdd = (target: QuickAddTarget) => {
     setOpenTrip(null);
@@ -236,13 +243,14 @@ export default function App() {
           {openTrip ? (
             <TripWindow
               trip={openTrip}
-              onClose={() => setOpenTrip(null)}
+              initialTab={openTripTab}
+              onClose={() => { setOpenTrip(null); setOpenTripTab(undefined); }}
               onTripChanged={setOpenTrip}
             />
           ) : (
             <>
               {screen === "dashboard" && (
-                <DashboardScreen onOpenTrip={setOpenTrip} />
+                <DashboardScreen onOpenTrip={openTripAt} />
               )}
               {screen === "trips" && (
                 <TripsScreen

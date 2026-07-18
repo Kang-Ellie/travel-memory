@@ -1,6 +1,7 @@
 import type { Trip } from '../../shared/types'
 import { useMembers, useExpenses } from '../queries'
-import { computeSettlement, fmtMoney } from '../settlement'
+import { computeSettlement, buildSettlementShareText, fmtMoney } from '../settlement'
+import { toast } from '../toast'
 
 export default function SettlementTab({ trip }: { trip: Trip }) {
   const { data: allMembers = [] } = useMembers()
@@ -8,12 +9,25 @@ export default function SettlementTab({ trip }: { trip: Trip }) {
 
   const settlements = computeSettlement(expenses, allMembers)
 
+  const copyResult = async () => {
+    const text = buildSettlementShareText(trip, settlements)
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('정산 결과를 복사했어요. 카톡 등에 붙여넣기 하세요.')
+    } catch {
+      toast.error('복사에 실패했어요. 브라우저 권한을 확인해주세요.')
+    }
+  }
+
   if (expenses.length === 0) {
     return <div className="empty">아직 지출 기록이 없어요. [💸 지출] 탭에서 먼저 기록해보세요.</div>
   }
 
   return (
     <div>
+      <div style={{ marginBottom: 12 }}>
+        <button type="button" className="btn small" onClick={copyResult}>📋 정산 결과 복사</button>
+      </div>
       {settlements.map((s) => (
         <div key={s.currency} className="settle-box">
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>

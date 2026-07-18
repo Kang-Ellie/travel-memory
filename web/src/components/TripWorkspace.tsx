@@ -1153,6 +1153,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
               dayNumber={todayNum}
               dayEvents={dayEvents}
               members={members}
+              todaySpend={computeDailySpend(trip, expenses, todayNum, rates).total}
               onOpenDiary={() => setDiaryDay(todayNum)}
               onChanged={invalidateExpenses}
             />

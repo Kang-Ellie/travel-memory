@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { Trip } from '../../shared/types'
 import { fileUrl } from '../api'
-import { useTrips, useDashboard, useActivity } from '../queries'
-import { fmtMoney } from '../settlement'
+import { useTrips, useDashboard, useActivity, useEvents, useExpenses, useRates } from '../queries'
+import { fmtMoney, computeDailySpend } from '../settlement'
 import { tripCitiesLabel } from '../categories'
 import { fmtRange, dday, tripStatus, type TripStatus } from './TripsScreen'
 import { pad } from './DatePicker'
+import { todayDayNumber, dayLabel } from './TripWorkspace'
 import Window from './Window'
 import Lightbox from './Lightbox'
 import FolderIcon, { type FolderColor } from './FolderIcon'
@@ -14,6 +15,7 @@ import TripTicket from './TripTicket'
 import HanokSky from './HanokSky'
 import Thumb from './Thumb'
 import { SkeletonGrid } from './Skeleton'
+import type { TripTab } from './TripWindow'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -24,7 +26,7 @@ const STATUS_TABS: Array<{ key: TripStatus; label: string; color: FolderColor }>
   { key: 'past', label: '지난 여행', color: 'purple' },
 ]
 
-export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
+export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip, tab?: TripTab) => void }) {
   const { data: trips = [], isPending: tripsLoading } = useTrips()
   const { data = null } = useDashboard()
   const [statusFilter, setStatusFilter] = useState<TripStatus>('upcoming')
@@ -61,6 +63,21 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
   const heroTrip = ongoingTrip ?? nextUpcomingTrip ?? null
   const heroPhoto = heroTrip
     ? (data?.calendarPhotos ?? []).find((p) => p.date >= heroTrip.startDate && p.date <= heroTrip.endDate)?.filePath ?? null
+    : null
+
+  // TODAY 중심 모드 — 여행 중이면 앱을 열자마자(BASE 탭까지 안 가고) 오늘 일차·다음 일정·
+  // 오늘 지출을 대시보드에서 바로 보여주고, 한 번에 [일정] 탭으로 들어갈 수 있게 한다.
+  const { data: heroEvents = [] } = useEvents(ongoingTrip?.id ?? '', !!ongoingTrip)
+  const { data: heroExpenses = [] } = useExpenses(ongoingTrip?.id ?? '', !!ongoingTrip)
+  const { data: heroRates = [] } = useRates(ongoingTrip?.id ?? '', !!ongoingTrip)
+  const todayNum = ongoingTrip ? todayDayNumber(ongoingTrip) : null
+  const todayEvents = todayNum != null
+    ? heroEvents.filter((e) => e.dayNumber === todayNum).sort((a, b) => (a.sequence ?? 0) - (b.sequence ?? 0))
+    : []
+  const nowHHMM = new Date().toTimeString().slice(0, 5)
+  const nextTodayEvent = todayEvents.find((e) => !e.plannedTime || e.plannedTime >= nowHHMM)
+  const todaySpend = ongoingTrip && todayNum != null
+    ? computeDailySpend(ongoingTrip, heroExpenses, todayNum, heroRates).total
     : null
 
   const summary = data?.summary
@@ -129,8 +146,28 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
               <div className="muted" style={{ marginTop: 4 }}>{tripCitiesLabel(heroTrip)}</div>
             )}
             <div className="dash-dday">{dday(heroTrip)}</div>
-            <div style={{ marginTop: 8 }}>
+            {ongoingTrip && todayNum != null && (
+              <div className="dash-today-box">
+                <div style={{ fontWeight: 800 }}>🌤 오늘은 {todayNum}일차 · {dayLabel(ongoingTrip, todayNum)}</div>
+                {nextTodayEvent ? (
+                  <div className="muted" style={{ marginTop: 2 }}>
+                    다음 일정 {nextTodayEvent.plannedTime ? `${nextTodayEvent.plannedTime} · ` : ''}{nextTodayEvent.place.name}
+                  </div>
+                ) : (
+                  <div className="muted" style={{ marginTop: 2 }}>
+                    {todayEvents.length === 0 ? '오늘 등록된 일정이 없어요.' : '오늘 일정을 다 둘러봤어요 🎉'}
+                  </div>
+                )}
+                {todaySpend != null && todaySpend > 0 && (
+                  <div style={{ marginTop: 2, fontWeight: 800 }}>💰 오늘 지출 {fmtMoney(todaySpend, 'KRW')}</div>
+                )}
+              </div>
+            )}
+            <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button className="btn primary" onClick={() => onOpenTrip(heroTrip)}>OPEN →</button>
+              {ongoingTrip && (
+                <button className="btn" onClick={() => onOpenTrip(heroTrip, 'workspace')}>📅 오늘 일정 바로 보기</button>
+              )}
             </div>
             <div className="ticket-hero-barcode" />
           </div>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Trip, TimelineEvent, Member, Place } from '../../shared/types'
 import { api } from '../api'
 import { EXPENSE_CATEGORIES } from '../categories'
+import { fmtMoney } from '../settlement'
 import { dayLabel } from './TripWorkspace'
 import Window from './Window'
 import Select from './Select'
@@ -18,9 +19,11 @@ function directionsUrl(place: Place): string | null {
 
 // 여행 중일 때 앱을 열면 바로 보이는 "오늘" 요약 — 다음 장소 길찾기 + 3초 지출 입력 + 오늘 일기 진입.
 export default function TodayStrip({
-  trip, dayNumber, dayEvents, members, onOpenDiary, onChanged,
+  trip, dayNumber, dayEvents, members, todaySpend, onOpenDiary, onChanged,
 }: {
   trip: Trip; dayNumber: number; dayEvents: TimelineEvent[]; members: Member[]
+  // 그날 지출 합계(KRW 환산) — 여행 중 "오늘 얼마 썼지"를 바로 볼 수 있게.
+  todaySpend?: number
   onOpenDiary: () => void; onChanged: () => void
 }) {
   const [amount, setAmount] = useState('')
@@ -63,6 +66,11 @@ export default function TodayStrip({
           <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 8 }}>
             🌤 오늘은 {dayNumber}일차 · {dayLabel(trip, dayNumber)}
           </div>
+          {todaySpend != null && (
+            <div className="chip pink" style={{ marginBottom: 8, fontWeight: 800 }}>
+              💰 오늘 지출 {fmtMoney(todaySpend, 'KRW')}
+            </div>
+          )}
           {nextEvent ? (
             <div>
               <div className="muted">다음 일정{nextEvent.plannedTime ? ` · ${nextEvent.plannedTime}` : ''}</div>

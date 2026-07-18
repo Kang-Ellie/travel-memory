@@ -15,7 +15,8 @@ import TripPrepTab from './TripPrepTab'
 import PrintItinerary from './PrintItinerary'
 import TripSummaryCard from './TripSummaryCard'
 
-type Tab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
+export type TripTab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
+type Tab = TripTab
 
 const TABS: Array<{ key: Tab; icon: string; label: string; color: string }> = [
   { key: 'base', icon: '🧭', label: 'BASE', color: '#3a7d99' },
@@ -35,10 +36,11 @@ interface Props {
   trip: Trip
   onClose: () => void
   onTripChanged: (t: Trip) => void
+  initialTab?: TripTab
 }
 
-export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
-  const [tab, setTab] = useState<Tab>('base')
+export default function TripWindow({ trip, onClose, onTripChanged, initialTab }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab ?? 'base')
   const [showPrint, setShowPrint] = useState(false)
   const { data: countries = [] } = useCountries()
   const { data: cities = [] } = useCities()

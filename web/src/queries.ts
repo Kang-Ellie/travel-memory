@@ -61,20 +61,20 @@ export function usePlaceDetail(placeId: string) {
   return useQuery({ queryKey: queryKeys.placeDetail(placeId), queryFn: () => api.places.detail(placeId) })
 }
 
-export function useEvents(tripId: string) {
-  return useQuery({ queryKey: queryKeys.events(tripId), queryFn: () => api.events.list(tripId) })
+export function useEvents(tripId: string, enabled = true) {
+  return useQuery({ queryKey: queryKeys.events(tripId), queryFn: () => api.events.list(tripId), enabled: enabled && !!tripId })
 }
 
 export function useTransit(tripId: string) {
   return useQuery({ queryKey: queryKeys.transit(tripId), queryFn: () => api.transit.list(tripId) })
 }
 
-export function useExpenses(tripId: string) {
-  return useQuery({ queryKey: queryKeys.expenses(tripId), queryFn: () => api.expenses.list(tripId) })
+export function useExpenses(tripId: string, enabled = true) {
+  return useQuery({ queryKey: queryKeys.expenses(tripId), queryFn: () => api.expenses.list(tripId), enabled: enabled && !!tripId })
 }
 
-export function useRates(tripId: string) {
-  return useQuery({ queryKey: queryKeys.rates(tripId), queryFn: () => api.rates.list(tripId) })
+export function useRates(tripId: string, enabled = true) {
+  return useQuery({ queryKey: queryKeys.rates(tripId), queryFn: () => api.rates.list(tripId), enabled: enabled && !!tripId })
 }
 
 export function useVouchers(tripId: string) {

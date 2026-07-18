@@ -267,6 +267,14 @@ input, textarea, select { -webkit-user-select: auto; user-select: auto; }
   letter-spacing: 0.04em; color: var(--pink-deep);
   margin-top: auto; padding-top: 10px;
 }
+/* TODAY 중심 모드 — 대시보드 히어로에서 여행 중인 여행의 "오늘" 요약 */
+.dash-today-box {
+  margin-top: 10px; padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 10px;
+  font-size: 13.5px;
+}
 @media (max-width: 640px) {
   .dash-dday { font-size: 36px; }
 }
