@@ -26,7 +26,11 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
   } catch {
-    if (!AUTH_PATHS.has(path)) toast.error('네트워크 오류가 발생했어요. 연결을 확인해주세요.')
+    if (!AUTH_PATHS.has(path)) {
+      toast.error(navigator.onLine
+        ? '네트워크 오류가 발생했어요. 연결을 확인해주세요.'
+        : '오프라인 상태예요. 온라인일 때 한 번 열어본 화면은 오프라인에서도 볼 수 있어요.')
+    }
     throw new ApiError('NETWORK_ERROR')
   }
   if (res.status === 401 && !AUTH_PATHS.has(path)) {
@@ -34,7 +38,12 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
     throw new ApiError('UNAUTHORIZED')
   }
   if (!res.ok && res.status !== 401) {
-    if (!AUTH_PATHS.has(path)) toast.error(`요청이 실패했어요 (${res.status}). 잠시 후 다시 시도해주세요.`)
+    // 503 + 오프라인 = 서비스워커가 "캐시에 없어서 못 보여줌"이라고 응답한 것 (sw.js 참고)
+    if (!AUTH_PATHS.has(path)) {
+      toast.error(res.status === 503 && !navigator.onLine
+        ? '오프라인이라 아직 이 화면을 못 봤어요. 온라인일 때 한 번 열어두면 다음부턴 오프라인에서도 보여요.'
+        : `요청이 실패했어요 (${res.status}). 잠시 후 다시 시도해주세요.`)
+    }
     throw new ApiError(`요청 실패 (${res.status})`)
   }
   return (await res.json()) as T

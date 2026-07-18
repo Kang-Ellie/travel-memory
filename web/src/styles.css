@@ -2724,6 +2724,14 @@ input[type='checkbox'] {
 .check-item .x-btn { margin-left: auto; opacity: 0; }
 .check-item:hover .x-btn { opacity: 1; }
 
+/* ── 오프라인 배너: 네트워크가 끊기면 화면 맨 위에 계속 떠 있는다(토스트처럼 사라지지 않음) ── */
+.offline-banner {
+  flex-shrink: 0;
+  background: var(--ink); color: #fff;
+  text-align: center; font-weight: 700; font-size: 13px;
+  padding: 7px 12px;
+}
+
 /* ── 토스트: 저장/실패/세션 만료 피드백을 화면 하단에 잠깐 띄운다 ── */
 .toast-host {
   position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);

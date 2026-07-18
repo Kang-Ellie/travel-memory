@@ -67,6 +67,7 @@ export default function App() {
   const [bookmarkSection, setBookmarkSection] = useState<BookmarkSection>("places");
   const [showSearch, setShowSearch] = useState(false);
   const [quickAdd, setQuickAdd] = useState<QuickAddTarget | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -83,7 +84,12 @@ export default function App() {
     auth
       .session()
       .then((r) => setAuthed(r.authed))
-      .catch(() => setAuthed(false));
+      .catch(() => {
+        // 세션 확인 요청 자체가 안 될 때(오프라인 등)는 로그아웃시키지 않고 일단 로그인된
+        // 것으로 보고 캐시된 화면을 보여준다 — 실제로 세션이 끊겼다면 이후 어떤 요청에서든
+        // 401을 받으면 그때 app:unauthorized로 로그인 화면으로 전환된다.
+        setAuthed(true);
+      });
     const prefill = extractSharePrefill();
     if (prefill) {
       setSharePrefill(prefill);
@@ -103,6 +109,19 @@ export default function App() {
     };
     window.addEventListener("app:unauthorized", onUnauthorized);
     return () => window.removeEventListener("app:unauthorized", onUnauthorized);
+  }, []);
+
+  // 오프라인 읽기 — 신호가 끊기면 배너로 알려주고(최근 본 화면은 sw.js 캐시로 계속 보임),
+  // 다시 붙으면 토스트로 짧게 알려준다.
+  useEffect(() => {
+    const onOffline = () => setIsOffline(true);
+    const onOnline = () => { setIsOffline(false); toast.success("다시 연결됐어요."); };
+    window.addEventListener("offline", onOffline);
+    window.addEventListener("online", onOnline);
+    return () => {
+      window.removeEventListener("offline", onOffline);
+      window.removeEventListener("online", onOnline);
+    };
   }, []);
 
   const visitedFlags = useMemo(() => {
@@ -134,6 +153,9 @@ export default function App() {
 
   return (
     <div className="app">
+      {isOffline && (
+        <div className="offline-banner">📡 오프라인 상태예요 — 최근에 열어본 화면만 볼 수 있어요.</div>
+      )}
       <div className="app-body">
         <nav className="nav sidebar-nav">
           <div className="sidebar-logo">
