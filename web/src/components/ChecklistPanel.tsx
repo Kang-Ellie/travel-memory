@@ -38,13 +38,24 @@ export default function ChecklistPanel({
     setShowAdd(false)
     refresh()
   }
+  // 토글마다 서버 왕복을 기다린 뒤 화면을 갱신하면 해외 로밍처럼 느린 네트워크에서 체감이 크게
+  // 느려서, 누르는 즉시 화면부터 바꾸고(낙관적 업데이트) 서버 요청은 뒤에서 보낸다.
+  // 실패하면 원래 상태로 되돌린다 — 에러 토스트는 api.ts가 전역으로 이미 띄워준다.
   const toggle = async (item: ChecklistItem) => {
-    await api.checklist.update(item.id, { done: !item.done })
-    refresh()
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)))
+    try {
+      await api.checklist.update(item.id, { done: !item.done })
+    } catch {
+      setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, done: item.done } : i)))
+    }
   }
   const remove = async (id: string) => {
-    await api.checklist.delete(id)
-    refresh()
+    setItems((prev) => prev.filter((i) => i.id !== id))
+    try {
+      await api.checklist.delete(id)
+    } catch {
+      refresh()
+    }
   }
   const loadPresets = async () => {
     if (scope !== 'predeparture' && scope !== 'packing') return

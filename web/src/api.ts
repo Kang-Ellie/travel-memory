@@ -40,26 +40,44 @@ async function req<T>(method: string, path: string, body?: unknown): Promise<T> 
   return (await res.json()) as T
 }
 
-async function upload<T>(path: string, files: File[], fields?: Record<string, string>): Promise<T> {
+// 여러 장 업로드가 끝날 때까지 화면이 무반응이던 문제 — fetch는 업로드 진행률을 못 주므로
+// XHR로 바꿔서 xhr.upload.onprogress로 실시간 바이트 진행률(0~1)을 onProgress에 흘려보낸다.
+async function upload<T>(
+  path: string, files: File[], fields?: Record<string, string>, onProgress?: (fraction: number) => void,
+): Promise<T> {
   const form = new FormData()
   for (const f of files) form.append('files', f)
   if (fields) for (const [k, v] of Object.entries(fields)) form.append(k, v)
-  let res: Response
-  try {
-    res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: form })
-  } catch {
-    toast.error('네트워크 오류가 발생했어요. 연결을 확인해주세요.')
-    throw new ApiError('NETWORK_ERROR')
-  }
-  if (res.status === 401) {
-    window.dispatchEvent(new Event('app:unauthorized'))
-    throw new ApiError('UNAUTHORIZED')
-  }
-  if (!res.ok) {
-    toast.error(`업로드가 실패했어요 (${res.status}). 잠시 후 다시 시도해주세요.`)
-    throw new ApiError(`업로드 실패 (${res.status})`)
-  }
-  return (await res.json()) as T
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API_BASE}${path}`)
+    xhr.withCredentials = true
+    if (onProgress) {
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress(e.loaded / e.total) }
+    }
+    xhr.onerror = () => {
+      toast.error('네트워크 오류가 발생했어요. 연결을 확인해주세요.')
+      reject(new ApiError('NETWORK_ERROR'))
+    }
+    xhr.onload = () => {
+      if (xhr.status === 401) {
+        window.dispatchEvent(new Event('app:unauthorized'))
+        reject(new ApiError('UNAUTHORIZED'))
+        return
+      }
+      if (xhr.status < 200 || xhr.status >= 300) {
+        toast.error(`업로드가 실패했어요 (${xhr.status}). 잠시 후 다시 시도해주세요.`)
+        reject(new ApiError(`업로드 실패 (${xhr.status})`))
+        return
+      }
+      try {
+        resolve(JSON.parse(xhr.responseText) as T)
+      } catch {
+        reject(new ApiError('업로드 응답을 읽을 수 없어요.'))
+      }
+    }
+    xhr.send(form)
+  })
 }
 
 export function fileUrl(relPath: string): string {
@@ -252,13 +270,14 @@ export const api = {
 
   vouchers: {
     list: (tripId: string) => req<Voucher[]>('GET', `/api/trips/${tripId}/vouchers`),
-    add: (tripId: string, files: File[], category: string) =>
-      upload<Voucher[]>(`/api/trips/${tripId}/vouchers`, files, { category }),
+    add: (tripId: string, files: File[], category: string, onProgress?: (fraction: number) => void) =>
+      upload<Voucher[]>(`/api/trips/${tripId}/vouchers`, files, { category }, onProgress),
     delete: (id: string) => req<void>('DELETE', `/api/vouchers/${id}`),
   },
 
   photos: {
-    add: (eventId: string, files: File[]) => upload<Photo[]>(`/api/events/${eventId}/photos`, files),
+    add: (eventId: string, files: File[], onProgress?: (fraction: number) => void) =>
+      upload<Photo[]>(`/api/events/${eventId}/photos`, files, undefined, onProgress),
     delete: (id: string) => req<void>('DELETE', `/api/photos/${id}`),
   },
 
@@ -268,7 +287,8 @@ export const api = {
       req<ArchiveItem>('POST', `/api/trips/${data.tripId}/archive/memo`, data),
     addLink: (data: { tripId: string; title: string; url: string }) =>
       req<ArchiveItem>('POST', `/api/trips/${data.tripId}/archive/link`, data),
-    addImage: (tripId: string, files: File[]) => upload<ArchiveItem[]>(`/api/trips/${tripId}/archive/image`, files),
+    addImage: (tripId: string, files: File[], onProgress?: (fraction: number) => void) =>
+      upload<ArchiveItem[]>(`/api/trips/${tripId}/archive/image`, files, undefined, onProgress),
     delete: (id: string) => req<void>('DELETE', `/api/archive/${id}`),
     convertToEvent: (data: { archiveId: string; tripId: string; dayNumber: number }) =>
       req<void>('POST', `/api/archive/${data.archiveId}/convert`, data),
@@ -284,10 +304,10 @@ export const api = {
       note: string | null; diary: string | null; weatherEmoji: string | null; weatherTemp: number | null
       cityIds: string[]; budget: number | null
     }) => req<void>('PUT', `/api/trips/${tripId}/day-notes/${dayNumber}`, data),
-    addPhotos: (tripId: string, dayNumber: number, files: File[]) =>
-      upload<DayPhoto[]>(`/api/trips/${tripId}/day-notes/${dayNumber}/photos`, files),
-    addPhotosAuto: (tripId: string, files: File[]) =>
-      upload<{ photos: DayPhoto[]; dayCount: number }>(`/api/trips/${tripId}/day-notes/photos/auto`, files),
+    addPhotos: (tripId: string, dayNumber: number, files: File[], onProgress?: (fraction: number) => void) =>
+      upload<DayPhoto[]>(`/api/trips/${tripId}/day-notes/${dayNumber}/photos`, files, undefined, onProgress),
+    addPhotosAuto: (tripId: string, files: File[], onProgress?: (fraction: number) => void) =>
+      upload<{ photos: DayPhoto[]; dayCount: number }>(`/api/trips/${tripId}/day-notes/photos/auto`, files, undefined, onProgress),
     deletePhoto: (id: string) => req<void>('DELETE', `/api/day-note-photos/${id}`),
   },
 

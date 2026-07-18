@@ -2,9 +2,11 @@ import { useRef, useState } from 'react'
 import type { ArchiveItem } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { useArchive, useQueryClient, queryKeys } from '../queries'
+import { useUploadProgress } from '../useUploadProgress'
 import Lightbox from './Lightbox'
 import Modal from './Modal'
 import Thumb from './Thumb'
+import UploadProgressBar from './UploadProgressBar'
 
 const ICON: Record<ArchiveItem['kind'], string> = { memo: '📝', link: '🔗', image: '🖼' }
 
@@ -50,6 +52,7 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
   const [body, setBody] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const fileInput = useRef<HTMLInputElement>(null)
+  const { uploading, progress, run } = useUploadProgress()
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.archive(tripId) })
 
@@ -71,7 +74,7 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length === 0) return
-    await api.archive.addImage(tripId, files)
+    await run((onProgress) => api.archive.addImage(tripId, files, onProgress))
     refresh()
   }
 
@@ -81,8 +84,11 @@ export default function ArchiveBoard({ tripId }: { tripId: string }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
         <button className="archive-add-btn" onClick={() => { setMode('memo'); setShowAdd(true) }}>📝 메모 추가</button>
         <button className="archive-add-btn" onClick={() => { setMode('link'); setShowAdd(true) }}>🔗 링크 추가</button>
-        <button className="archive-add-btn" onClick={() => fileInput.current?.click()}>🖼 이미지 추가</button>
+        <button className="archive-add-btn" onClick={() => fileInput.current?.click()} disabled={uploading}>
+          {uploading ? '업로드 중…' : '🖼 이미지 추가'}
+        </button>
       </div>
+      {uploading && <UploadProgressBar progress={progress} />}
 
       {showAdd && (
         <Modal title={mode === 'memo' ? '메모 추가' : '링크 추가'} onClose={() => setShowAdd(false)}>

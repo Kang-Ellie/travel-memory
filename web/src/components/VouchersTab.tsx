@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import type { Trip, Voucher } from '../../shared/types'
 import { VOUCHER_CATEGORIES } from '../../shared/types'
 import { api, fileUrl } from '../api'
+import { useUploadProgress } from '../useUploadProgress'
 import Select from './Select'
+import UploadProgressBar from './UploadProgressBar'
 
 const ICONS: Record<string, string> = {
   PDF: '📄', PNG: '🖼', JPG: '🖼', JPEG: '🖼', HEIC: '🖼', WEBP: '🖼',
@@ -31,6 +33,7 @@ export default function VouchersTab({ trip }: { trip: Trip }) {
   const [vouchers, setVouchers] = useState<Voucher[]>([])
   const [uploadCategory, setUploadCategory] = useState<string>(VOUCHER_CATEGORIES[0])
   const fileInput = useRef<HTMLInputElement>(null)
+  const { uploading, progress, run } = useUploadProgress()
 
   const refresh = () => { api.vouchers.list(trip.id).then(setVouchers) }
   useEffect(refresh, [trip.id])
@@ -39,7 +42,7 @@ export default function VouchersTab({ trip }: { trip: Trip }) {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length === 0) return
-    await api.vouchers.add(trip.id, files, uploadCategory)
+    await run((onProgress) => api.vouchers.add(trip.id, files, uploadCategory, onProgress))
     refresh()
   }
 
@@ -57,10 +60,11 @@ export default function VouchersTab({ trip }: { trip: Trip }) {
             {VOUCHER_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </Select>
         </div>
-        <button className="btn primary" onClick={() => fileInput.current?.click()}>
-          ＋ {uploadCategory} 파일 추가
+        <button className="btn primary" onClick={() => fileInput.current?.click()} disabled={uploading}>
+          {uploading ? '업로드 중…' : `＋ ${uploadCategory} 파일 추가`}
         </button>
       </div>
+      {uploading && <UploadProgressBar progress={progress} />}
 
       {vouchers.length === 0 ? (
         <div className="empty">저장된 바우처가 없어요. 항공권 PDF나 예약 확인증을 넣어두면 여행 중에도 바로 열 수 있어요. 🎫</div>

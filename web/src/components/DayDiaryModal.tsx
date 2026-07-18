@@ -3,10 +3,12 @@ import type { Trip, DayNote, Expense, CurrencyRate } from '../../shared/types'
 import { api, fileUrl } from '../api'
 import { flagEmoji } from '../categories'
 import { computeDailySpend, dailyBudgetStatus } from '../settlement'
+import { useUploadProgress } from '../useUploadProgress'
 import { dayLabel } from './TripWorkspace'
 import Modal from './Modal'
 import Lightbox from './Lightbox'
 import Thumb from './Thumb'
+import UploadProgressBar from './UploadProgressBar'
 
 function budgetBarColor(percent: number): string {
   if (percent <= 30) return 'var(--green-deep)'
@@ -27,6 +29,7 @@ export default function DayDiaryModal({
   const [saving, setSaving] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const photoInput = useRef<HTMLInputElement>(null)
+  const { uploading, progress, run } = useUploadProgress()
   const photos = note?.photos ?? []
   const photoUrls = photos.map((p) => fileUrl(p.filePath))
   const cover = photos[0] ?? null
@@ -36,7 +39,7 @@ export default function DayDiaryModal({
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length === 0) return
-    await api.dayNotes.addPhotos(trip.id, dayNumber, files)
+    await run((onProgress) => api.dayNotes.addPhotos(trip.id, dayNumber, files, onProgress))
     onChanged()
   }
 
@@ -109,9 +112,10 @@ export default function DayDiaryModal({
           ))}
         </div>
       )}
-      <button type="button" className="btn small" style={{ marginTop: 10 }} onClick={() => photoInput.current?.click()}>
-        📷 사진 추가
+      <button type="button" className="btn small" style={{ marginTop: 10 }} onClick={() => photoInput.current?.click()} disabled={uploading}>
+        {uploading ? '업로드 중…' : '📷 사진 추가'}
       </button>
+      {uploading && <UploadProgressBar progress={progress} />}
 
       <div style={{ marginTop: 16 }}>
         <textarea

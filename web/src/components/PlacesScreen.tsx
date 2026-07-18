@@ -12,6 +12,7 @@ import PlaceDetailPanel from './PlaceDetailPanel'
 import DropdownMenu from './DropdownMenu'
 import PlacesMapView from './PlacesMapView'
 import Thumb from './Thumb'
+import { SkeletonGrid } from './Skeleton'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
@@ -375,7 +376,7 @@ function PlaceCard({
 export default function PlacesScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const { data: places = [] } = usePlaces()
+  const { data: places = [], isPending: placesLoading } = usePlaces()
   const { data: countries = [] } = useCountries()
   const { data: cities = [] } = useCities()
   const { data: bucket = [] } = useBucket()
@@ -560,7 +561,9 @@ export default function PlacesScreen({
           <button className={`pill ${placesView === 'map' ? 'active' : ''}`} onClick={() => setPlacesView('map')}>🗺 지도로 보기</button>
         </div>
 
-        {filtered.length === 0 ? (
+        {placesLoading ? (
+          <SkeletonGrid />
+        ) : filtered.length === 0 ? (
           <div className="empty">등록된 장소가 없어요. 위에서 검색하거나 직접 등록해보세요!</div>
         ) : placesView === 'map' ? (
           <PlacesMapView places={filtered} />

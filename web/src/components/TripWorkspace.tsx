@@ -11,6 +11,7 @@ import {
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji, googleMapsUrl } from '../categories'
 import { toast } from '../toast'
+import { useUploadProgress } from '../useUploadProgress'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
@@ -32,6 +33,7 @@ import TimePicker from './TimePicker'
 import PlaceDetailPanel from './PlaceDetailPanel'
 import TripBoardView from './TripBoardView'
 import TodayStrip from './TodayStrip'
+import UploadProgressBar from './UploadProgressBar'
 
 const PLACE_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
 const TRANSIT_MODES = ['도보', '지하철', '버스', '기차', '택시', '비행기', '환승', '배', '기타']
@@ -204,6 +206,7 @@ interface QuickExpenseState {
 
 function EventCard({
   ev, participants, eventExpenses, bucketItems, vouchers, dragIndex, onDragStart, onDrop, onChanged, isToday, displaySeq, spentAtDate,
+  canMoveUp, canMoveDown, onMoveUp, onMoveDown,
 }: {
   ev: TimelineEvent
   participants: Member[]
@@ -220,6 +223,11 @@ function EventCard({
   // 이 일정이 속한 일차의 실제 날짜(YYYY-MM-DD) — 빠른 지출의 spentAt으로 쓴다.
   // (기록한 "오늘" 날짜로 저장하면 여행 일차별 합계에 안 잡히는 버그가 있었음)
   spentAtDate: string
+  // 터치에서 드래그 재정렬이 불안정해서 넣은 ↑/↓ 버튼 — 맨 위/아래 카드는 해당 방향이 비활성화됨
+  canMoveUp: boolean
+  canMoveDown: boolean
+  onMoveUp: () => void
+  onMoveDown: () => void
 }) {
   const [editing, setEditing] = useState(false)
   const [review, setReview] = useState(ev.review ?? '')
@@ -356,18 +364,22 @@ function EventCard({
     setEditing(false)
     onChanged()
   }
+  const [logoUploading, setLogoUploading] = useState(false)
   const onLogoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    setLogoUploading(true)
     await api.events.uploadFlightLogo(ev.id, file)
+    setLogoUploading(false)
     onChanged()
   }
+  const { uploading: photosUploading, progress: photosProgress, run: runPhotoUpload } = useUploadProgress()
   const onPhotosPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length === 0) return
-    await api.photos.add(ev.id, files)
+    await runPhotoUpload((onProgress) => api.photos.add(ev.id, files, onProgress))
     onChanged()
   }
 
@@ -416,7 +428,11 @@ function EventCard({
             ))}
           </span>
         )}
-        <span style={{ marginLeft: 'auto' }}>
+        <span className="event-move-btns" style={{ marginLeft: 'auto' }}>
+          <button type="button" className="event-move-btn" title="위로 이동" disabled={!canMoveUp} onClick={onMoveUp}>↑</button>
+          <button type="button" className="event-move-btn" title="아래로 이동" disabled={!canMoveDown} onClick={onMoveDown}>↓</button>
+        </span>
+        <span>
           <DropdownMenu
             actions={[
               { label: '📷 사진 추가', onClick: () => photoInput.current?.click() },
@@ -446,6 +462,7 @@ function EventCard({
       {!isTicket && <div style={{ marginTop: 6 }}><PlaceMeta place={ev.place} /></div>}
 
       <input ref={photoInput} type="file" multiple accept="image/*" hidden onChange={onPhotosPicked} />
+      {photosUploading && <UploadProgressBar progress={photosProgress} />}
       <div className="event-card-body">
         {ev.photos.length > 0 && (
           <div className="event-photo-col">
@@ -482,8 +499,8 @@ function EventCard({
                 <div className="row" style={{ flexWrap: 'wrap', background: 'var(--blue-soft)' }}>
                   <input ref={logoInput} type="file" accept="image/*" hidden onChange={onLogoPicked} />
                   <div className="field"><label>항공사 로고 (선택)</label>
-                    <button type="button" className="btn small" onClick={() => logoInput.current?.click()}>
-                      {ev.flight?.airlineLogoPath ? '🖼 로고 변경' : '🖼 로고 업로드'}
+                    <button type="button" className="btn small" onClick={() => logoInput.current?.click()} disabled={logoUploading}>
+                      {logoUploading ? '업로드 중…' : ev.flight?.airlineLogoPath ? '🖼 로고 변경' : '🖼 로고 업로드'}
                     </button></div>
                   <div className="field"><label>항공사</label>
                     <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
@@ -829,7 +846,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
   const [showAddTransit, setShowAddTransit] = useState(false)
   const [transitCalculating, setTransitCalculating] = useState(false)
   const [viewMode, setViewMode] = useState<'list' | 'board'>('list')
-  const [bulkUploading, setBulkUploading] = useState(false)
+  const { uploading: bulkUploading, progress: bulkProgress, run: runBulkUpload } = useUploadProgress()
   const dragFrom = useRef<number | null>(null)
   const bulkPhotoInput = useRef<HTMLInputElement>(null)
 
@@ -907,14 +924,13 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     setShowAddPlace(false)
   }
 
-  const reorder = async (targetIdx: number) => {
-    const from = dragFrom.current
-    dragFrom.current = null
-    if (from == null || from === targetIdx) return
+  // 드래그 재정렬(데스크톱)과 ↑/↓ 버튼 재정렬(터치에서 드래그가 불안정한 모바일)이 같은 로직을 쓴다.
+  const moveEvent = async (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || to >= dayEvents.length) return
     const ids = dayEvents.map((e) => e.id)
     const [moved] = ids.splice(from, 1)
-    ids.splice(targetIdx, 0, moved)
-    // 드래그가 끝나자마자 눈에 보이는 순서를 먼저 바꾸고(낙관적 업데이트), API 응답을 기다리지 않는다
+    ids.splice(to, 0, moved)
+    // 순서를 바꾸자마자 눈에 보이는 순서를 먼저 바꾸고(낙관적 업데이트), API 응답을 기다리지 않는다
     // — react-query 캐시를 직접 갱신하는 거라 서버 확인 후 재검증(invalidate)까지는 하지 않는다
     // (원래 코드도 그랬음: 실패해도 다음 자연스러운 refetch에서 맞춰짐).
     queryClient.setQueryData(queryKeys.events(trip.id), (prev: TimelineEvent[] | undefined) => {
@@ -929,13 +945,18 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     await api.events.reorder({ tripId: trip.id, dayNumber: day, orderedIds: ids })
   }
 
+  const reorder = async (targetIdx: number) => {
+    const from = dragFrom.current
+    dragFrom.current = null
+    if (from == null) return
+    await moveEvent(from, targetIdx)
+  }
+
   const onBulkPhotosPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     e.target.value = ''
     if (files.length === 0) return
-    setBulkUploading(true)
-    const res = await api.dayNotes.addPhotosAuto(trip.id, files)
-    setBulkUploading(false)
+    const res = await runBulkUpload((onProgress) => api.dayNotes.addPhotosAuto(trip.id, files, onProgress))
     toast.success(`📷 ${res.photos.length}장을 촬영일 기준으로 ${res.dayCount}개 일차 일기에 나눠 넣었어요.`)
     invalidateDayNotes()
   }
@@ -1070,6 +1091,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
           title="여러 장을 한번에 올리면 촬영일 기준으로 각 일차 일기에 자동으로 나눠 들어가요">
           {bulkUploading ? '업로드 중…' : '📷 사진 일괄 업로드'}
         </button>
+        {bulkUploading && <UploadProgressBar progress={bulkProgress} />}
         {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
           const cityInfo = dayCityInfo(d)
           const spend = computeDailySpend(trip, expenses, d, rates).total
@@ -1180,6 +1202,10 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
                   isToday={todayNum != null && day === todayNum}
                   displaySeq={displaySeqById.get(ev.id) ?? null}
                   spentAtDate={dayISODate(trip, ev.dayNumber ?? day)}
+                  canMoveUp={idx > 0}
+                  canMoveDown={idx < dayEvents.length - 1}
+                  onMoveUp={() => moveEvent(idx, idx - 1)}
+                  onMoveDown={() => moveEvent(idx, idx + 1)}
                 />
                 {transitAfter(ev.id).map((t) => <TransitChip key={t.id} segment={t} vouchers={vouchers} dayEvents={dayEvents} onChanged={invalidateTransit} />)}
               </div>

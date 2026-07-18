@@ -10,6 +10,7 @@ import InfoCardGrid from "./InfoCardGrid";
 import DropdownMenu from "./DropdownMenu";
 import Select from "./Select";
 import CityHubPanel from "./CityHubPanel";
+import { SkeletonGrid } from "./Skeleton";
 
 export type CountryForm = Omit<Country, "id" | "createdAt">;
 
@@ -672,7 +673,7 @@ function CountryCard({
 export default function CountriesScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const { data: countries = [] } = useCountries();
+  const { data: countries = [], isPending: countriesLoading } = useCountries();
   const { data: cities = [] } = useCities();
   const queryClient = useQueryClient();
   const refresh = () => {
@@ -765,7 +766,9 @@ export default function CountriesScreen({
       )}
 
       <Window title="COUNTRIES.EXE" color="green">
-        {countries.length === 0 ? (
+        {countriesLoading ? (
+          <SkeletonGrid minWidth={180} height={100} />
+        ) : countries.length === 0 ? (
           <div className="empty">
             아직 등록된 국가가 없어요. 위에서 첫 국가를 등록해보세요! 🌍
           </div>

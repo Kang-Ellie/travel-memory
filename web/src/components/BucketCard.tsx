@@ -32,6 +32,7 @@ export default function BucketCard({
   const [editing, setEditing] = useState(false)
   const [memo, setMemo] = useState(item.memo ?? '')
   const [tip, setTip] = useState(item.tip ?? '')
+  const [photoUploading, setPhotoUploading] = useState(false)
   const photoInput = useRef<HTMLInputElement>(null)
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
 
@@ -80,7 +81,9 @@ export default function BucketCard({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
+    setPhotoUploading(true)
     await api.bucket.uploadPhoto(item.id, file)
+    setPhotoUploading(false)
     // 사진을 올렸다 = 실제로 다녀왔다는 뜻 → 도장 찍히며 자동 완료 처리
     if (!item.done) await api.bucket.update(item.id, { done: true })
     onChanged()
@@ -111,7 +114,9 @@ export default function BucketCard({
         {coverPhoto ? (
           <Thumb path={coverPhoto} />
         ) : (
-          <div className="bucket-photo-media-empty" style={{ background: KIND_PASTEL[kind] }}>{KIND_EMOJI[kind]}</div>
+          <div className="bucket-photo-media-empty" style={{ background: KIND_PASTEL[kind] }}>
+            {photoUploading ? '📤 업로드 중…' : KIND_EMOJI[kind]}
+          </div>
         )}
         <div className="bucket-photo-top">
           <span className="bucket-photo-chip">{KIND_LABEL[kind]}</span>

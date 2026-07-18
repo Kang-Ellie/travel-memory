@@ -8,6 +8,7 @@ import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
 import BucketCard from './BucketCard'
+import { SkeletonGrid } from './Skeleton'
 
 const KINDS: BucketKind[] = ['bucket', 'food', 'wish']
 const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
@@ -15,7 +16,7 @@ const BUCKET_SUBCATEGORY_PRESETS = ['액티비티', '장소', '기타']
 export default function BucketListScreen({
   autoOpenAdd, onConsumedAutoOpenAdd,
 }: { autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const { data: items = [] } = useBucket()
+  const { data: items = [], isPending: itemsLoading } = useBucket()
   const { data: countries = [] } = useCountries()
   const { data: cities = [] } = useCities()
   const { data: trips = [] } = useTrips()
@@ -201,7 +202,9 @@ export default function BucketListScreen({
             ))}
           </div>
         )}
-        {filtered.length === 0 ? (
+        {itemsLoading ? (
+          <SkeletonGrid minWidth={200} height={230} />
+        ) : filtered.length === 0 ? (
           <div className="empty">항목이 없어요.</div>
         ) : (
           <div className="bucket-photo-grid">

@@ -8,6 +8,7 @@ import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 import PageHeader from './PageHeader'
 import TripTicket from './TripTicket'
+import { SkeletonGrid } from './Skeleton'
 
 export function fmtRange(t: Trip): string {
   const s = new Date(t.startDate + 'T00:00:00')
@@ -45,7 +46,7 @@ export function dday(t: Trip): string {
 export default function TripsScreen({
   onOpenTrip, autoOpenAdd, onConsumedAutoOpenAdd,
 }: { onOpenTrip: (t: Trip) => void; autoOpenAdd?: boolean; onConsumedAutoOpenAdd?: () => void }) {
-  const { data: trips = [] } = useTrips()
+  const { data: trips = [], isPending: tripsLoading } = useTrips()
   const { data: members = [] } = useMembers()
   const { data: countries = [] } = useCountries()
   const { data: cities = [] } = useCities()
@@ -206,15 +207,20 @@ export default function TripsScreen({
         </Modal>
       )}
 
-      {trips.length === 0 && !creating && (
-        <div className="empty">아직 여행이 없어요. 첫 여행을 만들어보세요! 🧳</div>
+      {tripsLoading ? (
+        <SkeletonGrid minWidth={260} height={160} />
+      ) : (
+        <>
+          {trips.length === 0 && !creating && (
+            <div className="empty">아직 여행이 없어요. 첫 여행을 만들어보세요! 🧳</div>
+          )}
+          <div className="grid">
+            {trips.map((t) => (
+              <TripTicket key={t.id} trip={t} onOpen={() => onOpenTrip(t)} onDelete={() => remove(t)} />
+            ))}
+          </div>
+        </>
       )}
-
-      <div className="grid">
-        {trips.map((t) => (
-          <TripTicket key={t.id} trip={t} onOpen={() => onOpenTrip(t)} onDelete={() => remove(t)} />
-        ))}
-      </div>
     </div>
   )
 }

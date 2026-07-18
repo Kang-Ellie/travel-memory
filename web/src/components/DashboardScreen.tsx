@@ -13,6 +13,7 @@ import ActivityFeed from './ActivityFeed'
 import TripTicket from './TripTicket'
 import HanokSky from './HanokSky'
 import Thumb from './Thumb'
+import { SkeletonGrid } from './Skeleton'
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토']
 const GALLERY_PAGE = 24
@@ -24,7 +25,7 @@ const STATUS_TABS: Array<{ key: TripStatus; label: string; color: FolderColor }>
 ]
 
 export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) => void }) {
-  const { data: trips = [] } = useTrips()
+  const { data: trips = [], isPending: tripsLoading } = useTrips()
   const { data = null } = useDashboard()
   const [statusFilter, setStatusFilter] = useState<TripStatus>('upcoming')
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear())
@@ -169,7 +170,9 @@ export default function DashboardScreen({ onOpenTrip }: { onOpenTrip: (t: Trip) 
                 </button>
               ))}
             </div>
-            {filteredTrips.length === 0 ? (
+            {tripsLoading ? (
+              <SkeletonGrid minWidth={260} height={160} />
+            ) : filteredTrips.length === 0 ? (
               <div className="empty">{activeTab.label}이 없어요.</div>
             ) : pastByYear ? (
               pastByYear.map(([year, yearTrips]) => (

@@ -1038,6 +1038,32 @@ textarea { resize: vertical; min-height: 70px; }
 }
 .event-menu-trigger:hover { background: rgba(45,42,62,0.08); }
 
+/* ── 일정 ↑/↓ 재정렬 버튼 — 모바일 터치에서 드래그 재정렬이 불안정해서 대안으로 추가 ── */
+.event-move-btns { display: flex; gap: 2px; }
+.event-move-btn {
+  border: none; background: none; box-shadow: none;
+  padding: 2px 7px; font-size: 15px; font-weight: 800; line-height: 1.4;
+  cursor: pointer; font-family: inherit; color: var(--ink); border-radius: 6px;
+}
+.event-move-btn:hover:not(:disabled) { background: rgba(45,42,62,0.08); }
+.event-move-btn:disabled { opacity: 0.25; cursor: default; }
+
+/* ── 로딩 스켈레톤: 목록이 아직 안 불러와졌을 때 "아직 없어요"처럼 보이지 않게 ── */
+.skeleton-grid { display: grid; gap: 14px; }
+.skeleton-block {
+  border-radius: 14px;
+  background: linear-gradient(90deg, var(--paper2) 25%, var(--paper) 37%, var(--paper2) 63%);
+  background-size: 400% 100%;
+  animation: skeleton-shimmer 1.4s ease infinite;
+}
+@keyframes skeleton-shimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-block { animation: none; background: var(--paper2); }
+}
+
 /* ── 테두리 없는 × 버튼 (삭제/닫기) ──────── */
 .x-btn {
   border: none; background: none; box-shadow: none;
@@ -2724,5 +2750,17 @@ input[type='checkbox'] {
 }
 @media (max-width: 640px) {
   .toast-host { bottom: 76px; }
+}
+
+/* ── 업로드 진행률: 사진 여러 장 올릴 때 끝날 때까지 무반응이던 것을 고침 ── */
+.upload-progress-wrap { margin-top: 8px; max-width: 320px; }
+.upload-progress-label { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.upload-progress-track {
+  height: 8px; border-radius: 5px; background: var(--paper2);
+  border: 1px solid var(--line); overflow: hidden;
+}
+.upload-progress-fill {
+  height: 100%; background: var(--pink); border-radius: 5px;
+  transition: width 0.15s ease-out;
 }
 .checklist-empty { padding: 14px 4px; color: rgba(45, 42, 62, 0.5); font-weight: 700; }
