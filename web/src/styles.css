@@ -2697,4 +2697,32 @@ input[type='checkbox'] {
 .check-item.done .check-item-text { text-decoration: line-through; color: rgba(45, 42, 62, 0.4); }
 .check-item .x-btn { margin-left: auto; opacity: 0; }
 .check-item:hover .x-btn { opacity: 1; }
+
+/* ── 토스트: 저장/실패/세션 만료 피드백을 화면 하단에 잠깐 띄운다 ── */
+.toast-host {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+  z-index: 1000; display: flex; flex-direction: column-reverse; gap: 8px;
+  align-items: center; width: min(92vw, 420px); pointer-events: none;
+}
+.toast-item {
+  pointer-events: auto; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+  padding: 11px 16px; border-radius: 12px;
+  background: var(--ink); color: #fff;
+  box-shadow: var(--shadow-lg);
+  font-weight: 700; font-size: 14px;
+  animation: toast-in 0.2s ease-out;
+}
+.toast-icon { flex-shrink: 0; }
+.toast-msg { word-break: keep-all; }
+.toast-error { background: var(--stamp-red); }
+.toast-success { background: var(--stamp-green); }
+.toast-info { background: var(--ink); }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 640px) {
+  .toast-host { bottom: 76px; }
+}
 .checklist-empty { padding: 14px 4px; color: rgba(45, 42, 62, 0.5); font-weight: 700; }

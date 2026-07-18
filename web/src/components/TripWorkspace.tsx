@@ -10,6 +10,7 @@ import {
 } from '../queries'
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
 import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji, googleMapsUrl } from '../categories'
+import { toast } from '../toast'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
@@ -90,7 +91,7 @@ function TransitChip({
     setCalculating(true)
     const res = await api.directions.duration(dayEvents[originIdx].place.id, destEvent.place.id, mode)
     setCalculating(false)
-    if ('error' in res) { alert(res.error); return }
+    if ('error' in res) { toast.error(res.error); return }
     setDurationText(res.durationText)
   }
 
@@ -935,7 +936,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     setBulkUploading(true)
     const res = await api.dayNotes.addPhotosAuto(trip.id, files)
     setBulkUploading(false)
-    alert(`📷 ${res.photos.length}장을 촬영일 기준으로 ${res.dayCount}개 일차 일기에 나눠 넣었어요.`)
+    toast.success(`📷 ${res.photos.length}장을 촬영일 기준으로 ${res.dayCount}개 일차 일기에 나눠 넣었어요.`)
     invalidateDayNotes()
   }
 
@@ -958,7 +959,7 @@ export default function TripWorkspace({ trip }: { trip: Trip }) {
     setTransitCalculating(true)
     const res = await api.directions.duration(dayEvents[transitOriginIdx].place.id, transitDestEvent.place.id, transitMode)
     setTransitCalculating(false)
-    if ('error' in res) { alert(res.error); return }
+    if ('error' in res) { toast.error(res.error); return }
     setTransitDuration(res.durationText)
   }
 

@@ -3,6 +3,8 @@ import type { Trip } from "../shared/types";
 import { auth } from "./api";
 import { flagEmoji } from "./categories";
 import { useCountries, useCities } from "./queries";
+import { toast } from "./toast";
+import ToastHost from "./components/ToastHost";
 import Login from "./Login";
 import DashboardScreen from "./components/DashboardScreen";
 import TripsScreen from "./components/TripsScreen";
@@ -90,6 +92,19 @@ export default function App() {
     }
   }, []);
 
+  // 세션 만료 후 아무 버튼이나 누르면 요청만 조용히 실패하던 문제 — api.ts가 401을 감지하면
+  // 여기서 한 곳에서 로그인 화면으로 돌려보내고 이유를 토스트로 알려준다.
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setAuthed((prev) => {
+        if (prev) toast.info("세션이 만료됐어요. 다시 로그인해주세요.");
+        return false;
+      });
+    };
+    window.addEventListener("app:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("app:unauthorized", onUnauthorized);
+  }, []);
+
   const visitedFlags = useMemo(() => {
     const visitedCountryIds = new Set(
       cities.filter((c) => c.visited).map((c) => c.countryId),
@@ -110,7 +125,12 @@ export default function App() {
   };
 
   if (authed === null) return null;
-  if (!authed) return <Login onSuccess={() => setAuthed(true)} />;
+  if (!authed) return (
+    <>
+      <Login onSuccess={() => setAuthed(true)} />
+      <ToastHost />
+    </>
+  );
 
   return (
     <div className="app">
@@ -251,6 +271,7 @@ export default function App() {
           onQuickAdd={handleQuickAdd}
         />
       )}
+      <ToastHost />
     </div>
   );
 }

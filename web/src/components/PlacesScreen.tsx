@@ -4,6 +4,7 @@ import { STAY_TYPES } from '../../shared/types'
 import { api } from '../api'
 import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
 import { flagEmoji, ratingColor, recommendedFieldLabel, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
+import { toast } from '../toast'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
@@ -123,13 +124,15 @@ function PlaceCard({
       directions: directions.trim() || null,
       babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
+    toast.success('저장됐어요.')
     setEditing(false)
     onChanged()
   }
   const remove = async () => {
     if (!confirm(`'${place.name}' 장소를 족보에서 삭제할까요?`)) return
     const res = await api.places.delete(place.id)
-    if (res.error) alert(res.error)
+    if (res.error) toast.error(res.error)
+    else toast.success('삭제했어요.')
     onChanged()
   }
 

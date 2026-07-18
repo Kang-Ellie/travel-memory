@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import type { Trip } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
+import { toast } from '../toast'
 import { useCountries, useCities, useQueryClient, queryKeys } from '../queries'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
@@ -80,8 +81,10 @@ export default function TripWindow({ trip, onClose, onTripChanged }: Props) {
       nights: nights.trim() ? parseInt(nights) : null, cityIds: [...selCityIds],
     })
     if (result.unassignedCount > 0) {
-      alert(`일정 ${result.unassignedCount}개가 '일차 미배정'으로 이동했어요. [🎒 여행 준비] 탭에서 확인하세요.`)
+      toast.info(`일정 ${result.unassignedCount}개가 '일차 미배정'으로 이동했어요. [🎒 여행 준비] 탭에서 확인하세요.`)
       queryClient.invalidateQueries({ queryKey: queryKeys.events(trip.id) })
+    } else {
+      toast.success('저장됐어요.')
     }
     queryClient.invalidateQueries({ queryKey: queryKeys.trips })
     const fresh = await api.trips.list()

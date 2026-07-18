@@ -4,6 +4,7 @@ import { api } from '../api'
 import { useTripMembers, useMembers, useExpenses, useRates, useQueryClient, queryKeys } from '../queries'
 import { fmtMoney, computeCategoryTotals } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
+import { toast } from '../toast'
 import AddExpenseModal from './AddExpenseModal'
 import BudgetBar from './BudgetBar'
 import CategoryDonut from './CategoryDonut'
@@ -52,7 +53,7 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     if ('error' in res) {
       // 이미 같은 이름의 동행인이 있으면 새로 만드는 대신 그 사람을 그냥 선택해준다.
       const existing = allMembers.find((m) => m.name === trimmed)
-      if (!existing) { alert(res.error); return }
+      if (!existing) { toast.error(res.error); return }
       setSelMembers((prev) => new Set(prev).add(existing.id))
       return
     }

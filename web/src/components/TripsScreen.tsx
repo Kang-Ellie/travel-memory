@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Trip } from '../../shared/types'
 import { api } from '../api'
 import { useTrips, useMembers, useCountries, useCities, useQueryClient, queryKeys } from '../queries'
+import { toast } from '../toast'
 import Modal from './Modal'
 import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
@@ -68,7 +69,7 @@ export default function TripsScreen({
   const create = async () => {
     if (!title.trim() || !startDate || !endDate) return
     if (endDate < startDate) {
-      alert('종료일이 시작일보다 빠를 수 없어요.')
+      toast.error('종료일이 시작일보다 빠를 수 없어요.')
       return
     }
     await api.trips.create({
@@ -76,6 +77,7 @@ export default function TripsScreen({
       budget: parseFloat(budget) || 0, nights: nights.trim() ? parseInt(nights) : null,
       memberIds: [...selMembers], cityIds: [...selCityIds],
     })
+    toast.success('여행을 만들었어요.')
     setTitle(''); setStartDate(''); setEndDate(''); setBudget(''); setNights(''); setSelMembers(new Set())
     setSelCountryIds(new Set()); setSelCityIds(new Set()); setCreating(false)
     queryClient.invalidateQueries({ queryKey: queryKeys.trips })
@@ -89,7 +91,7 @@ export default function TripsScreen({
     if ('error' in res) {
       // 이미 같은 이름의 동행인이 있으면 새로 만드는 대신 그 사람을 그냥 선택해준다.
       const existing = members.find((m) => m.name === trimmed)
-      if (!existing) { alert(res.error); return }
+      if (!existing) { toast.error(res.error); return }
       setSelMembers((prev) => new Set(prev).add(existing.id))
       setShowAddMember(false)
       return

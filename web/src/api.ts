@@ -4,20 +4,39 @@ import type {
   DashboardData, ActivityLogEntry,
   ChecklistItem, ChecklistScope, BucketItem, TransitSegment, CityPlaceSummary, Airline,
 } from '../shared/types'
+import { toast } from './toast'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
 
 export class ApiError extends Error {}
 
+// 로그인/로그아웃/세션 확인은 자체적으로 인라인 에러 메시지를 보여주므로(Login.tsx),
+// 여기서 세션 만료 리다이렉트나 중복 토스트를 띄우지 않는다.
+const AUTH_PATHS = new Set(['/api/login', '/api/logout', '/api/session'])
+
+// 세션이 끊긴 상태로 아무 요청이나 눌렀을 때 화면이 조용히 그대로 있던 문제를 고치기 위해,
+// 401을 여기 한 곳에서 잡아 App.tsx가 로그인 화면으로 전환하도록 전역 이벤트를 쏜다.
 async function req<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method,
-    credentials: 'include',
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  })
-  if (res.status === 401) throw new ApiError('UNAUTHORIZED')
-  if (!res.ok) throw new ApiError(`요청 실패 (${res.status})`)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method,
+      credentials: 'include',
+      headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    if (!AUTH_PATHS.has(path)) toast.error('네트워크 오류가 발생했어요. 연결을 확인해주세요.')
+    throw new ApiError('NETWORK_ERROR')
+  }
+  if (res.status === 401 && !AUTH_PATHS.has(path)) {
+    window.dispatchEvent(new Event('app:unauthorized'))
+    throw new ApiError('UNAUTHORIZED')
+  }
+  if (!res.ok && res.status !== 401) {
+    if (!AUTH_PATHS.has(path)) toast.error(`요청이 실패했어요 (${res.status}). 잠시 후 다시 시도해주세요.`)
+    throw new ApiError(`요청 실패 (${res.status})`)
+  }
   return (await res.json()) as T
 }
 
@@ -25,9 +44,21 @@ async function upload<T>(path: string, files: File[], fields?: Record<string, st
   const form = new FormData()
   for (const f of files) form.append('files', f)
   if (fields) for (const [k, v] of Object.entries(fields)) form.append(k, v)
-  const res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: form })
-  if (res.status === 401) throw new ApiError('UNAUTHORIZED')
-  if (!res.ok) throw new ApiError(`업로드 실패 (${res.status})`)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, { method: 'POST', credentials: 'include', body: form })
+  } catch {
+    toast.error('네트워크 오류가 발생했어요. 연결을 확인해주세요.')
+    throw new ApiError('NETWORK_ERROR')
+  }
+  if (res.status === 401) {
+    window.dispatchEvent(new Event('app:unauthorized'))
+    throw new ApiError('UNAUTHORIZED')
+  }
+  if (!res.ok) {
+    toast.error(`업로드가 실패했어요 (${res.status}). 잠시 후 다시 시도해주세요.`)
+    throw new ApiError(`업로드 실패 (${res.status})`)
+  }
   return (await res.json()) as T
 }
 

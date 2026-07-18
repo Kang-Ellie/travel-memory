@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Member } from '../../shared/types'
 import { api } from '../api'
 import { useMembers, useQueryClient, queryKeys } from '../queries'
+import { toast } from '../toast'
 import Window from './Window'
 import PageHeader from './PageHeader'
 
@@ -35,7 +36,8 @@ export default function MembersScreen({
   const remove = async (m: Member) => {
     if (!confirm(`'${m.name}'을(를) 삭제할까요?`)) return
     const res = await api.members.delete(m.id)
-    if (res.error) alert(res.error)
+    if (res.error) toast.error(res.error)
+    else toast.success('삭제했어요.')
     refresh()
   }
 
