@@ -90,7 +90,7 @@ const mapPlace = (r: any) => ({
   pros: r.pros, cons: r.cons, countryId: r.country_id, cityId: r.city_id,
   countryName: r.country_name ?? null, countryCode: r.country_code ?? null, cityName: r.city_name ?? null,
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
-  breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
+  breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, hasCoverPhotoOverride: !!r.cover_photo_override, createdAt: r.created_at,
   valetCompany: r.valet_company, bookingChannel: r.booking_channel,
   grade: r.grade, stayType: r.stay_type, airportCode: r.airport_code, bookingUrl: r.booking_url,
   valetDropoffLocation: r.valet_dropoff_location, valetReturnLocation: r.valet_return_location,
@@ -469,12 +469,12 @@ export function registerRoutes(app: ExpressApp): void {
   // ── 장소 족보 ─────────────────────────────────────────
   const PLACE_SELECT = `
     SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name,
-      (
+      COALESCE(p.cover_photo_override, (
         SELECT ph.file_path FROM photos ph
         JOIN timeline_events te ON te.id = ph.event_id
         WHERE te.place_id = p.id
         ORDER BY ph.id LIMIT 1
-      ) AS cover_photo_path,
+      )) AS cover_photo_path,
       (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count,
       (SELECT AVG(te3.rating) FROM timeline_events te3 WHERE te3.place_id = p.id AND te3.rating IS NOT NULL) AS avg_visit_rating
     FROM places p
@@ -570,6 +570,14 @@ export function registerRoutes(app: ExpressApp): void {
     } catch {
       res.json({ error: '여행 동선에서 사용 중인 장소라 삭제할 수 없어요.' })
     }
+  })
+
+  // 대표사진 직접 지정 — 지금까지는 "첫 방문의 첫 사진"이 자동으로 정해졌는데, filePath에
+  // null을 보내면 다시 자동 계산으로 되돌아간다.
+  app.put('/api/places/:id/cover-photo', async (req, res) => {
+    const { filePath } = req.body as { filePath: string | null }
+    await pool.query('UPDATE places SET cover_photo_override = $1 WHERE id = $2', [filePath || null, req.params.id])
+    res.json({ ok: true })
   })
 
   // 장소 족보 상세 — 여러 여행에 걸친 방문 기록·리뷰·사진·누적 비용을 한 번에
@@ -848,11 +856,11 @@ export function registerRoutes(app: ExpressApp): void {
   app.get('/api/cities/:id/places', async (req, res) => {
     const r = await pool.query(
       `SELECT p.*, co.name AS country_name, co.code AS country_code, ci.name AS city_name,
-        (
+        COALESCE(p.cover_photo_override, (
           SELECT ph.file_path FROM photos ph
           JOIN timeline_events te ON te.id = ph.event_id
           WHERE te.place_id = p.id ORDER BY ph.id LIMIT 1
-        ) AS cover_photo_path,
+        )) AS cover_photo_path,
         (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count,
         (SELECT AVG(te3.rating) FROM timeline_events te3 WHERE te3.place_id = p.id AND te3.rating IS NOT NULL) AS avg_visit_rating
       FROM places p

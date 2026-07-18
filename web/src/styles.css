@@ -1005,6 +1005,14 @@ textarea { resize: vertical; min-height: 70px; }
   opacity: 0; transition: opacity 0.12s;
 }
 .photo-thumb:hover .photo-del, .photo-thumb:focus-within .photo-del { opacity: 1; }
+.photo-cover-pick {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 3px 0; text-align: center;
+  background: rgba(45, 42, 62, 0.72); color: #fff;
+  font-size: 10px; font-weight: 700; border: none; border-radius: 0 0 8px 8px;
+  cursor: pointer; opacity: 0; transition: opacity 0.12s;
+}
+.photo-thumb:hover .photo-cover-pick, .photo-thumb:focus-within .photo-cover-pick { opacity: 1; }
 
 /* ── 사진 왼쪽 + 내용 오른쪽 카드 레이아웃 ─── */
 .event-card-body { display: flex; gap: 14px; margin-top: 10px; align-items: flex-start; }
@@ -1655,6 +1663,23 @@ textarea { resize: vertical; min-height: 70px; }
   letter-spacing: 0.26em; text-transform: uppercase;
   color: rgba(45, 42, 62, 0.42);
   margin-bottom: 4px;
+}
+
+/* ── 여행 회고: 지출·평점·일기를 조합해 보여주는 자동 요약 카드 (BASE 탭, 다녀온 여행만) ── */
+.retro-card { margin-bottom: 22px; }
+.retro-stats-row {
+  display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px;
+}
+.retro-stat {
+  flex: 1 1 140px; min-width: 140px;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+  padding: 12px 14px;
+}
+.retro-stat-value { font-weight: 800; font-size: 20px; margin-top: 2px; }
+.retro-diary-entry {
+  display: flex; gap: 10px; align-items: flex-start;
+  background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+  padding: 10px 12px;
 }
 
 .table-scroll { overflow-x: auto; }

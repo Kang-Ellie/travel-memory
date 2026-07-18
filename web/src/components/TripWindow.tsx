@@ -9,11 +9,13 @@ import DatePicker from './DatePicker'
 import TripCountryCityPicker from './TripCountryCityPicker'
 import TripWorkspace, { dayCount } from './TripWorkspace'
 import TripBaseSection from './TripBaseSection'
+import TripRetrospective from './TripRetrospective'
 import ExpensesTab from './ExpensesTab'
 import SettlementTab from './SettlementTab'
 import TripPrepTab from './TripPrepTab'
 import PrintItinerary from './PrintItinerary'
 import TripSummaryCard from './TripSummaryCard'
+import { tripStatus } from './TripsScreen'
 
 export type TripTab = 'base' | 'prep' | 'workspace' | 'expenses' | 'settlement'
 type Tab = TripTab
@@ -208,7 +210,12 @@ export default function TripWindow({ trip, onClose, onTripChanged, initialTab }:
         ))}
       </div>
       <div className="doc-tab-sheet">
-        {tab === 'base' && <TripBaseSection trip={trip} />}
+        {tab === 'base' && (
+          <>
+            {tripStatus(trip) === 'past' && <TripRetrospective trip={trip} />}
+            <TripBaseSection trip={trip} />
+          </>
+        )}
         {tab === 'prep' && <TripPrepTab trip={trip} />}
         {tab === 'workspace' && <TripWorkspace trip={trip} />}
         {tab === 'expenses' && <ExpensesTab trip={trip} />}

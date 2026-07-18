@@ -3,13 +3,24 @@ import type { PlaceDetail } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import { flagEmoji, ratingColor, displayRating, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
+import { useQueryClient, queryKeys } from '../queries'
+import { toast } from '../toast'
 import PlaceMeta from './PlaceMeta'
 import Thumb from './Thumb'
 
 export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
   const [detail, setDetail] = useState<PlaceDetail | null>(null)
+  const queryClient = useQueryClient()
 
-  useEffect(() => { api.places.detail(placeId).then(setDetail) }, [placeId])
+  const refresh = () => { api.places.detail(placeId).then(setDetail) }
+  useEffect(refresh, [placeId])
+
+  const setCoverPhoto = async (filePath: string | null) => {
+    await api.places.setCoverPhoto(placeId, filePath)
+    queryClient.invalidateQueries({ queryKey: queryKeys.places })
+    toast.success(filePath ? '대표사진으로 지정했어요.' : '대표사진을 기본값으로 되돌렸어요.')
+    refresh()
+  }
 
   if (!detail) return <div className="muted" style={{ padding: '8px 0' }}>불러오는 중…</div>
 
@@ -20,7 +31,13 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
   const headerBlock = (
     <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
       {place.coverPhoto ? (
-        <Thumb path={place.coverPhoto} style={{ width: 88, height: 88, borderRadius: 10, objectFit: 'cover', flexShrink: 0 }} />
+        <div style={{ position: 'relative', flexShrink: 0 }}>
+          <Thumb path={place.coverPhoto} style={{ width: 88, height: 88, borderRadius: 10, objectFit: 'cover', display: 'block' }} />
+          {place.hasCoverPhotoOverride && (
+            <button type="button" className="photo-del" title="대표사진 기본값으로 되돌리기"
+              onClick={(e) => { e.stopPropagation(); setCoverPhoto(null) }}>×</button>
+          )}
+        </div>
       ) : (
         <div style={{
           width: 88, height: 88, borderRadius: 10, flexShrink: 0, fontSize: 34,
@@ -95,8 +112,16 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
             {v.review && <div style={{ marginTop: 6, whiteSpace: 'pre-wrap' }}>{v.review}</div>}
             {v.photos.length > 0 && (
               <div className="photo-strip">
-                {v.photos.map((p) => <Thumb key={p.id} path={p.filePath}
-                  style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--ink)' }} />)}
+                {v.photos.map((p) => (
+                  <div key={p.id} className="photo-thumb">
+                    <Thumb path={p.filePath}
+                      style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '2px solid var(--ink)' }} />
+                    <button type="button" className="photo-cover-pick" title="이 사진을 대표사진으로 지정"
+                      onClick={() => setCoverPhoto(p.filePath)}>
+                      🖼 대표사진
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>

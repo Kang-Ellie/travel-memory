@@ -79,6 +79,8 @@ export interface Place {
   recommendedMenu: string | null
   breakTime: string | null
   coverPhoto: string | null
+  // 대표사진을 직접 지정했는지(true) 아니면 "첫 방문의 첫 사진"으로 자동 계산된 건지(false).
+  hasCoverPhotoOverride: boolean
   createdAt: string
   valetCompany: string | null
   bookingChannel: string | null

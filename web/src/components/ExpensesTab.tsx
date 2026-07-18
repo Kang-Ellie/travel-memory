@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Trip, Expense } from '../../shared/types'
 import { api } from '../api'
 import { useTripMembers, useMembers, useExpenses, useRates, useQueryClient, queryKeys } from '../queries'
-import { fmtMoney, computeCategoryTotals } from '../settlement'
+import { fmtMoney, computeCategoryTotals, krwEquivalent } from '../settlement'
 import { CATEGORY_COLOR } from '../categories'
 import { toast } from '../toast'
 import AddExpenseModal from './AddExpenseModal'
@@ -25,6 +25,9 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
   const [selMembers, setSelMembers] = useState<Set<string>>(new Set())
   const [newMemberName, setNewMemberName] = useState('')
   const [showAddExpense, setShowAddExpense] = useState(false)
+  // 여러 통화가 섞여 있을 때 "다 합치면 원화로 얼마인지" 한눈에 보고 싶다는 요청 — 환율이
+  // 등록돼 있어야 환산되고, 미설정 통화는 원래 통화 그대로 보여준다.
+  const [showKrw, setShowKrw] = useState(false)
 
   useEffect(() => {
     setSelMembers(new Set(participants.map((m) => m.id)))
@@ -77,6 +80,16 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
     return diff + 1
   }
   const dayTotalLabel = (list: Expense[]): string => {
+    if (showKrw) {
+      let total = 0
+      let unconverted = 0
+      for (const e of list) {
+        const krw = krwEquivalent(e, rates)
+        if (krw == null) unconverted++
+        else total += krw
+      }
+      return fmtMoney(total, 'KRW') + (unconverted > 0 ? ` (환율 미설정 ${unconverted}건 제외)` : '')
+    }
     const totals = new Map<string, number>()
     for (const e of list) totals.set(e.currency, (totals.get(e.currency) ?? 0) + e.amount)
     return [...totals.entries()].map(([c, t]) => fmtMoney(t, c)).join(' · ')
@@ -134,6 +147,10 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
             </span>
           ))}
           <span className="muted">여기서 설정한 환율로 예산·일별 지출이 원화로 환산돼요.</span>
+          <button type="button" className={`btn small ${showKrw ? 'primary' : ''}`} style={{ marginLeft: 'auto' }}
+            onClick={() => setShowKrw((v) => !v)}>
+            {showKrw ? '💴 원래 통화로 보기' : '💴 KRW로 보기'}
+          </button>
         </div>
       )}
 
@@ -185,7 +202,25 @@ export default function ExpensesTab({ trip }: { trip: Trip }) {
                       )}
                     </div>
                     <span className="muted" style={{ flexShrink: 0 }}>{e.payerName}</span>
-                    <span className="ledger-amount">{fmtMoney(e.amount, e.currency)}</span>
+                    <span className="ledger-amount">
+                      {showKrw && e.currency !== 'KRW' ? (
+                        krwEquivalent(e, rates) != null ? (
+                          <>
+                            {fmtMoney(krwEquivalent(e, rates)!, 'KRW')}
+                            <span className="muted" style={{ fontWeight: 600, fontSize: 11, marginLeft: 4 }}>
+                              ({fmtMoney(e.amount, e.currency)})
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            {fmtMoney(e.amount, e.currency)}
+                            <span className="muted" style={{ fontWeight: 600, fontSize: 11, marginLeft: 4 }}>(환율 미설정)</span>
+                          </>
+                        )
+                      ) : (
+                        fmtMoney(e.amount, e.currency)
+                      )}
+                    </span>
                     <button className="x-btn" onClick={() => api.expenses.delete(e.id).then(() => queryClient.invalidateQueries({ queryKey: queryKeys.expenses(trip.id) }))}>×</button>
                   </div>
                 ))}

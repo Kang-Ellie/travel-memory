@@ -3,6 +3,8 @@ import type { BucketItem, Country, City, Trip, Place } from '../../shared/types'
 import { bucketKindOf } from '../../shared/types'
 import { api } from '../api'
 import { flagEmoji } from '../categories'
+import { toast } from '../toast'
+import { dayCount } from './TripWorkspace'
 import Modal from './Modal'
 import Select from './Select'
 import DropdownMenu from './DropdownMenu'
@@ -33,8 +35,12 @@ export default function BucketCard({
   const [memo, setMemo] = useState(item.memo ?? '')
   const [tip, setTip] = useState(item.tip ?? '')
   const [photoUploading, setPhotoUploading] = useState(false)
+  const [scheduling, setScheduling] = useState(false)
+  const [scheduleTripId, setScheduleTripId] = useState(tripContext?.tripId ?? '')
+  const [scheduleDay, setScheduleDay] = useState('1')
   const photoInput = useRef<HTMLInputElement>(null)
   const linkedPlace = item.linkedPlaceId ? places.find((p) => p.id === item.linkedPlaceId) : undefined
+  const scheduleTrip = trips.find((t) => t.id === scheduleTripId)
 
   const saveNotes = async () => {
     await api.bucket.update(item.id, { memo: memo.trim() || null, tip: tip.trim() || null })
@@ -75,6 +81,24 @@ export default function BucketCard({
   const remove = async () => {
     if (!confirm(`'${item.title}' 항목을 삭제할까요?`)) return
     await api.bucket.delete(item.id)
+    onChanged()
+  }
+  // 버킷 항목을 "여행에 연결"만 해두면 실제 동선에는 안 들어가 있어서, 여행 가서도 깜빡하고
+  // 안 가는 경우가 있었다 — 여기서 바로 특정 일차에 일정으로 꽂아 넣는다. 이벤트에 bucketItemId를
+  // 달아두면(기존 로직 재사용) done=true·여행 연결까지 한 번에 처리된다.
+  const openSchedule = () => {
+    if (!item.linkedPlaceId) { toast.info('먼저 [📍 장소 족보와 연결]로 장소를 연결해주세요.'); return }
+    setScheduling(true)
+  }
+  const scheduleToTrip = async () => {
+    if (!item.linkedPlaceId || !scheduleTripId) return
+    const day = Number(scheduleDay)
+    const ev = await api.events.create({ tripId: scheduleTripId, placeId: item.linkedPlaceId, dayNumber: day })
+    await api.events.update(ev.id, {
+      rating: null, review: null, linkUrl: null, mustTry: null, memo: null, plannedTime: null, bucketItemId: item.id,
+    })
+    toast.success(`${day}일차 일정에 추가했어요.`)
+    setScheduling(false)
     onChanged()
   }
   const onPhotoPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -130,6 +154,7 @@ export default function BucketCard({
               ...(item.linkedPlaceId
                 ? [{ label: '장소 연결 해제', onClick: unlinkPlace }] as const
                 : [{ label: '📍 장소 족보와 연결', onClick: () => setLinkingPlace(true) }] as const),
+              { label: '🗓 일정에 추가', onClick: openSchedule },
               ...tripActions,
               'divider' as const,
               { label: '🗑 삭제', danger: true, onClick: remove },
@@ -165,7 +190,7 @@ export default function BucketCard({
           ✓
         </button>
       </div>
-      {(item.tip || item.memo || linkedPlace || linkingPlace || linking) && (
+      {(item.tip || item.memo || linkedPlace || linkingPlace || linking || scheduling) && (
         <div className="bucket-photo-foot">
           {item.tip && <div style={{ whiteSpace: 'pre-wrap', color: 'var(--ink)', fontSize: 13, lineHeight: 1.5 }}>💡 {item.tip}</div>}
           {item.memo && <div style={{ whiteSpace: 'pre-wrap', color: 'var(--ink)', fontSize: 13, lineHeight: 1.5 }}>📝 {item.memo}</div>}
@@ -188,6 +213,23 @@ export default function BucketCard({
               </Select>
               <button className="btn small primary" onClick={link}>연결</button>
               <button className="btn small" onClick={() => setLinking(false)}>취소</button>
+            </div>
+          )}
+          {scheduling && (
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Select value={scheduleTripId} onChange={(e) => { setScheduleTripId(e.target.value); setScheduleDay('1') }}>
+                <option value="">— 여행 선택 —</option>
+                {trips.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </Select>
+              {scheduleTrip && (
+                <Select value={scheduleDay} onChange={(e) => setScheduleDay(e.target.value)}>
+                  {Array.from({ length: dayCount(scheduleTrip) }, (_, i) => i + 1).map((d) => (
+                    <option key={d} value={d}>{d}일차</option>
+                  ))}
+                </Select>
+              )}
+              <button className="btn small primary" onClick={scheduleToTrip} disabled={!scheduleTripId}>추가</button>
+              <button className="btn small" onClick={() => setScheduling(false)}>취소</button>
             </div>
           )}
         </div>

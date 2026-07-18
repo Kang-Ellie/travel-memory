@@ -184,6 +184,7 @@ export const api = {
     }) => req<void>('PUT', `/api/places/${id}`, data),
     delete: (id: string) => req<{ error?: string }>('DELETE', `/api/places/${id}`),
     detail: (id: string) => req<PlaceDetail>('GET', `/api/places/${id}/detail`),
+    setCoverPhoto: (id: string, filePath: string | null) => req<void>('PUT', `/api/places/${id}/cover-photo`, { filePath }),
     googleSearch: (query: string) =>
       req<GooglePlaceResult[] | { error: string }>('GET', `/api/places/google-search?q=${encodeURIComponent(query)}`),
     resolveMapLink: (url: string) =>
