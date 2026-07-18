@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../shared/types'
 import { api } from '../api'
 import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
-import { flagEmoji, ratingColor, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL, CATEGORIES, EDIT_CATEGORIES } from '../categories'
+import { flagEmoji, ratingColor, displayRating, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL, CATEGORIES, EDIT_CATEGORIES } from '../categories'
 import { toast } from '../toast'
 import Window from './Window'
 import Modal from './Modal'
@@ -22,6 +22,7 @@ function PlaceCard({
 }) {
   const [editing, setEditing] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
+  const shownRating = displayRating(place)
 
   const remove = async () => {
     if (!confirm(`'${place.name}' 장소를 족보에서 삭제할까요?`)) return
@@ -63,9 +64,9 @@ function PlaceCard({
           </div>
         </div>
         <div className="place-card-rating-row">
-          {place.rating != null && (
-            <span className="place-card-rating" style={{ color: ratingColor(place.rating) }}>
-              ★ {place.rating.toFixed(1)}
+          {shownRating != null && (
+            <span className="place-card-rating" style={{ color: ratingColor(shownRating) }} title={place.rating == null ? '방문 평균 평점' : '내가 매긴 종합 평점'}>
+              ★ {shownRating.toFixed(1)}
             </span>
           )}
           {place.recommend === true && <span className="chip green">👍 추천</span>}

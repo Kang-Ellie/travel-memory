@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PlaceDetail } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { flagEmoji, ratingColor, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
+import { flagEmoji, ratingColor, displayRating, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
 import PlaceMeta from './PlaceMeta'
 import Thumb from './Thumb'
 
@@ -14,6 +14,7 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
   if (!detail) return <div className="muted" style={{ padding: '8px 0' }}>불러오는 중…</div>
 
   const { place } = detail
+  const shownRating = displayRating(place)
   // 북마크에서 카드를 눌렀을 때 방문 기록만 보이고 정작 "여기가 어떤 곳인지"는 안 보이던 문제를 고치려고,
   // 장소 족보 카드에 있던 기본 정보(사진·평점·주소·추천여부)를 상세 패널 맨 위에도 그대로 보여준다.
   const headerBlock = (
@@ -32,8 +33,10 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
       <div className="grow" style={{ minWidth: 0 }}>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 4 }}>
           <span className="chip blue">{place.category}</span>
-          {place.rating != null && (
-            <span style={{ fontWeight: 800, color: ratingColor(place.rating) }}>★ {place.rating.toFixed(1)}</span>
+          {shownRating != null && (
+            <span style={{ fontWeight: 800, color: ratingColor(shownRating) }} title={place.rating == null ? '방문 평균 평점' : '내가 매긴 종합 평점'}>
+              ★ {shownRating.toFixed(1)}
+            </span>
           )}
           {place.recommend === true && <span className="chip green">👍 추천</span>}
           {place.recommend === false && <span className="chip pink">👎 비추천</span>}

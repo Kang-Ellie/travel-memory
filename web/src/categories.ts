@@ -70,6 +70,14 @@ export function googleMapsUrl(place: { mapUrl: string | null; name: string; addr
   return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null
 }
 
+// 장소 평점이 두 군데(장소 자체의 수동 종합평가 vs 방문마다의 그날 평점)로 나뉘어 있어서
+// 화면마다 다른 걸 보여주면 "내가 4점 줬는데 왜 3.5로 보이지"가 생길 수 있다 — 규칙을 하나로
+// 고정: 목록·요약 화면은 항상 이 함수로, 방문 하나짜리 화면(그날의 리뷰)은 그 방문의 rating을
+// 그대로 쓴다(이 함수를 쓰지 않는다).
+export function displayRating(place: { rating: number | null; avgVisitRating?: number | null }): number | null {
+  return place.rating ?? place.avgVisitRating ?? null
+}
+
 // 장소 평점(0~5, 0.5 단위) 색상 — 낮을수록 빨강, 높을수록 초록
 export function ratingColor(n: number): string {
   if (n >= 4.5) return '#0a7d38'

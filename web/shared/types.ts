@@ -95,6 +95,9 @@ export interface Place {
   recommend: boolean | null
   tip: string | null
   visitCount: number
+  // 내가 수동으로 매긴 종합 평가(rating)가 없을 때 화면에 대신 보여줄 방문별 평점 평균.
+  // 규칙: 목록·요약 화면은 rating ?? avgVisitRating, 방문 단위 화면은 그 방문의 rating을 그대로.
+  avgVisitRating: number | null
 }
 
 export interface TransitSegment {
@@ -217,6 +220,9 @@ export interface Expense {
   id: string
   tripId: string
   eventId: string | null
+  // 이벤트가 삭제돼도(event_id가 SET NULL) 이 지출이 어느 장소 것이었는지 남도록 비정규화로
+  // 같이 저장해두는 필드 — 장소 족보 누적 지출 집계는 이 필드를 기준으로 한다.
+  placeId: string | null
   amount: number
   currency: string
   category: string

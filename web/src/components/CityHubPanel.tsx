@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import type { CityPlaceSummary } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { recommendedFieldLabel, CATEGORY_EMOJI } from '../categories'
+import { recommendedFieldLabel, displayRating, CATEGORY_EMOJI } from '../categories'
 import Thumb from './Thumb'
 
 const CATEGORY_ORDER = ['맛집', '카페', '숙소', '명소', '쇼핑', '기타']
 const RANK_MEDAL = ['🥇', '🥈', '🥉']
 
 function score(s: CityPlaceSummary): number {
-  return s.place.rating ?? s.avgVisitRating ?? 0
+  return displayRating(s.place) ?? s.avgVisitRating ?? 0
 }
 
 function PodiumSlot({ item, rank }: { item: CityPlaceSummary; rank: number }) {

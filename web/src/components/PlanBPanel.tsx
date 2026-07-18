@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Trip, Place, TimelineEvent } from '../../shared/types'
 import { api } from '../api'
-import { ratingColor } from '../categories'
+import { ratingColor, displayRating } from '../categories'
 import PlaceMeta from './PlaceMeta'
 
 const CATEGORY_ORDER = ['맛집', '카페', '명소', '쇼핑', '숙소', '공항', '기타']
@@ -45,8 +45,10 @@ export default function PlanBPanel({
                 <div className="grow">
                   <div style={{ fontWeight: 700 }}>
                     {p.name}
-                    {p.rating != null && (
-                      <span style={{ marginLeft: 6, color: ratingColor(p.rating), fontWeight: 800 }}>★ {p.rating.toFixed(1)}</span>
+                    {displayRating(p) != null && (
+                      <span style={{ marginLeft: 6, color: ratingColor(displayRating(p)!), fontWeight: 800 }}>
+                        ★ {displayRating(p)!.toFixed(1)}
+                      </span>
                     )}
                   </div>
                   {p.address && <div className="muted">📍 {p.address}</div>}

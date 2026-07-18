@@ -7,6 +7,17 @@ import { requireAuth, makeSessionToken, verifySessionToken, cookieOptions, SESSI
 
 const id = (): string => crypto.randomUUID()
 
+// 일정에 버킷을 연결하면 done=true가 되는데, 그 일정을 지우거나 연결을 해제해도 done이 그대로
+// 남아 "실제로 안 갔는데 이룸"으로 보이던 문제 — 이 버킷을 참조하는 다른 일정이 더는 없고,
+// 사진(다녀온 증거)도 없을 때만 done을 되돌린다(수동으로 완료 표시하고 사진까지 올린 항목은 안 건드림).
+async function rollbackBucketDoneIfOrphaned(db: Queryable, bucketItemId: string): Promise<void> {
+  await db.query(
+    `UPDATE bucket_items SET done = false
+     WHERE id = $1 AND image_path IS NULL
+       AND NOT EXISTS (SELECT 1 FROM timeline_events WHERE bucket_item_id = $1)`,
+    [bucketItemId])
+}
+
 // 구글 API 하루 호출 상한. 콘솔 할당량과 별개로, 여기서 넘으면 구글에 요청 자체를 안 보낸다.
 const DAILY_API_LIMITS: Record<'places' | 'geocode' | 'directions', number> = { places: 300, geocode: 300, directions: 300 }
 
@@ -87,6 +98,7 @@ const mapPlace = (r: any) => ({
   directions: r.directions, babyMenu: r.baby_menu,
   recommend: r.recommend == null ? null : !!r.recommend, tip: r.tip,
   visitCount: r.visit_count != null ? Number(r.visit_count) : 0,
+  avgVisitRating: r.avg_visit_rating != null ? Number(r.avg_visit_rating) : null,
 })
 const mapTransit = (r: any) => ({
   id: r.id, tripId: r.trip_id, dayNumber: r.day_number, afterEventId: r.after_event_id,
@@ -189,7 +201,7 @@ const mapEvent = (r: any) => ({
   bucketItemId: r.bucket_item_id, bucketItemTitle: r.bucket_item_title ?? null,
 })
 const mapExpense = (r: any) => ({
-  id: r.id, tripId: r.trip_id, eventId: r.event_id, amount: Number(r.amount), currency: r.currency,
+  id: r.id, tripId: r.trip_id, eventId: r.event_id, placeId: r.place_id ?? null, amount: Number(r.amount), currency: r.currency,
   category: r.category, description: r.description, paidBy: r.paid_by, payerName: r.payer_name,
   spentAt: r.spent_at, paymentMethod: r.payment_method, memo: r.memo, purchaseItems: r.purchase_items,
   isShared: r.is_shared, isPrebooked: r.is_prebooked,
@@ -463,7 +475,8 @@ export function registerRoutes(app: ExpressApp): void {
         WHERE te.place_id = p.id
         ORDER BY ph.id LIMIT 1
       ) AS cover_photo_path,
-      (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count
+      (SELECT COUNT(*) FROM timeline_events te2 WHERE te2.place_id = p.id) AS visit_count,
+      (SELECT AVG(te3.rating) FROM timeline_events te3 WHERE te3.place_id = p.id AND te3.rating IS NOT NULL) AS avg_visit_rating
     FROM places p
     LEFT JOIN countries co ON co.id = p.country_id
     LEFT JOIN cities ci ON ci.id = p.city_id
@@ -573,9 +586,11 @@ export function registerRoutes(app: ExpressApp): void {
     const detailed = await attachEventDetails(events.rows)
     const visits = detailed.map((d, i) => ({ ...d, tripTitle: events.rows[i].trip_title }))
 
+    // place_id로 직접 집계 — event_id로 조인하면 그 방문 이벤트가 삭제된 지출은
+    // 조용히 빠져서 가계부 총액과 장소 족보 누적 지출이 어긋나는 원인이었다.
     const totals = await pool.query(
       `SELECT currency, SUM(amount) AS total FROM expenses
-       WHERE event_id IN (SELECT id FROM timeline_events WHERE place_id = $1)
+       WHERE place_id = $1
        GROUP BY currency`, [placeId])
 
     res.json({
@@ -753,7 +768,23 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/countries/:id', async (req, res) => {
-    await pool.query('DELETE FROM countries WHERE id = $1', [req.params.id])
+    const countryId = req.params.id
+    // country_ids/city_ids가 TEXT[]라 FK 무결성이 없다 — 지워지는 나라(그리고 CASCADE로
+    // 같이 지워질 도시들)의 id가 버킷리스트/일기 배열에 죽은 채로 남지 않게 먼저 정리한다.
+    await withTransaction(async (db) => {
+      const citiesR = await db.query('SELECT id FROM cities WHERE country_id = $1', [countryId])
+      const cityIds = citiesR.rows.map((r) => r.id as string)
+      await db.query('UPDATE bucket_items SET country_ids = array_remove(country_ids, $1) WHERE $1 = ANY(country_ids)', [countryId])
+      if (cityIds.length > 0) {
+        await db.query(
+          `UPDATE bucket_items SET city_ids = ARRAY(SELECT unnest(city_ids) EXCEPT SELECT unnest($1::text[]))
+           WHERE city_ids && $1::text[]`, [cityIds])
+        await db.query(
+          `UPDATE day_notes SET city_ids = ARRAY(SELECT unnest(city_ids) EXCEPT SELECT unnest($1::text[]))
+           WHERE city_ids && $1::text[]`, [cityIds])
+      }
+      await db.query('DELETE FROM countries WHERE id = $1', [countryId])
+    })
     res.json({})
   })
 
@@ -801,7 +832,14 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/cities/:id', async (req, res) => {
-    await pool.query('DELETE FROM cities WHERE id = $1', [req.params.id])
+    const cityId = req.params.id
+    // day_notes.city_ids / bucket_items.city_ids가 TEXT[]라 FK 무결성이 없다 — 지워지는
+    // 도시 id가 배열에 죽은 채로 남지 않게 먼저 제거한다.
+    await withTransaction(async (db) => {
+      await db.query('UPDATE bucket_items SET city_ids = array_remove(city_ids, $1) WHERE $1 = ANY(city_ids)', [cityId])
+      await db.query('UPDATE day_notes SET city_ids = array_remove(city_ids, $1) WHERE $1 = ANY(city_ids)', [cityId])
+      await db.query('DELETE FROM cities WHERE id = $1', [cityId])
+    })
     res.json({})
   })
 
@@ -824,11 +862,12 @@ export function registerRoutes(app: ExpressApp): void {
       ORDER BY p.name`,
       [req.params.id])
 
+    // place_id로 직접 집계 — event_id 조인은 그 이벤트가 삭제되면 지출이 조용히 빠진다.
     const totalsR = await pool.query(
-      `SELECT te.place_id, e.currency, SUM(e.amount) AS total
-       FROM expenses e JOIN timeline_events te ON te.id = e.event_id
-       WHERE te.place_id IN (SELECT id FROM places WHERE city_id = $1)
-       GROUP BY te.place_id, e.currency`,
+      `SELECT e.place_id, e.currency, SUM(e.amount) AS total
+       FROM expenses e
+       WHERE e.place_id IN (SELECT id FROM places WHERE city_id = $1)
+       GROUP BY e.place_id, e.currency`,
       [req.params.id])
     const totalsByPlace = new Map<string, Array<{ currency: string; total: number }>>()
     for (const row of totalsR.rows) {
@@ -895,6 +934,11 @@ export function registerRoutes(app: ExpressApp): void {
       rating: number | null; review: string | null; linkUrl: string | null; mustTry: string | null
       memo: string | null; plannedTime: string | null; bucketItemId?: string | null
     }
+    const prev = bucketItemId !== undefined
+      ? await pool.query('SELECT bucket_item_id FROM timeline_events WHERE id = $1', [req.params.id])
+      : null
+    const prevBucketItemId = prev?.rows[0]?.bucket_item_id as string | null | undefined
+
     const sets = ['rating=$1', 'review=$2', 'link_url=$3', 'must_try=$4', 'planned_time=$5', 'memo=$6']
     const params: any[] = [rating, review, linkUrl, mustTry, plannedTime, memo]
     if (bucketItemId !== undefined) { params.push(bucketItemId); sets.push(`bucket_item_id=$${params.length}`) }
@@ -906,6 +950,10 @@ export function registerRoutes(app: ExpressApp): void {
         await pool.query('UPDATE bucket_items SET done = true, linked_trip_id = $1 WHERE id = $2',
           [ev.rows[0].trip_id, bucketItemId])
       }
+    }
+    // 다른 버킷으로 바꾸거나 연결을 해제한 경우, 원래 연결돼 있던 버킷의 done을 되돌릴지 확인
+    if (prevBucketItemId && prevBucketItemId !== bucketItemId) {
+      await rollbackBucketDoneIfOrphaned(pool, prevBucketItemId)
     }
     res.json({ ok: true })
   })
@@ -925,12 +973,32 @@ export function registerRoutes(app: ExpressApp): void {
   })
 
   app.delete('/api/events/:id', async (req, res) => {
+    const eventId = req.params.id
     // CASCADE로 지워지는 사진·항공사 로고의 R2 파일도 함께 정리 (여행 삭제와 같은 이유)
-    const [photos, logo] = await Promise.all([
-      pool.query('SELECT file_path FROM photos WHERE event_id = $1', [req.params.id]),
-      pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [req.params.id]),
+    const [photos, logo, evRow] = await Promise.all([
+      pool.query('SELECT file_path FROM photos WHERE event_id = $1', [eventId]),
+      pool.query('SELECT airline_logo_path FROM flight_details WHERE event_id = $1', [eventId]),
+      pool.query('SELECT trip_id, day_number, sequence, bucket_item_id FROM timeline_events WHERE id = $1', [eventId]),
     ])
-    await pool.query('DELETE FROM timeline_events WHERE id = $1', [req.params.id])
+    const ev = evRow.rows[0] as
+      { trip_id: string; day_number: number; sequence: number; bucket_item_id: string | null } | undefined
+
+    await withTransaction(async (db) => {
+      if (ev) {
+        // 이 일정 뒤에 붙어있던 이동 구간이 CASCADE로 통째로 같이 사라지지 않게, 바로 앞
+        // 일정으로 재연결한다(앞 일정이 없으면 "일차 시작 지점"을 뜻하는 NULL로 남긴다).
+        const prevEvent = await db.query(
+          `SELECT id FROM timeline_events
+           WHERE trip_id = $1 AND day_number = $2 AND sequence < $3
+           ORDER BY sequence DESC LIMIT 1`,
+          [ev.trip_id, ev.day_number, ev.sequence])
+        const prevEventId = prevEvent.rows[0]?.id ?? null
+        await db.query('UPDATE transit_segments SET after_event_id = $1 WHERE after_event_id = $2', [prevEventId, eventId])
+      }
+      await db.query('DELETE FROM timeline_events WHERE id = $1', [eventId])
+      if (ev?.bucket_item_id) await rollbackBucketDoneIfOrphaned(db, ev.bucket_item_id)
+    })
+
     const filePaths = [
       ...photos.rows.map((r) => r.file_path as string),
       ...(logo.rows[0]?.airline_logo_path ? [logo.rows[0].airline_logo_path as string] : []),
@@ -1159,13 +1227,24 @@ export function registerRoutes(app: ExpressApp): void {
       paymentMethod: string | null; memo: string | null; purchaseItems: string | null
       isShared: boolean; isPrebooked: boolean
     }
+    // 지출 날짜가 자유형 TEXT라 형식이 어긋나면 일차별 합계 매칭(문자열 비교)에서 조용히
+    // 빠지므로, 저장 전에 형식을 확정한다.
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(spentAt ?? '')) {
+      res.status(400).json({ error: '지출 날짜 형식이 올바르지 않아요 (YYYY-MM-DD).' })
+      return
+    }
     const expenseId = id()
+    // 이벤트가 나중에 지워져도 이 지출이 어느 장소 것이었는지 남도록 place_id를 비정규화로
+    // 같이 저장해둔다 (event_id는 이벤트 삭제 시 SET NULL 되어 끊김).
+    const placeId = eventId
+      ? (await pool.query('SELECT place_id FROM timeline_events WHERE id = $1', [eventId])).rows[0]?.place_id ?? null
+      : null
     await pool.query(
       `INSERT INTO expenses (
-         id, trip_id, event_id, amount, currency, category, description, paid_by, spent_at,
+         id, trip_id, event_id, place_id, amount, currency, category, description, paid_by, spent_at,
          payment_method, memo, purchase_items, is_shared, is_prebooked
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-      [expenseId, req.params.tripId, eventId, amount, currency, category, description.trim(), paidBy, spentAt,
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [expenseId, req.params.tripId, eventId, placeId, amount, currency, category, description.trim(), paidBy, spentAt,
         paymentMethod ?? null, memo ?? null, purchaseItems ?? null, isShared ?? true, isPrebooked ?? false])
     if ((splitWith ?? []).length > 0) {
       const values = splitWith.map((_, i) => `($1, $${i + 2})`).join(', ')
