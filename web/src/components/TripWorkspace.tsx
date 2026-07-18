@@ -672,7 +672,7 @@ function EventCard({
               {isValet && (
                 <div style={{ marginBottom: 8 }}>
                   {ev.valet && (ev.valet.scheduledAt || ev.valet.bookingRef || ev.valet.bookedVia) ? (
-                    <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
+                    <ValetPassCard valet={ev.valet} place={ev.place} vouchers={vouchers} />
                   ) : (
                     <button type="button" className="btn small" onClick={startEdit}>🚗 발렛 티켓 정보 입력하기</button>
                   )}

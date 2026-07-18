@@ -55,6 +55,7 @@ function PlaceCard({
   const [grade, setGrade] = useState(place.grade ?? '')
   const [stayType, setStayType] = useState(place.stayType ?? '')
   const [airportCode, setAirportCode] = useState(place.airportCode ?? '')
+  const [bookingUrl, setBookingUrl] = useState(place.bookingUrl ?? '')
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
@@ -89,7 +90,8 @@ function PlaceCard({
       hours: hours.trim() || null, reservationNeeded, recommendedMenu: recommendedMenu.trim() || null,
       breakTime: breakTime.trim() || null,
       valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
-      grade: grade.trim() || null, stayType: stayType || null, airportCode: airportCode.trim() || null, directions: directions.trim() || null,
+      grade: grade.trim() || null, stayType: stayType || null, airportCode: airportCode.trim() || null,
+      bookingUrl: bookingUrl.trim() || null, directions: directions.trim() || null,
       babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
     setEditing(false)
@@ -157,6 +159,8 @@ function PlaceCard({
                   <div className="field grow"><label>📞 예약 채널</label>
                     <input type="text" value={bookingChannel} placeholder="예: 카카오톡 채널, 010-1234-5678"
                       onChange={(e) => setBookingChannel(e.target.value)} /></div>
+                  <div className="field grow"><label>🔗 예약 사이트</label>
+                    <input type="text" value={bookingUrl} placeholder="https://..." onChange={(e) => setBookingUrl(e.target.value)} /></div>
                 </>
               )}
               {isLodging && (

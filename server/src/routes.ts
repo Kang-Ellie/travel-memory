@@ -81,7 +81,7 @@ const mapPlace = (r: any) => ({
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
   breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
   valetCompany: r.valet_company, bookingChannel: r.booking_channel,
-  grade: r.grade, stayType: r.stay_type, airportCode: r.airport_code, directions: r.directions, babyMenu: r.baby_menu,
+  grade: r.grade, stayType: r.stay_type, airportCode: r.airport_code, bookingUrl: r.booking_url, directions: r.directions, babyMenu: r.baby_menu,
   recommend: r.recommend == null ? null : !!r.recommend, tip: r.tip,
   visitCount: r.visit_count != null ? Number(r.visit_count) : 0,
 })
@@ -468,29 +468,30 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
-      valetCompany, bookingChannel, grade, stayType, airportCode, directions, babyMenu, recommend, tip,
+      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl, directions, babyMenu, recommend, tip,
     } = req.body as {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
       pros?: string | null; cons?: string | null; countryId?: string | null; cityId?: string | null
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
       valetCompany?: string | null; bookingChannel?: string | null
-      grade?: string | null; stayType?: string | null; airportCode?: string | null; directions?: string | null; babyMenu?: string | null
+      grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }
     const placeId = id()
     await pool.query(
       `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id,
          hours, reservation_needed, recommended_menu, break_time,
-         valet_company, booking_channel, grade, stay_type, directions, baby_menu, recommend, tip, airport_code)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26)`,
+         valet_company, booking_channel, grade, stay_type, directions, baby_menu, recommend, tip, airport_code, booking_url)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
       [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
         mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
         countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null,
         breakTime?.trim() || null,
         valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null, stayType?.trim() || null,
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null,
-        airportCode?.trim().toUpperCase() || null])
+        airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null])
     await logActivity(null, 'place_added', name.trim())
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
@@ -500,27 +501,28 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
-      valetCompany, bookingChannel, grade, stayType, airportCode, directions, babyMenu, recommend, tip,
+      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl, directions, babyMenu, recommend, tip,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
       valetCompany?: string | null; bookingChannel?: string | null
-      grade?: string | null; stayType?: string | null; airportCode?: string | null; directions?: string | null; babyMenu?: string | null
+      grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }
     await pool.query(
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
          country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14,
          valet_company=$15, booking_channel=$16, grade=$17, directions=$18, baby_menu=$19, recommend=$20, tip=$21,
-         stay_type=$22, airport_code=$23 WHERE id=$24`,
+         stay_type=$22, airport_code=$23, booking_url=$24 WHERE id=$25`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
         pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
         hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, breakTime?.trim() || null,
         valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null,
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null,
-        stayType?.trim() || null, airportCode?.trim().toUpperCase() || null, req.params.id])
+        stayType?.trim() || null, airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null, req.params.id])
     res.json({ ok: true })
   })
 

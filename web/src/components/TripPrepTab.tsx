@@ -167,7 +167,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
           {ticketSection('발렛', 'VALET', '🚗 발렛', valets,
             (ev) => ev.valet
-              ? <ValetPassCard valet={ev.valet} placeName={ev.place.name} vouchers={vouchers} />
+              ? <ValetPassCard valet={ev.valet} place={ev.place} vouchers={vouchers} />
               : null,
             '발렛 상세정보 입력')}
 

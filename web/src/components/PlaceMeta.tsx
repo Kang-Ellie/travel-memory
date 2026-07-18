@@ -27,6 +27,11 @@ export default function PlaceMeta({ place }: { place: Place }) {
           {place.bookingChannel && <>· 📞 {place.bookingChannel}</>}
         </div>
       )}
+      {place.bookingUrl && (
+        <div className="muted">
+          🔗 <a href={place.bookingUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>예약 사이트</a>
+        </div>
+      )}
       {(place.pros || place.cons) && (
         <div className="muted">
           {place.pros && <>👍 {place.pros} </>}

@@ -85,6 +85,7 @@ export interface Place {
   grade: string | null
   stayType: string | null
   airportCode: string | null
+  bookingUrl: string | null
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null

@@ -1,8 +1,8 @@
-import type { ValetDetail, Voucher } from '../../shared/types'
+import type { Place, ValetDetail, Voucher } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
 
-export default function ValetPassCard({ valet, placeName, vouchers = [] }: { valet: ValetDetail; placeName: string; vouchers?: Voucher[] }) {
+export default function ValetPassCard({ valet, place, vouchers = [] }: { valet: ValetDetail; place: Place; vouchers?: Voucher[] }) {
   const at = fmtDateTime(valet.scheduledAt)
   const hasInfo = valet.bookingRef || valet.bookedVia
   const voucher = valet.voucherId ? vouchers.find((v) => v.id === valet.voucherId) : undefined
@@ -23,7 +23,7 @@ export default function ValetPassCard({ valet, placeName, vouchers = [] }: { val
         <div className="bpass-route">
           <div className="bpass-endpoint from">
             <div className="kicker">Valet</div>
-            <div className="code">{placeName}</div>
+            <div className="code">{place.name}</div>
             <div className="time">{at.date} {at.time}</div>
           </div>
           <div className="bpass-path"><span className="line" /><span className="plane">🅿</span></div>
@@ -36,13 +36,16 @@ export default function ValetPassCard({ valet, placeName, vouchers = [] }: { val
           </div>
         )}
 
-        {valet.voucherId && (
+        {(valet.voucherId || place.bookingUrl) && (
           <div className="bpass-badges">
+            {place.bookingUrl && (
+              <a className="chip blue" href={place.bookingUrl} target="_blank" rel="noreferrer" title="발렛 예약 사이트로 이동" onClick={(e) => e.stopPropagation()}>🔗 예약 사이트</a>
+            )}
             {voucher ? (
               <a className="chip green" href={fileUrl(voucher.filePath)} target="_blank" rel="noreferrer" title="바우처 열기" onClick={(e) => e.stopPropagation()}>🎫 {valet.voucherTitle ?? voucher.title}</a>
-            ) : (
+            ) : valet.voucherId ? (
               <span className="chip green" title={valet.voucherTitle ?? ''}>🎫 {valet.voucherTitle}</span>
-            )}
+            ) : null}
           </div>
         )}
       </div>
