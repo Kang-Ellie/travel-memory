@@ -107,6 +107,7 @@ export const api = {
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
       valetDropoffLocation?: string | null; valetReturnLocation?: string | null
+      checkInTime?: string | null; checkOutTime?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }) => req<Place>('POST', '/api/places', data),
@@ -118,6 +119,7 @@ export const api = {
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
       valetDropoffLocation?: string | null; valetReturnLocation?: string | null
+      checkInTime?: string | null; checkOutTime?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }) => req<void>('PUT', `/api/places/${id}`, data),

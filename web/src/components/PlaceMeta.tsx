@@ -12,6 +12,12 @@ export default function PlaceMeta({ place }: { place: Place }) {
           {place.grade && <>· ⭐ {place.grade}</>}
         </div>
       )}
+      {(place.checkInTime || place.checkOutTime) && (
+        <div className="muted">
+          {place.checkInTime && <>🕒 체크인 {place.checkInTime} </>}
+          {place.checkOutTime && <>· 체크아웃 {place.checkOutTime}</>}
+        </div>
+      )}
       {place.airportCode && <div className="muted">✈️ {place.airportCode}</div>}
       {place.hours && (
         <div className="muted">🕒 {place.hours}{place.breakTime ? ` (브레이크타임 ${place.breakTime})` : ''}</div>

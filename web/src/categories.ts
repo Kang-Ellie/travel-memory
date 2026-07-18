@@ -16,6 +16,16 @@ export const CATEGORY_COLOR: Record<ExpenseCategory, string> = {
 
 export { EXPENSE_CATEGORIES }
 
+// 사진이 아직 없는 장소 카드의 플레이스홀더 (카테고리별 이모지 + 파스텔 배경).
+// 장소 족보 카드와 방문 기록 상세에서 같이 쓰인다.
+export const CATEGORY_EMOJI: Record<string, string> = {
+  맛집: '🍜', 카페: '☕', 명소: '🏛', 쇼핑: '🛍', 숙소: '🏨', 공항: '✈️', 발렛: '🚗', 기타: '📍',
+}
+export const CATEGORY_PASTEL: Record<string, string> = {
+  맛집: 'var(--pink-soft)', 카페: 'var(--yellow-soft)', 명소: 'var(--purple-soft)', 쇼핑: 'var(--blue-soft)',
+  숙소: 'var(--green-soft)', 공항: 'var(--blue-soft)', 발렛: 'var(--yellow-soft)', 기타: 'var(--purple-soft)',
+}
+
 export function flagEmoji(code: string | null | undefined): string {
   if (!code || code.trim().length !== 2) return '🌐'
   const upper = code.trim().toUpperCase()

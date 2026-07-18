@@ -125,6 +125,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           {ticketKind && (
             <TicketQuickAdd
               tripId={trip.id}
+              trip={trip}
               kind={ticketKind}
               places={places}
               participants={participants}
@@ -137,6 +138,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
           {editTicket && (
             <TicketQuickAdd
               tripId={trip.id}
+              trip={trip}
               kind={editTicket.kind}
               places={places}
               participants={participants}

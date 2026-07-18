@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { Place, Member, VoucherCategory, TimelineEvent, Airline } from '../../shared/types'
+import type { Place, Member, VoucherCategory, TimelineEvent, Airline, Trip } from '../../shared/types'
 import { api } from '../api'
 import { fmtDateTime } from '../categories'
 import Modal from './Modal'
@@ -19,9 +19,9 @@ const NAME_LABEL: Record<TicketKind, string> = { 발렛: '발렛 맡기는 곳 �
 const VOUCHER_CATEGORY_FOR_KIND: Record<TicketKind, VoucherCategory> = { 발렛: '티켓', 항공: '항공권', 숙소: '숙소' }
 
 export default function TicketQuickAdd({
-  tripId, kind, places, participants, existingFlights = [], airlines = [], editEvent, onClose, onCreated,
+  tripId, trip, kind, places, participants, existingFlights = [], airlines = [], editEvent, onClose, onCreated,
 }: {
-  tripId: string; kind: TicketKind; places: Place[]; participants: Member[]; existingFlights?: TimelineEvent[]
+  tripId: string; trip?: Trip; kind: TicketKind; places: Place[]; participants: Member[]; existingFlights?: TimelineEvent[]
   airlines?: Airline[]; editEvent?: TimelineEvent; onClose: () => void; onCreated: () => void
 }) {
   const isEdit = !!editEvent
@@ -197,7 +197,17 @@ export default function TicketQuickAdd({
           <div className="form-row">
             <div className="field grow">
               <label>{kind === '항공' ? '장소 (공항 — 같은 공항이면 재사용하세요)' : '장소'}</label>
-              <Select value={placeId} onChange={(e) => setPlaceId(e.target.value)}>
+              <Select value={placeId} onChange={(e) => {
+                const pid = e.target.value
+                setPlaceId(pid)
+                // 숙소 장소에 기본 체크인/아웃 시간이 등록돼 있으면, 아직 아무것도 안 채운 상태일 때
+                // 여행 시작·종료일 + 그 시간으로 미리 채워서 매번 새로 입력할 필요 없게 한다.
+                if (kind === '숙소' && pid && trip && !checkInAt && !checkOutAt) {
+                  const p = places.find((pl) => pl.id === pid)
+                  if (p?.checkInTime) setCheckInAt(`${trip.startDate}T${p.checkInTime}`)
+                  if (p?.checkOutTime) setCheckOutAt(`${trip.endDate}T${p.checkOutTime}`)
+                }
+              }}>
                 <option value="">✚ 새 장소 바로 등록</option>
                 {candidatePlaces.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </Select>

@@ -88,6 +88,8 @@ export interface Place {
   bookingUrl: string | null
   valetDropoffLocation: string | null
   valetReturnLocation: string | null
+  checkInTime: string | null
+  checkOutTime: string | null
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null

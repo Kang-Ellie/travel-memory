@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CityPlaceSummary } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { recommendedFieldLabel } from '../categories'
-import { CATEGORY_EMOJI } from './PlacesScreen'
+import { recommendedFieldLabel, CATEGORY_EMOJI } from '../categories'
 import Thumb from './Thumb'
 
 const CATEGORY_ORDER = ['맛집', '카페', '숙소', '명소', '쇼핑', '기타']

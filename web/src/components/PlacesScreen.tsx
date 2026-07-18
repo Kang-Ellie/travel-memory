@@ -3,7 +3,7 @@ import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../
 import { STAY_TYPES } from '../../shared/types'
 import { api } from '../api'
 import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
-import { flagEmoji, ratingColor, recommendedFieldLabel } from '../categories'
+import { flagEmoji, ratingColor, recommendedFieldLabel, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
@@ -13,14 +13,6 @@ import PlacesMapView from './PlacesMapView'
 import Thumb from './Thumb'
 
 const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
-// 사진이 아직 없는 장소 카드의 플레이스홀더 (카테고리별 이모지 + 파스텔 배경)
-export const CATEGORY_EMOJI: Record<string, string> = {
-  맛집: '🍜', 카페: '☕', 명소: '🏛', 쇼핑: '🛍', 숙소: '🏨', 공항: '✈️', 발렛: '🚗', 기타: '📍',
-}
-const CATEGORY_PASTEL: Record<string, string> = {
-  맛집: 'var(--pink-soft)', 카페: 'var(--yellow-soft)', 명소: 'var(--purple-soft)', 쇼핑: 'var(--blue-soft)',
-  숙소: 'var(--green-soft)', 공항: 'var(--blue-soft)', 발렛: 'var(--yellow-soft)', 기타: 'var(--purple-soft)',
-}
 const EDIT_CATEGORIES = CATEGORIES.slice(1)
 const BABY_MENU_CATEGORIES = ['맛집', '카페', '숙소']
 const RECOMMEND_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소']
@@ -58,6 +50,8 @@ function PlaceCard({
   const [bookingUrl, setBookingUrl] = useState(place.bookingUrl ?? '')
   const [valetDropoffLocation, setValetDropoffLocation] = useState(place.valetDropoffLocation ?? '')
   const [valetReturnLocation, setValetReturnLocation] = useState(place.valetReturnLocation ?? '')
+  const [checkInTime, setCheckInTime] = useState(place.checkInTime ?? '')
+  const [checkOutTime, setCheckOutTime] = useState(place.checkOutTime ?? '')
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
@@ -95,6 +89,7 @@ function PlaceCard({
       grade: grade.trim() || null, stayType: stayType || null, airportCode: airportCode.trim() || null,
       bookingUrl: bookingUrl.trim() || null,
       valetDropoffLocation: valetDropoffLocation.trim() || null, valetReturnLocation: valetReturnLocation.trim() || null,
+      checkInTime: checkInTime.trim() || null, checkOutTime: checkOutTime.trim() || null,
       directions: directions.trim() || null,
       babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
@@ -181,6 +176,10 @@ function PlaceCard({
                     </Select></div>
                   <div className="field"><label>⭐ 성급</label>
                     <input type="text" value={grade} placeholder="예: 4성급" onChange={(e) => setGrade(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 110 }}><label>🕒 체크인 시간</label>
+                    <input type="time" value={checkInTime} onChange={(e) => setCheckInTime(e.target.value)} /></div>
+                  <div className="field" style={{ maxWidth: 110 }}><label>🕒 체크아웃 시간</label>
+                    <input type="time" value={checkOutTime} onChange={(e) => setCheckOutTime(e.target.value)} /></div>
                   <div className="field grow"><label>🚕 가는 법</label>
                     <input type="text" value={directions} placeholder="예: 공항에서 리무진 버스 40분" onChange={(e) => setDirections(e.target.value)} /></div>
                 </>
