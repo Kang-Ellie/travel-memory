@@ -167,7 +167,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
 
           {ticketSection('숙소', 'STAY', '🏨 숙소', stays,
             (ev) => ev.lodging
-              ? <LodgingPassCard lodging={ev.lodging} place={ev.place} vouchers={vouchers} />
+              ? <LodgingPassCard lodging={ev.lodging} place={ev.place} vouchers={vouchers} onChanged={refresh} />
               : null,
             '숙소 상세정보 입력')}
 

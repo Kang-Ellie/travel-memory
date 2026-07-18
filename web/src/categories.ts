@@ -16,6 +16,17 @@ export const CATEGORY_COLOR: Record<ExpenseCategory, string> = {
 
 export { EXPENSE_CATEGORIES }
 
+export const CATEGORIES = ['전체', '맛집', '카페', '명소', '쇼핑', '숙소', '공항', '발렛', '기타']
+export const EDIT_CATEGORIES = CATEGORIES.slice(1)
+export const BABY_MENU_CATEGORIES = ['맛집', '카페']
+// 영업시간·브레이크타임·예약필요·추천메뉴는 "그 자리에 가서 뭘 먹거나 사는" 곳(맛집·카페·명소·쇼핑·기타)
+// 얘기지, 숙소는 체크인/체크아웃·유형·성급으로 따로 다뤄서 여기서는 뺀다.
+export const BUSINESS_INFO_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '기타']
+export const RECOMMEND_CATEGORIES = ['맛집', '카페', '명소', '쇼핑', '숙소']
+// 공항·발렛은 들르는 곳이지 "리뷰"할 대상이 아니라서, 평점·추천메뉴·장단점 같은
+// 리뷰성 필드는 이 두 분류에서만 통째로 숨긴다.
+export const NO_REVIEW_CATEGORIES = ['공항', '발렛']
+
 // 사진이 아직 없는 장소 카드의 플레이스홀더 (카테고리별 이모지 + 파스텔 배경).
 // 장소 족보 카드와 방문 기록 상세에서 같이 쓰인다.
 export const CATEGORY_EMOJI: Record<string, string> = {

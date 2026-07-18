@@ -2,11 +2,19 @@ import { useState } from 'react'
 import type { LodgingDetail, Place, Voucher } from '../../shared/types'
 import { fileUrl } from '../api'
 import { fmtDateTime } from '../categories'
+import { useCountries, useCities } from '../queries'
 import Modal from './Modal'
 import PlaceDetailPanel from './PlaceDetailPanel'
+import PlaceEditModal from './PlaceEditModal'
+import DropdownMenu from './DropdownMenu'
 
-export default function LodgingPassCard({ lodging, place, vouchers = [] }: { lodging: LodgingDetail; place: Place; vouchers?: Voucher[] }) {
+export default function LodgingPassCard({ lodging, place, vouchers = [], onChanged }: {
+  lodging: LodgingDetail; place: Place; vouchers?: Voucher[]; onChanged?: () => void
+}) {
   const [placeInfoOpen, setPlaceInfoOpen] = useState(false)
+  const [editingPlace, setEditingPlace] = useState(false)
+  const { data: countries = [] } = useCountries()
+  const { data: cities = [] } = useCities()
   const inAt = fmtDateTime(lodging.checkInAt)
   const outAt = fmtDateTime(lodging.checkOutAt)
   const hasInfo = lodging.bookingRef || lodging.bookedVia || lodging.roomType || place.grade
@@ -30,10 +38,23 @@ export default function LodgingPassCard({ lodging, place, vouchers = [] }: { lod
             <div className="gate-val">{place.stayType || '숙소'}</div>
           </div>
         </div>
-        {placeInfoOpen && (
-          <Modal title={`${place.name} · 방문 기록`} onClose={() => setPlaceInfoOpen(false)}>
+        {placeInfoOpen && !editingPlace && (
+          <Modal
+            title={`${place.name} · 방문 기록`}
+            onClose={() => setPlaceInfoOpen(false)}
+            headerActions={<DropdownMenu actions={[
+              { label: '✏️ 수정', onClick: () => setEditingPlace(true) },
+            ]} />}
+          >
             <PlaceDetailPanel placeId={place.id} />
           </Modal>
+        )}
+        {editingPlace && (
+          <PlaceEditModal
+            place={place} countries={countries} cities={cities}
+            onClose={() => setEditingPlace(false)}
+            onSaved={onChanged}
+          />
         )}
 
         <div className="bpass-route">
