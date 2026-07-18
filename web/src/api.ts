@@ -115,6 +115,7 @@ export const api = {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
       countryId: string | null; cityId: string | null
+      lat?: number | null; lng?: number | null
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null

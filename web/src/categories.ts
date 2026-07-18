@@ -51,6 +51,14 @@ export function recommendedFieldLabel(category: string): string {
   return '📍 POINT'
 }
 
+// 장소에 구글 지도 링크를 따로 저장해두지 않았어도, 이름+주소만 있으면 구글 지도 검색
+// URL을 즉석에서 만들 수 있다 (API 호출 없이 공짜) — "지도 바로가기"가 항상 뜨게 하는 용도.
+export function googleMapsUrl(place: { mapUrl: string | null; name: string; address: string }): string | null {
+  if (place.mapUrl) return place.mapUrl
+  const q = [place.name, place.address].filter(Boolean).join(' ').trim()
+  return q ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}` : null
+}
+
 // 장소 평점(0~5, 0.5 단위) 색상 — 낮을수록 빨강, 높을수록 초록
 export function ratingColor(n: number): string {
   if (n >= 4.5) return '#0a7d38'

@@ -3,7 +3,7 @@ import type { Place, GooglePlaceResult, Country, City, BucketItem } from '../../
 import { STAY_TYPES } from '../../shared/types'
 import { api } from '../api'
 import { usePlaces, useCountries, useCities, useBucket, useQueryClient, queryKeys } from '../queries'
-import { flagEmoji, ratingColor, recommendedFieldLabel, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
+import { flagEmoji, ratingColor, recommendedFieldLabel, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
 import Window from './Window'
 import Modal from './Modal'
 import Select from './Select'
@@ -36,6 +36,11 @@ function PlaceCard({
   const [category, setCategory] = useState(place.category)
   const [memo, setMemo] = useState(place.memo ?? '')
   const [mapUrl, setMapUrl] = useState(place.mapUrl ?? '')
+  const [lat, setLat] = useState(place.lat)
+  const [lng, setLng] = useState(place.lng)
+  const [googleResults, setGoogleResults] = useState<GooglePlaceResult[]>([])
+  const [googleSearching, setGoogleSearching] = useState(false)
+  const [googleSearchError, setGoogleSearchError] = useState('')
   const [rating, setRating] = useState(place.rating != null ? String(place.rating) : '')
   const [pros, setPros] = useState(place.pros ?? '')
   const [cons, setCons] = useState(place.cons ?? '')
@@ -77,12 +82,34 @@ function PlaceCard({
     if ('error' in res) { setResolveError(res.error); return }
     if (res.address) setAddress(res.address)
     if (res.name && !name.trim()) setName(res.name)
+    if (res.lat != null) setLat(res.lat)
+    if (res.lng != null) setLng(res.lng)
+  }
+
+  // 링크 없이도 이름만으로 구글에 바로 물어봐서 주소·좌표를 찾아온다 (API 호출 없이 만드는
+  // "지도 바로가기"와 달리, 이건 실제로 구글 검색을 한 번 호출한다 — 설정에 API 키 등록 필요).
+  const searchGoogle = async () => {
+    if (!name.trim()) return
+    setGoogleSearching(true); setGoogleSearchError(''); setGoogleResults([])
+    const res = await api.places.googleSearch(`${name.trim()} ${address.trim()}`.trim())
+    setGoogleSearching(false)
+    if ('error' in res) { setGoogleSearchError(res.error); return }
+    if (res.length === 0) { setGoogleSearchError('검색 결과가 없어요.'); return }
+    setGoogleResults(res)
+  }
+  const applyGoogleResult = (r: GooglePlaceResult) => {
+    setAddress(r.address)
+    setLat(r.lat)
+    setLng(r.lng)
+    setMapUrl(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${r.name} ${r.address}`)}`)
+    setGoogleResults([])
   }
 
   const save = async () => {
     const r = rating.trim() === '' ? null : Number(rating)
     await api.places.update(place.id, {
       name, address, category, memo: memo.trim() || null, mapUrl: mapUrl.trim() || null,
+      lat, lng,
       rating: r != null && !Number.isNaN(r) ? r : null,
       pros: pros.trim() || null, cons: cons.trim() || null,
       countryId: countryId || null, cityId: cityId || null,
@@ -112,8 +139,16 @@ function PlaceCard({
         <div className="row" style={{ flexWrap: 'wrap', alignItems: 'flex-end', border: 'none', padding: 0, margin: 0 }}>
           <div className="field"><label>이름</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="field grow"><label>주소</label>
-            <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} /></div>
+          <div className="field grow">
+            <label>주소</label>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <input type="text" value={address} style={{ flex: 1, minWidth: 0 }} onChange={(e) => setAddress(e.target.value)} />
+              <button type="button" className="btn small" style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+                onClick={searchGoogle} disabled={googleSearching || !name.trim()}>
+                {googleSearching ? '찾는 중…' : '🔍 이름으로 찾기'}
+              </button>
+            </div>
+          </div>
           <div className="field"><label>분류</label>
             <Select value={category} onChange={(e) => setCategory(e.target.value)}>
               {EDIT_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -141,6 +176,24 @@ function PlaceCard({
               </Select></div>
           )}
         </div>
+
+        {googleSearchError && <div className="error-text" style={{ marginTop: 8 }}>{googleSearchError}</div>}
+        {googleResults.length > 0 && (
+          <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {googleResults.map((r, i) => (
+              <div key={i} className="row" style={{ alignItems: 'center' }}>
+                <span className="chip green">{r.category}</span>
+                <div className="grow">
+                  <div style={{ fontWeight: 800 }}>
+                    {r.name}{r.googleRating != null && <span className="muted"> · 구글 ★{r.googleRating}</span>}
+                  </div>
+                  <div className="muted">{r.address}</div>
+                </div>
+                <button type="button" className="btn small primary" onClick={() => applyGoogleResult(r)}>이 주소 쓰기</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <button type="button" className="btn small ghost" style={{ marginTop: 12 }} onClick={() => setShowDetail((v) => !v)}>
           {showDetail ? '▲ 간단히' : '▼ 자세히 (평점·운영정보·메모·팁 등)'}
@@ -285,8 +338,8 @@ function PlaceCard({
           )}
         </div>
         <div className="muted place-card-address">
-          {place.mapUrl ? (
-            <a className="plain-link" href={place.mapUrl} target="_blank" rel="noreferrer"
+          {googleMapsUrl(place) ? (
+            <a className="plain-link" href={googleMapsUrl(place)!} target="_blank" rel="noreferrer"
               onClick={(e) => e.stopPropagation()} title="지도에서 보기">
               {place.address || '지도에서 보기'}
             </a>

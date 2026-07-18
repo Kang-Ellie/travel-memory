@@ -9,7 +9,7 @@ import {
   useQueryClient, queryKeys,
 } from '../queries'
 import { fmtMoney, computeDailySpend, dailyBudgetStatus } from '../settlement'
-import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji } from '../categories'
+import { CATEGORY_COLOR, EXPENSE_CATEGORIES, flagEmoji, googleMapsUrl } from '../categories'
 import ArchiveBoard, { ARCHIVE_DRAG_TYPE } from './ArchiveBoard'
 import MapTab from './MapTab'
 import PlanBPanel from './PlanBPanel'
@@ -431,10 +431,10 @@ function EventCard({
           />
         </span>
       </div>
-      {!isTicket && (ev.place.address || ev.place.mapUrl) && (
+      {!isTicket && (ev.place.address || googleMapsUrl(ev.place)) && (
         <div className="muted" style={{ marginTop: 6 }}>
-          {ev.place.mapUrl ? (
-            <a className="plain-link" href={ev.place.mapUrl} target="_blank" rel="noreferrer" title="지도에서 보기">
+          {googleMapsUrl(ev.place) ? (
+            <a className="plain-link" href={googleMapsUrl(ev.place)!} target="_blank" rel="noreferrer" title="지도에서 보기">
               📍 {ev.place.address || '지도에서 보기'}
             </a>
           ) : (

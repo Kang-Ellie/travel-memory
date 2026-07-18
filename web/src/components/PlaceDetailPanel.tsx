@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PlaceDetail } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
-import { flagEmoji, ratingColor, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
+import { flagEmoji, ratingColor, googleMapsUrl, CATEGORY_EMOJI, CATEGORY_PASTEL } from '../categories'
 import PlaceMeta from './PlaceMeta'
 import Thumb from './Thumb'
 
@@ -43,8 +43,8 @@ export default function PlaceDetailPanel({ placeId }: { placeId: string }) {
           <div className="muted">{flagEmoji(place.countryCode)} {place.cityName ?? place.countryName}</div>
         )}
         <div className="muted">
-          {place.mapUrl ? (
-            <a className="plain-link" href={place.mapUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
+          {googleMapsUrl(place) ? (
+            <a className="plain-link" href={googleMapsUrl(place)!} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>
               {place.address || '지도에서 보기'}
             </a>
           ) : (place.address || '주소 없음')}

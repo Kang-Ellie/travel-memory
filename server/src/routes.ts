@@ -519,6 +519,7 @@ export function registerRoutes(app: ExpressApp): void {
       hours, reservationNeeded, recommendedMenu, breakTime,
       valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl,
       valetDropoffLocation, valetReturnLocation, checkInTime, checkOutTime, directions, babyMenu, recommend, tip,
+      lat, lng,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
@@ -530,13 +531,14 @@ export function registerRoutes(app: ExpressApp): void {
       checkInTime?: string | null; checkOutTime?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
+      lat?: number | null; lng?: number | null
     }
     await pool.query(
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
          country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14,
          valet_company=$15, booking_channel=$16, grade=$17, directions=$18, baby_menu=$19, recommend=$20, tip=$21,
          stay_type=$22, airport_code=$23, booking_url=$24, valet_dropoff_location=$25, valet_return_location=$26,
-         check_in_time=$27, check_out_time=$28 WHERE id=$29`,
+         check_in_time=$27, check_out_time=$28, lat=$29, lng=$30 WHERE id=$31`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
         pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
         hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, breakTime?.trim() || null,
@@ -544,7 +546,7 @@ export function registerRoutes(app: ExpressApp): void {
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null,
         stayType?.trim() || null, airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null,
         valetDropoffLocation?.trim() || null, valetReturnLocation?.trim() || null,
-        checkInTime?.trim() || null, checkOutTime?.trim() || null, req.params.id])
+        checkInTime?.trim() || null, checkOutTime?.trim() || null, lat ?? null, lng ?? null, req.params.id])
     res.json({ ok: true })
   })
 
