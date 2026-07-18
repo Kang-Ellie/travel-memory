@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Trip, TimelineEvent, Expense, Member, Place, Voucher } from '../../shared/types'
+import type { Trip, TimelineEvent, Expense, Member, Place, Voucher, Airline } from '../../shared/types'
 import { api } from '../api'
 import { fmtMoney } from '../settlement'
 import { dayCount } from './TripWorkspace'
@@ -43,6 +43,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
   const [participants, setParticipants] = useState<Member[]>([])
   const [places, setPlaces] = useState<Place[]>([])
   const [vouchers, setVouchers] = useState<Voucher[]>([])
+  const [airlines, setAirlines] = useState<Airline[]>([])
   const [showAddPrebooked, setShowAddPrebooked] = useState(false)
   const [ticketKind, setTicketKind] = useState<TicketKind | null>(null)
   const [editTicket, setEditTicket] = useState<{ kind: TicketKind; event: TimelineEvent } | null>(null)
@@ -54,6 +55,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
     api.tripMembers.list(trip.id).then(setParticipants)
     api.places.list().then(setPlaces)
     api.vouchers.list(trip.id).then(setVouchers)
+    api.airlines.list().then(setAirlines)
   }
   useEffect(refresh, [trip.id])
 
@@ -127,6 +129,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               places={places}
               participants={participants}
               existingFlights={flights}
+              airlines={airlines}
               onClose={() => setTicketKind(null)}
               onCreated={refresh}
             />
@@ -137,6 +140,7 @@ export default function TripPrepTab({ trip }: { trip: Trip }) {
               kind={editTicket.kind}
               places={places}
               participants={participants}
+              airlines={airlines}
               editEvent={editTicket.event}
               onClose={() => setEditTicket(null)}
               onCreated={refresh}

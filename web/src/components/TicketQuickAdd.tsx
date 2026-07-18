@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { Place, Member, VoucherCategory, TimelineEvent } from '../../shared/types'
+import type { Place, Member, VoucherCategory, TimelineEvent, Airline } from '../../shared/types'
 import { api } from '../api'
 import { fmtDateTime } from '../categories'
 import Modal from './Modal'
@@ -19,10 +19,10 @@ const NAME_LABEL: Record<TicketKind, string> = { 발렛: '발렛 맡기는 곳 �
 const VOUCHER_CATEGORY_FOR_KIND: Record<TicketKind, VoucherCategory> = { 발렛: '티켓', 항공: '항공권', 숙소: '숙소' }
 
 export default function TicketQuickAdd({
-  tripId, kind, places, participants, existingFlights = [], editEvent, onClose, onCreated,
+  tripId, kind, places, participants, existingFlights = [], airlines = [], editEvent, onClose, onCreated,
 }: {
   tripId: string; kind: TicketKind; places: Place[]; participants: Member[]; existingFlights?: TimelineEvent[]
-  editEvent?: TimelineEvent; onClose: () => void; onCreated: () => void
+  airlines?: Airline[]; editEvent?: TimelineEvent; onClose: () => void; onCreated: () => void
 }) {
   const isEdit = !!editEvent
   const f = editEvent?.flight
@@ -50,6 +50,10 @@ export default function TicketQuickAdd({
   const [newDestAddress, setNewDestAddress] = useState('')
   const [newDestAirportCode, setNewDestAirportCode] = useState('')
   const [airline, setAirline] = useState(f?.airline ?? '')
+  const [airlineId, setAirlineId] = useState(f?.airlineId ?? '')
+  const [newAirlineName, setNewAirlineName] = useState('')
+  const [newAirlineLogoFile, setNewAirlineLogoFile] = useState<File | null>(null)
+  const airlineLogoInput = useRef<HTMLInputElement>(null)
   const [flightNo, setFlightNo] = useState(f?.flightNo ?? '')
   const [passengerIds, setPassengerIds] = useState<Set<string>>(
     new Set(f?.passengerIds?.length ? f.passengerIds : participants.map((p) => p.id)),
@@ -79,6 +83,7 @@ export default function TicketQuickAdd({
     setDestination(source.flight.destination ?? '')
     setDestinationPlaceId(source.flight.destinationPlaceId ?? '')
     setAirline(source.flight.airline ?? '')
+    setAirlineId(source.flight.airlineId ?? '')
     setFlightNo(source.flight.flightNo ?? '')
     const covered = new Set(source.flight.passengerIds)
     setPassengerIds(new Set(participants.filter((p) => !covered.has(p.id)).map((p) => p.id)))
@@ -101,6 +106,12 @@ export default function TicketQuickAdd({
         airportCode: newDestAirportCode.trim() || null,
       })
       resolvedDestinationPlaceId = dp.id
+    }
+    let resolvedAirlineId: string | null = airlineId && airlineId !== '__new__' ? airlineId : null
+    if (kind === '항공' && airlineId === '__new__' && newAirlineName.trim()) {
+      const al = await api.airlines.create({ name: newAirlineName.trim() })
+      resolvedAirlineId = al.id
+      if (newAirlineLogoFile) await api.airlines.uploadLogo(al.id, newAirlineLogoFile)
     }
     setSaving(true)
     // 수정 모드: 새 파일을 안 올렸으면 기존 바우처 연결을 그대로 유지한다.
@@ -125,7 +136,8 @@ export default function TicketQuickAdd({
         bookingRef: bookingRef.trim() || null, bookedVia: bookedVia.trim() || null,
         departureLocation: departureLocation.trim() || null, confirmed,
         voucherId, voucherTitle,
-        airline: airline.trim() || null, airlineLogoPath: f?.airlineLogoPath ?? null, flightNo: flightNo.trim() || null,
+        airline: airline.trim() || null, airlineLogoPath: f?.airlineLogoPath ?? null, airlineId: resolvedAirlineId,
+        flightNo: flightNo.trim() || null,
         destination: destination.trim() || null, destinationPlaceId: resolvedDestinationPlaceId,
         gate: f?.gate ?? null, seat: f?.seat ?? null,
         passengerIds: [...passengerIds],
@@ -306,8 +318,34 @@ export default function TicketQuickAdd({
             <>
               <div className="ticket-stub-divider" />
               <div className="form-row">
-                <div className="field"><label>항공사</label>
-                  <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
+                <div className="field grow">
+                  <label>항공사 (검색/선택 — 재사용하려면 등록해두세요)</label>
+                  <Select value={airlineId} onChange={(e) => setAirlineId(e.target.value)}>
+                    <option value="">— 선택 안 함 (직접 입력) —</option>
+                    <option value="__new__">✚ 새 항공사 등록</option>
+                    {airlines.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                  </Select>
+                </div>
+                {airlineId === '__new__' && (
+                  <>
+                    <div className="field grow">
+                      <label>항공사 이름</label>
+                      <input type="text" value={newAirlineName} placeholder="예: 진에어" onChange={(e) => setNewAirlineName(e.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label>로고 이미지 (선택)</label>
+                      <input ref={airlineLogoInput} type="file" accept="image/*" hidden
+                        onChange={(e) => setNewAirlineLogoFile(e.target.files?.[0] ?? null)} />
+                      <button type="button" className="btn small" onClick={() => airlineLogoInput.current?.click()}>
+                        {newAirlineLogoFile ? `🖼 ${newAirlineLogoFile.name}` : '🖼 로고 선택'}
+                      </button>
+                    </div>
+                  </>
+                )}
+                {!airlineId && (
+                  <div className="field"><label>항공사 이름 (직접 입력)</label>
+                    <input type="text" value={airline} placeholder="예: 진에어" onChange={(e) => setAirline(e.target.value)} /></div>
+                )}
                 <div className="field"><label>편명</label>
                   <input type="text" value={flightNo} placeholder="예: LJ203" onChange={(e) => setFlightNo(e.target.value)} /></div>
               </div>

@@ -56,6 +56,8 @@ function PlaceCard({
   const [stayType, setStayType] = useState(place.stayType ?? '')
   const [airportCode, setAirportCode] = useState(place.airportCode ?? '')
   const [bookingUrl, setBookingUrl] = useState(place.bookingUrl ?? '')
+  const [valetDropoffLocation, setValetDropoffLocation] = useState(place.valetDropoffLocation ?? '')
+  const [valetReturnLocation, setValetReturnLocation] = useState(place.valetReturnLocation ?? '')
   const [directions, setDirections] = useState(place.directions ?? '')
   const [babyMenu, setBabyMenu] = useState(place.babyMenu ?? '')
   const [recommend, setRecommend] = useState<boolean | null>(place.recommend)
@@ -91,7 +93,9 @@ function PlaceCard({
       breakTime: breakTime.trim() || null,
       valetCompany: valetCompany.trim() || null, bookingChannel: bookingChannel.trim() || null,
       grade: grade.trim() || null, stayType: stayType || null, airportCode: airportCode.trim() || null,
-      bookingUrl: bookingUrl.trim() || null, directions: directions.trim() || null,
+      bookingUrl: bookingUrl.trim() || null,
+      valetDropoffLocation: valetDropoffLocation.trim() || null, valetReturnLocation: valetReturnLocation.trim() || null,
+      directions: directions.trim() || null,
       babyMenu: babyMenu.trim() || null, recommend, tip: tip.trim() || null,
     })
     setEditing(false)
@@ -161,6 +165,12 @@ function PlaceCard({
                       onChange={(e) => setBookingChannel(e.target.value)} /></div>
                   <div className="field grow"><label>🔗 예약 사이트</label>
                     <input type="text" value={bookingUrl} placeholder="https://..." onChange={(e) => setBookingUrl(e.target.value)} /></div>
+                  <div className="field grow"><label>🅿️ 접수장소 (차 맡기는 곳)</label>
+                    <input type="text" value={valetDropoffLocation} placeholder="예: 인천공항 T1 단기주차장 B1층 A구역15"
+                      onChange={(e) => setValetDropoffLocation(e.target.value)} /></div>
+                  <div className="field grow"><label>🔑 인도장소 (차 찾는 곳)</label>
+                    <input type="text" value={valetReturnLocation} placeholder="예: 지하3층 A32구역 정산소"
+                      onChange={(e) => setValetReturnLocation(e.target.value)} /></div>
                 </>
               )}
               {isLodging && (

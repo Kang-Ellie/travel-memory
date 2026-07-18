@@ -4,7 +4,8 @@ import { fmtDateTime } from '../categories'
 
 export default function ValetPassCard({ valet, place, vouchers = [] }: { valet: ValetDetail; place: Place; vouchers?: Voucher[] }) {
   const at = fmtDateTime(valet.scheduledAt)
-  const hasInfo = valet.bookingRef || valet.bookedVia
+  // 접수/인도장소는 장소 족보에 등록해두면 티켓마다 다시 입력할 필요 없이 항상 같이 뜬다.
+  const hasInfo = valet.bookingRef || valet.bookedVia || place.valetDropoffLocation || place.valetReturnLocation
   const voucher = valet.voucherId ? vouchers.find((v) => v.id === valet.voucherId) : undefined
 
   return (
@@ -31,6 +32,8 @@ export default function ValetPassCard({ valet, place, vouchers = [] }: { valet: 
 
         {hasInfo && (
           <div className="bpass-info">
+            {place.valetDropoffLocation && <div><div className="k">🅿️ 접수장소</div><div className="v">{place.valetDropoffLocation}</div></div>}
+            {place.valetReturnLocation && <div><div className="k">🔑 인도장소</div><div className="v">{place.valetReturnLocation}</div></div>}
             {valet.bookingRef && <div><div className="k">예약번호</div><div className="v">{valet.bookingRef}</div></div>}
             {valet.bookedVia && <div><div className="k">예약처</div><div className="v">{valet.bookedVia}</div></div>}
           </div>

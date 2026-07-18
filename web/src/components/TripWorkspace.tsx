@@ -316,6 +316,7 @@ function EventCard({
         departureLocation: departureLocation.trim() || null, confirmed,
         voucherId: voucherId || null, voucherTitle: null,
         airline: airline.trim() || null, airlineLogoPath: ev.flight?.airlineLogoPath ?? null,
+        airlineId: ev.flight?.airlineId ?? null,
         flightNo: flightNo.trim() || null, destination: destination.trim() || null,
         destinationPlaceId: ev.flight?.destinationPlaceId ?? null,
         gate: gate.trim() || null, seat: seat.trim() || null,

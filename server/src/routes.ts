@@ -81,7 +81,9 @@ const mapPlace = (r: any) => ({
   hours: r.hours, reservationNeeded: !!r.reservation_needed, recommendedMenu: r.recommended_menu,
   breakTime: r.break_time, coverPhoto: r.cover_photo_path ?? null, createdAt: r.created_at,
   valetCompany: r.valet_company, bookingChannel: r.booking_channel,
-  grade: r.grade, stayType: r.stay_type, airportCode: r.airport_code, bookingUrl: r.booking_url, directions: r.directions, babyMenu: r.baby_menu,
+  grade: r.grade, stayType: r.stay_type, airportCode: r.airport_code, bookingUrl: r.booking_url,
+  valetDropoffLocation: r.valet_dropoff_location, valetReturnLocation: r.valet_return_location,
+  directions: r.directions, babyMenu: r.baby_menu,
   recommend: r.recommend == null ? null : !!r.recommend, tip: r.tip,
   visitCount: r.visit_count != null ? Number(r.visit_count) : 0,
 })
@@ -95,18 +97,25 @@ const mapFlightDetail = (r: any) => ({
   durationMinutes: r.duration_minutes != null ? Number(r.duration_minutes) : null,
   bookingRef: r.booking_ref, bookedVia: r.booked_via, departureLocation: r.departure_location,
   confirmed: !!r.confirmed, voucherId: r.voucher_id, voucherTitle: r.voucher_title ?? null,
-  airline: r.airline, airlineLogoPath: r.airline_logo_path ?? null, flightNo: r.flight_no,
+  // 항공사가 항공사 족보(airlines)에 등록돼 있으면 그쪽 이름·로고가 우선하고,
+  // 옛날처럼 자유 입력만 해둔 티켓은 flight_details에 직접 저장된 값으로 대체된다.
+  airline: r.airline_reg_name ?? r.airline, airlineLogoPath: r.airline_reg_logo_path ?? r.airline_logo_path ?? null,
+  airlineId: r.airline_id ?? null,
+  flightNo: r.flight_no,
   destination: r.destination, gate: r.gate, seat: r.seat, passengerIds: r.passenger_ids ?? [],
   destinationPlaceId: r.destination_place_id ?? null,
   destinationPlaceName: r.destination_place_name ?? null,
   destinationAirportCode: r.destination_airport_code ?? null,
 })
 const FLIGHT_SELECT = `
-  SELECT fd.*, v.title AS voucher_title, dp.name AS destination_place_name, dp.airport_code AS destination_airport_code
+  SELECT fd.*, v.title AS voucher_title, dp.name AS destination_place_name, dp.airport_code AS destination_airport_code,
+    al.name AS airline_reg_name, al.logo_path AS airline_reg_logo_path
   FROM flight_details fd
   LEFT JOIN vouchers v ON v.id = fd.voucher_id
   LEFT JOIN places dp ON dp.id = fd.destination_place_id
+  LEFT JOIN airlines al ON al.id = fd.airline_id
 `
+const mapAirline = (r: any) => ({ id: r.id, name: r.name, logoPath: r.logo_path ?? null, createdAt: r.created_at })
 const mapValetDetail = (r: any) => ({
   scheduledAt: r.scheduled_at, location: r.location, company: r.company,
   bookedVia: r.booked_via, bookingRef: r.booking_ref, confirmed: !!r.confirmed,
@@ -468,7 +477,8 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, lat, lng, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
-      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl, directions, babyMenu, recommend, tip,
+      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl,
+      valetDropoffLocation, valetReturnLocation, directions, babyMenu, recommend, tip,
     } = req.body as {
       name: string; address: string; category: string; lat?: number | null; lng?: number | null
       memo?: string | null; mapUrl?: string | null; rating?: number | null
@@ -476,6 +486,7 @@ export function registerRoutes(app: ExpressApp): void {
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      valetDropoffLocation?: string | null; valetReturnLocation?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }
@@ -483,15 +494,17 @@ export function registerRoutes(app: ExpressApp): void {
     await pool.query(
       `INSERT INTO places (id, name, address, category, lat, lng, memo, map_url, rating, pros, cons, country_id, city_id,
          hours, reservation_needed, recommended_menu, break_time,
-         valet_company, booking_channel, grade, stay_type, directions, baby_menu, recommend, tip, airport_code, booking_url)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27)`,
+         valet_company, booking_channel, grade, stay_type, directions, baby_menu, recommend, tip, airport_code, booking_url,
+         valet_dropoff_location, valet_return_location)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
       [placeId, name.trim(), (address ?? '').trim(), category, lat ?? null, lng ?? null, memo ?? null,
         mapUrl?.trim() || null, rating ?? null, pros?.trim() || null, cons?.trim() || null,
         countryId || null, cityId || null, hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null,
         breakTime?.trim() || null,
         valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null, stayType?.trim() || null,
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null,
-        airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null])
+        airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null,
+        valetDropoffLocation?.trim() || null, valetReturnLocation?.trim() || null])
     await logActivity(null, 'place_added', name.trim())
     const r = await pool.query(`${PLACE_SELECT} WHERE p.id = $1`, [placeId])
     res.json(mapPlace(r.rows[0]))
@@ -501,7 +514,8 @@ export function registerRoutes(app: ExpressApp): void {
     const {
       name, address, category, memo, mapUrl, rating, pros, cons, countryId, cityId,
       hours, reservationNeeded, recommendedMenu, breakTime,
-      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl, directions, babyMenu, recommend, tip,
+      valetCompany, bookingChannel, grade, stayType, airportCode, bookingUrl,
+      valetDropoffLocation, valetReturnLocation, directions, babyMenu, recommend, tip,
     } = req.body as {
       name: string; address: string; category: string; memo: string | null; mapUrl: string | null
       rating: number | null; pros: string | null; cons: string | null
@@ -509,6 +523,7 @@ export function registerRoutes(app: ExpressApp): void {
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      valetDropoffLocation?: string | null; valetReturnLocation?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }
@@ -516,13 +531,14 @@ export function registerRoutes(app: ExpressApp): void {
       `UPDATE places SET name=$1, address=$2, category=$3, memo=$4, map_url=$5, rating=$6, pros=$7, cons=$8,
          country_id=$9, city_id=$10, hours=$11, reservation_needed=$12, recommended_menu=$13, break_time=$14,
          valet_company=$15, booking_channel=$16, grade=$17, directions=$18, baby_menu=$19, recommend=$20, tip=$21,
-         stay_type=$22, airport_code=$23, booking_url=$24 WHERE id=$25`,
+         stay_type=$22, airport_code=$23, booking_url=$24, valet_dropoff_location=$25, valet_return_location=$26 WHERE id=$27`,
       [name.trim(), (address ?? '').trim(), category, memo, mapUrl?.trim() || null, rating ?? null,
         pros?.trim() || null, cons?.trim() || null, countryId || null, cityId || null,
         hours?.trim() || null, reservationNeeded ?? false, recommendedMenu?.trim() || null, breakTime?.trim() || null,
         valetCompany?.trim() || null, bookingChannel?.trim() || null, grade?.trim() || null,
         directions?.trim() || null, babyMenu?.trim() || null, recommend ?? null, tip?.trim() || null,
-        stayType?.trim() || null, airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null, req.params.id])
+        stayType?.trim() || null, airportCode?.trim().toUpperCase() || null, bookingUrl?.trim() || null,
+        valetDropoffLocation?.trim() || null, valetReturnLocation?.trim() || null, req.params.id])
     res.json({ ok: true })
   })
 
@@ -919,30 +935,58 @@ export function registerRoutes(app: ExpressApp): void {
   app.put('/api/events/:id/flight', async (req, res) => {
     const {
       departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, confirmed, voucherId,
-      airline, flightNo, destination, destinationPlaceId, gate, seat, passengerIds,
+      airline, airlineId, flightNo, destination, destinationPlaceId, gate, seat, passengerIds,
     } = req.body as {
       departAt: string | null; arriveAt: string | null; durationMinutes: number | null
       bookingRef: string | null; bookedVia: string | null
       departureLocation: string | null; confirmed: boolean; voucherId: string | null
-      airline: string | null; flightNo: string | null; destination: string | null; destinationPlaceId?: string | null
+      airline: string | null; airlineId?: string | null
+      flightNo: string | null; destination: string | null; destinationPlaceId?: string | null
       gate: string | null; seat: string | null; passengerIds?: string[]
     }
     await pool.query(
       `INSERT INTO flight_details
          (event_id, depart_at, arrive_at, duration_minutes, booking_ref, booked_via, departure_location, confirmed, voucher_id,
-          airline, flight_no, destination, gate, seat, passenger_ids, destination_place_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          airline, flight_no, destination, gate, seat, passenger_ids, destination_place_id, airline_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        ON CONFLICT (event_id) DO UPDATE SET
          depart_at = excluded.depart_at, arrive_at = excluded.arrive_at, duration_minutes = excluded.duration_minutes,
          booking_ref = excluded.booking_ref, booked_via = excluded.booked_via,
          departure_location = excluded.departure_location, confirmed = excluded.confirmed, voucher_id = excluded.voucher_id,
          airline = excluded.airline, flight_no = excluded.flight_no, destination = excluded.destination,
          gate = excluded.gate, seat = excluded.seat, passenger_ids = excluded.passenger_ids,
-         destination_place_id = excluded.destination_place_id`,
+         destination_place_id = excluded.destination_place_id, airline_id = excluded.airline_id`,
       [req.params.id, departAt, arriveAt, durationMinutes, bookingRef, bookedVia, departureLocation, !!confirmed, voucherId,
         airline?.trim() || null, flightNo?.trim() || null, destination?.trim() || null,
-        gate?.trim() || null, seat?.trim() || null, passengerIds ?? [], destinationPlaceId || null])
+        gate?.trim() || null, seat?.trim() || null, passengerIds ?? [], destinationPlaceId || null, airlineId || null])
     res.json({ ok: true })
+  })
+
+  // ── 항공사 족보 (재사용 가능한 이름+로고) ────────────────
+  app.get('/api/airlines', async (_req, res) => {
+    const r = await pool.query('SELECT * FROM airlines ORDER BY name')
+    res.json(r.rows.map(mapAirline))
+  })
+
+  app.post('/api/airlines', async (req, res) => {
+    const { name } = req.body as { name: string }
+    if (!name?.trim()) { res.status(400).json({ error: '항공사 이름을 입력해주세요.' }); return }
+    const airlineId = id()
+    await pool.query('INSERT INTO airlines (id, name) VALUES ($1, $2)', [airlineId, name.trim()])
+    const r = await pool.query('SELECT * FROM airlines WHERE id = $1', [airlineId])
+    res.json(mapAirline(r.rows[0]))
+  })
+
+  app.post('/api/airlines/:id/logo', uploader.array('files', 1), async (req, res) => {
+    const files = (req.files ?? []) as Express.Multer.File[]
+    const file = files[0]
+    if (!file) { res.status(400).json({ error: '파일이 없어요.' }); return }
+    const rel = await uploadFile('airline-logos', file)
+    const old = await pool.query('SELECT logo_path FROM airlines WHERE id = $1', [req.params.id])
+    if (old.rows[0]?.logo_path) await safeUnlink(old.rows[0].logo_path)
+    await pool.query('UPDATE airlines SET logo_path = $1 WHERE id = $2', [rel, req.params.id])
+    const r = await pool.query('SELECT * FROM airlines WHERE id = $1', [req.params.id])
+    res.json(mapAirline(r.rows[0]))
   })
 
   app.post('/api/events/:id/flight/logo', uploader.array('files', 1), async (req, res) => {

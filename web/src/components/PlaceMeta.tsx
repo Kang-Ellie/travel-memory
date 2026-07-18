@@ -32,6 +32,8 @@ export default function PlaceMeta({ place }: { place: Place }) {
           🔗 <a href={place.bookingUrl} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}>예약 사이트</a>
         </div>
       )}
+      {place.valetDropoffLocation && <div className="muted">🅿️ 접수장소: {place.valetDropoffLocation}</div>}
+      {place.valetReturnLocation && <div className="muted">🔑 인도장소: {place.valetReturnLocation}</div>}
       {(place.pros || place.cons) && (
         <div className="muted">
           {place.pros && <>👍 {place.pros} </>}

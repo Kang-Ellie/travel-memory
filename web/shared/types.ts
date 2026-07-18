@@ -86,6 +86,8 @@ export interface Place {
   stayType: string | null
   airportCode: string | null
   bookingUrl: string | null
+  valetDropoffLocation: string | null
+  valetReturnLocation: string | null
   directions: string | null
   babyMenu: string | null
   recommend: boolean | null
@@ -112,6 +114,13 @@ export interface Photo {
   filePath: string
 }
 
+export interface Airline {
+  id: string
+  name: string
+  logoPath: string | null
+  createdAt: string
+}
+
 export interface FlightDetail {
   departAt: string | null
   arriveAt: string | null
@@ -124,6 +133,7 @@ export interface FlightDetail {
   voucherTitle: string | null
   airline: string | null
   airlineLogoPath: string | null
+  airlineId: string | null
   flightNo: string | null
   destination: string | null
   destinationPlaceId: string | null

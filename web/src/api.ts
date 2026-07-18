@@ -2,7 +2,7 @@ import type {
   Trip, Member, Place, TimelineEvent, Photo, Expense, Voucher, GooglePlaceResult,
   ArchiveItem, DayNote, DayPhoto, PlaceDetail, Country, City, FlightDetail, ValetDetail, LodgingDetail, ReservationDetail, CurrencyRate,
   DashboardData, ActivityLogEntry,
-  ChecklistItem, ChecklistScope, BucketItem, TransitSegment, CityPlaceSummary,
+  ChecklistItem, ChecklistScope, BucketItem, TransitSegment, CityPlaceSummary, Airline,
 } from '../shared/types'
 
 export const API_BASE = (import.meta.env.VITE_API_BASE as string | undefined) ?? 'http://localhost:8787'
@@ -106,6 +106,7 @@ export const api = {
       hours?: string | null; reservationNeeded?: boolean; recommendedMenu?: string | null; breakTime?: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      valetDropoffLocation?: string | null; valetReturnLocation?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }) => req<Place>('POST', '/api/places', data),
@@ -116,6 +117,7 @@ export const api = {
       hours: string | null; reservationNeeded: boolean; recommendedMenu: string | null; breakTime: string | null
       valetCompany?: string | null; bookingChannel?: string | null
       grade?: string | null; stayType?: string | null; airportCode?: string | null; bookingUrl?: string | null
+      valetDropoffLocation?: string | null; valetReturnLocation?: string | null
       directions?: string | null; babyMenu?: string | null
       recommend?: boolean | null; tip?: string | null
     }) => req<void>('PUT', `/api/places/${id}`, data),
@@ -126,6 +128,12 @@ export const api = {
     resolveMapLink: (url: string) =>
       req<{ name: string | null; address: string | null; lat: number | null; lng: number | null } | { error: string }>(
         'GET', `/api/places/resolve-map-link?url=${encodeURIComponent(url)}`),
+  },
+
+  airlines: {
+    list: () => req<Airline[]>('GET', '/api/airlines'),
+    create: (data: { name: string }) => req<Airline>('POST', '/api/airlines', data),
+    uploadLogo: (id: string, file: File) => upload<Airline>(`/api/airlines/${id}/logo`, [file]),
   },
 
   events: {
